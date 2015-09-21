@@ -6,6 +6,7 @@ import (
   "net"
   "os"
   "bytes"
+  "encoding/binary"
   "github.com/jeffjenkins/mq/amqp"
 )
 
@@ -25,37 +26,56 @@ func handleConnection(conn net.Conn) {
   }
   fmt.Println("Connection open!")
   // Connection is open!
-  fmt.Println("Sending StartOk")
+  fmt.Println("Sending Start")
   start(conn)
-  fmt.Println("Waiting for bytes")
-  buf2 := make([]byte, 10000)
-  length, err := conn.Read(buf2)
-  if err != nil {
-    fmt.Println("Error reading:", err.Error())
+  var ok, sokerr = startOk(conn)
+  if sokerr != nil {
+    panic("Error in startOK!")
   }
-  fmt.Println("Got bytes:", length)
+  for key := range ok.ClientProperties {
+    fmt.Println("ClientProperties", key)
+  }
 
+  fmt.Println("Mechanism"             , ok.Mechanism)
+  fmt.Println("Response"              , ok.Response, string(ok.Response))
+  fmt.Println("Locale"                , ok.Locale)
+}
+
+func startOk(conn net.Conn) (amqp.ConnectionStartOk, error) {
+  var ftype, _ = amqp.ReadOctet(conn) // frame type
+  fmt.Println("ftype: ", ftype)
+
+  var channel, _ = amqp.ReadShort(conn) // channel
+  fmt.Println("channel: ", channel)
+
+  var length, _ = amqp.ReadLong(conn)  // paload length
+  fmt.Println("length: ", length)
+
+  var payload = make([]byte, length)
+  fmt.Println("Reading payload")
+  binary.Read(conn, binary.BigEndian, &payload)
+
+  var methodReader = bytes.NewReader(payload)
+  fmt.Println("Payload length:", len(payload))
+
+  amqp.ReadShort(methodReader) // ClassId
+  amqp.ReadShort(methodReader) // MethodId
+
+  var method = amqp.ConnectionStartOk{}
+  method.Read(methodReader)
+  return method, nil
 }
 
 func start(conn net.Conn) {
   var buf = bytes.NewBuffer([]byte{})
   // Method headers
+
   amqp.WriteShort(buf, amqp.ClassIdConnection)
   amqp.WriteShort(buf, amqp.MethodIdConnectionStart)
+  var start = amqp.ConnectionStart{0, 9, amqp.Table{}, []byte("PLAIN"), []byte("en_US")}
+  start.Write(buf)
 
-  // Protocol version
-  amqp.WriteVersion(buf)
-
-  // Server properties
-  amqp.WriteTable(buf, amqp.Table{})
-
-  // Mechanisms
-  amqp.WriteLongstr(buf, []byte("PLAIN"))
-
-  // Locals
-  amqp.WriteLongstr(buf, []byte("en_US"))
-
-  // Send to client
+  // Frame header
   amqp.WriteOctet(conn, uint8(amqp.FrameMethod))
   amqp.WriteShort(conn, 0)
   amqp.WriteLong(conn, uint32(buf.Len()))

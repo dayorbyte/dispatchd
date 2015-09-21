@@ -104,7 +104,7 @@ func ReadShortstr(buf io.Reader) (string, error) {
   if length > MaxShortStringLength {
     return "", errors.New("String too long for short string")
   }
-  var slice = make([]byte, 0, length)
+  var slice = make([]byte, length)
   binary.Read(buf, binary.BigEndian, slice)
   return string(slice), nil
 }
@@ -112,7 +112,7 @@ func ReadShortstr(buf io.Reader) (string, error) {
 func ReadLongstr(buf io.Reader) ([]byte, error) {
   var length uint32
   var err = binary.Read(buf, binary.BigEndian, &length)
-  var slice = make([]byte, 0, length)
+  var slice = make([]byte, length)
   binary.Read(buf, binary.BigEndian, slice)
   return slice, err
 }
@@ -125,7 +125,10 @@ func ReadTimestamp(buf io.Reader) (data uint64, err error) {
   return data, nil
 }
 
-func ReadTable(buf io.Reader) (Table, error) {
-  panic("Not implemented")
-  // binary.Write(buf, binary.BigEndian, 0)
-}
+// func ReadTable(buf io.Reader) (Table, error) {
+//   var length uint32
+//   var err = binary.Read(buf, binary.BigEndian, &length)
+//   var slice = make([]byte, length)
+//   binary.Read(buf, binary.BigEndian, slice)
+//   return Table{slice}, err
+// }

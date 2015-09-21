@@ -95,5 +95,5 @@ func WriteTimestamp(buf io.Writer, timestamp uint64) error {
 
 func WriteTable(buf io.Writer, t Table) error {
   // TODO
-  return binary.Write(buf, binary.BigEndian, 0)
+  return binary.Write(buf, binary.BigEndian, uint32(0))
 }
