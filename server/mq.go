@@ -6,6 +6,7 @@ import (
   "net"
   "os"
   "bytes"
+  "github.com/jeffjenkins/mq/amqp"
 )
 
 func handleConnection(conn net.Conn) {
@@ -32,31 +33,34 @@ func handleConnection(conn net.Conn) {
   if err != nil {
     fmt.Println("Error reading:", err.Error())
   }
-  fmt.Println("Got bytes: %d", length)
+  fmt.Println("Got bytes:", length)
 
 }
 
 func start(conn net.Conn) {
   var buf = bytes.NewBuffer([]byte{})
   // Method headers
-  WriterMethodHeader(buf, ClassConnection, MethodStart)
+  amqp.WriteShort(buf, amqp.ClassIdConnection)
+  amqp.WriteShort(buf, amqp.MethodIdConnectionStart)
 
   // Protocol version
-  WriteVersion(buf)
+  amqp.WriteVersion(buf)
 
   // Server properties
-  WriteServerProps(buf)
+  amqp.WriteTable(buf, amqp.Table{})
 
   // Mechanisms
-  WriteLongStr(buf, "PLAIN")
+  amqp.WriteLongstr(buf, []byte("PLAIN"))
 
   // Locals
-  WriteLongStr(buf, "en_US")
+  amqp.WriteLongstr(buf, []byte("en_US"))
 
   // Send to client
-  WriteFrameHeader(conn, FrameMethod, 0, uint32(buf.Len()))
+  amqp.WriteOctet(conn, uint8(amqp.FrameMethod))
+  amqp.WriteShort(conn, 0)
+  amqp.WriteLong(conn, uint32(buf.Len()))
   conn.Write(buf.Bytes())
-  WriteFrameEnd(conn)
+  amqp.WriteFrameEnd(conn)
 }
 
 func main() {

@@ -22,24 +22,23 @@ func WriteFrameEnd(buf io.Writer) error {
 
 // Composite Types
 
-func WriteMethodFrameHeader(buf io.Writer, channel uint16, payloadSize uint32) (err error) {
-  if err := binary.Write(buf, binary.BigEndian, FrameTypeMethod); err == nil {
-    return
-  }
-  if err := binary.Write(buf, binary.BigEndian, channel); err == nil {
-    return
-  }
-  if err := binary.Write(buf, binary.BigEndian, payloadSize); err == nil {
-    return
-  }
-  return nil
-}
+// func WriteMethodFrameHeader(buf io.Writer, channel uint16, payloadSize uint32) (err error) {
+//   if err = binary.Write(buf, binary.BigEndian, FrameTypeMethod); err != nil {
+//     return
+//   }
+//   if err = binary.Write(buf, binary.BigEndian, channel); err != nil {
+//     return
+//   }
+//   if err = binary.Write(buf, binary.BigEndian, payloadSize); err != nil {
+//     return
+//   }
+// }
 
 func WriteMethodPayloadHeader(buf io.Writer, classId uint16, methodId uint16) (err error) {
-  if err := binary.Write(buf, binary.BigEndian, classId); err == nil {
+  if err = binary.Write(buf, binary.BigEndian, classId); err != nil {
     return
   }
-  if err := binary.Write(buf, binary.BigEndian, methodId); err == nil {
+  if err = binary.Write(buf, binary.BigEndian, methodId); err != nil {
     return
   }
   return nil
@@ -47,7 +46,7 @@ func WriteMethodPayloadHeader(buf io.Writer, classId uint16, methodId uint16) (e
 
 // Fields
 
-func WriteBits(buf io.Writer, bits []bool) err {
+func WriteBit(buf io.Writer, b bool) error {
   // TODO
   panic("Not implemented!")
   return nil
@@ -65,26 +64,26 @@ func WriteLong(buf io.Writer, i uint32) error {
   return binary.Write(buf, binary.BigEndian, i)
 }
 
-func WriteLongLong(buf io.Writer, i uint64) error {
-  return binary.Write(buf, binary.BigEndian, )
+func WriteLonglong(buf io.Writer, i uint64) error {
+  return binary.Write(buf, binary.BigEndian, i)
 }
 
 func WriteStringChar(buf io.Writer, b byte) error {
   return binary.Write(buf, binary.BigEndian, b)
 }
 
-func WriteShortString(buf io.Writer, s string) error {
-  if len(s) > MaxShortStringLength {
+func WriteShortstr(buf io.Writer, s string) error {
+  if len(s) > int(MaxShortStringLength) {
     return errors.New("String too long for short string")
   }
-  binary.Write(buf, binary.BigEndian, byte(len(s)))
+  return binary.Write(buf, binary.BigEndian, byte(len(s)))
 }
 
-func WriteLongString(buf io.Writer, bytes []byte) (err error) {
-  if err := binary.Write(buf, binary.BigEndian, uint32(len(bytes))); err == nil {
+func WriteLongstr(buf io.Writer, bytes []byte) (err error) {
+  if err = binary.Write(buf, binary.BigEndian, uint32(len(bytes))); err != nil {
     return
   }
-  if err := binary.Write(buf, binary.BigEndian, bytes); err == nil {
+  if err = binary.Write(buf, binary.BigEndian, bytes); err != nil {
     return
   }
   return nil
@@ -94,7 +93,7 @@ func WriteTimestamp(buf io.Writer, timestamp uint64) error {
   return binary.Write(buf, binary.BigEndian, timestamp)
 }
 
-func WriteTable(buf io.Writer) error {
+func WriteTable(buf io.Writer, t Table) error {
   // TODO
   return binary.Write(buf, binary.BigEndian, 0)
 }

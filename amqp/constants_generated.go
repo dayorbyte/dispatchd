@@ -1,5 +1,6 @@
 package amqp
 
+var MaxShortStringLength uint8 = 255
 var FrameMethod = 1
 var FrameHeader = 2
 var FrameBody = 3
