@@ -6,6 +6,26 @@ import (
   "errors"
 )
 
+func ReadFrame (reader io.Reader) (*FrameWrapper, error) {
+  var f = &FrameWrapper{}
+  frameType, err := ReadOctet(reader)
+  if err != nil {
+    return nil, err
+  }
+  channel, err := ReadShort(reader)
+  if err != nil {
+    return nil, err
+  }
+  payload, err := ReadLongstr(reader)
+  if err != nil {
+    return nil, err
+  }
+  f.FrameType = frameType
+  f.Channel = channel
+  f.Payload = payload
+  return f, nil
+}
+
 // Constants
 
 func ReadProtocolHeader(buf io.Reader) (err error) {
@@ -125,10 +145,3 @@ func ReadTimestamp(buf io.Reader) (data uint64, err error) {
   return data, nil
 }
 
-// func ReadTable(buf io.Reader) (Table, error) {
-//   var length uint32
-//   var err = binary.Read(buf, binary.BigEndian, &length)
-//   var slice = make([]byte, length)
-//   binary.Read(buf, binary.BigEndian, slice)
-//   return Table{slice}, err
-// }

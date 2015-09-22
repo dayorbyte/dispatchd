@@ -31,6 +31,12 @@ type ConnectionStart struct {
   Mechanisms []byte
   Locales []byte
 }
+
+
+func (f* ConnectionStart) MethodIdentifier() (uint16, uint16) {
+  return 10, 10
+}
+
 func (f *ConnectionStart) Read(reader io.Reader) (err error) {
   f.VersionMajor, err = ReadOctet(reader)
   if err != nil {
@@ -60,6 +66,12 @@ func (f *ConnectionStart) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionStart) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
  err = WriteOctet(writer, f.VersionMajor)
   if err != nil {
     return errors.New("Error writing field VersionMajor")
@@ -99,6 +111,12 @@ type ConnectionStartOk struct {
   Response []byte
   Locale string
 }
+
+
+func (f* ConnectionStartOk) MethodIdentifier() (uint16, uint16) {
+  return 10, 11
+}
+
 func (f *ConnectionStartOk) Read(reader io.Reader) (err error) {
   f.ClientProperties, err = ReadPeerProperties(reader)
   if err != nil {
@@ -123,6 +141,12 @@ func (f *ConnectionStartOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionStartOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 11); err != nil {
+    return err
+  }
  err = WritePeerProperties(writer, f.ClientProperties)
   if err != nil {
     return errors.New("Error writing field ClientProperties")
@@ -154,6 +178,12 @@ var MethodIdConnectionSecure uint16 = 20
 type ConnectionSecure struct {
   Challenge []byte
 }
+
+
+func (f* ConnectionSecure) MethodIdentifier() (uint16, uint16) {
+  return 10, 20
+}
+
 func (f *ConnectionSecure) Read(reader io.Reader) (err error) {
   f.Challenge, err = ReadLongstr(reader)
   if err != nil {
@@ -163,6 +193,12 @@ func (f *ConnectionSecure) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionSecure) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
  err = WriteLongstr(writer, f.Challenge)
   if err != nil {
     return errors.New("Error writing field Challenge")
@@ -179,6 +215,12 @@ var MethodIdConnectionSecureOk uint16 = 21
 type ConnectionSecureOk struct {
   Response []byte
 }
+
+
+func (f* ConnectionSecureOk) MethodIdentifier() (uint16, uint16) {
+  return 10, 21
+}
+
 func (f *ConnectionSecureOk) Read(reader io.Reader) (err error) {
   f.Response, err = ReadLongstr(reader)
   if err != nil {
@@ -188,6 +230,12 @@ func (f *ConnectionSecureOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionSecureOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 21); err != nil {
+    return err
+  }
  err = WriteLongstr(writer, f.Response)
   if err != nil {
     return errors.New("Error writing field Response")
@@ -206,6 +254,12 @@ type ConnectionTune struct {
   FrameMax uint32
   Heartbeat uint16
 }
+
+
+func (f* ConnectionTune) MethodIdentifier() (uint16, uint16) {
+  return 10, 30
+}
+
 func (f *ConnectionTune) Read(reader io.Reader) (err error) {
   f.ChannelMax, err = ReadShort(reader)
   if err != nil {
@@ -225,6 +279,12 @@ func (f *ConnectionTune) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionTune) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 30); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.ChannelMax)
   if err != nil {
     return errors.New("Error writing field ChannelMax")
@@ -253,6 +313,12 @@ type ConnectionTuneOk struct {
   FrameMax uint32
   Heartbeat uint16
 }
+
+
+func (f* ConnectionTuneOk) MethodIdentifier() (uint16, uint16) {
+  return 10, 31
+}
+
 func (f *ConnectionTuneOk) Read(reader io.Reader) (err error) {
   f.ChannelMax, err = ReadShort(reader)
   if err != nil {
@@ -272,6 +338,12 @@ func (f *ConnectionTuneOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionTuneOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 31); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.ChannelMax)
   if err != nil {
     return errors.New("Error writing field ChannelMax")
@@ -300,6 +372,12 @@ type ConnectionOpen struct {
   Reserved1 string
   Reserved2 bool
 }
+
+
+func (f* ConnectionOpen) MethodIdentifier() (uint16, uint16) {
+  return 10, 40
+}
+
 func (f *ConnectionOpen) Read(reader io.Reader) (err error) {
   f.VirtualHost, err = ReadPath(reader)
   if err != nil {
@@ -319,6 +397,12 @@ func (f *ConnectionOpen) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionOpen) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 40); err != nil {
+    return err
+  }
  err = WritePath(writer, f.VirtualHost)
   if err != nil {
     return errors.New("Error writing field VirtualHost")
@@ -345,6 +429,12 @@ var MethodIdConnectionOpenOk uint16 = 41
 type ConnectionOpenOk struct {
   Reserved1 string
 }
+
+
+func (f* ConnectionOpenOk) MethodIdentifier() (uint16, uint16) {
+  return 10, 41
+}
+
 func (f *ConnectionOpenOk) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShortstr(reader)
   if err != nil {
@@ -354,6 +444,12 @@ func (f *ConnectionOpenOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionOpenOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 41); err != nil {
+    return err
+  }
  err = WriteShortstr(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -373,6 +469,12 @@ type ConnectionClose struct {
   ClassId uint16
   MethodId uint16
 }
+
+
+func (f* ConnectionClose) MethodIdentifier() (uint16, uint16) {
+  return 10, 50
+}
+
 func (f *ConnectionClose) Read(reader io.Reader) (err error) {
   f.ReplyCode, err = ReadReplyCode(reader)
   if err != nil {
@@ -397,6 +499,12 @@ func (f *ConnectionClose) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionClose) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
  err = WriteReplyCode(writer, f.ReplyCode)
   if err != nil {
     return errors.New("Error writing field ReplyCode")
@@ -427,10 +535,22 @@ func (f *ConnectionClose) Write(writer io.Writer) (err error) {
 var MethodIdConnectionCloseOk uint16 = 51
 type ConnectionCloseOk struct {
 }
+
+
+func (f* ConnectionCloseOk) MethodIdentifier() (uint16, uint16) {
+  return 10, 51
+}
+
 func (f *ConnectionCloseOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ConnectionCloseOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 51); err != nil {
+    return err
+  }
   return
 }
 
@@ -452,6 +572,12 @@ var MethodIdChannelOpen uint16 = 10
 type ChannelOpen struct {
   Reserved1 string
 }
+
+
+func (f* ChannelOpen) MethodIdentifier() (uint16, uint16) {
+  return 20, 10
+}
+
 func (f *ChannelOpen) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShortstr(reader)
   if err != nil {
@@ -461,6 +587,12 @@ func (f *ChannelOpen) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ChannelOpen) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
  err = WriteShortstr(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -477,6 +609,12 @@ var MethodIdChannelOpenOk uint16 = 11
 type ChannelOpenOk struct {
   Reserved1 []byte
 }
+
+
+func (f* ChannelOpenOk) MethodIdentifier() (uint16, uint16) {
+  return 20, 11
+}
+
 func (f *ChannelOpenOk) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadLongstr(reader)
   if err != nil {
@@ -486,6 +624,12 @@ func (f *ChannelOpenOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ChannelOpenOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 11); err != nil {
+    return err
+  }
  err = WriteLongstr(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -502,6 +646,12 @@ var MethodIdChannelFlow uint16 = 20
 type ChannelFlow struct {
   Active bool
 }
+
+
+func (f* ChannelFlow) MethodIdentifier() (uint16, uint16) {
+  return 20, 20
+}
+
 func (f *ChannelFlow) Read(reader io.Reader) (err error) {
   f.Active, err = ReadBit(reader)
   if err != nil {
@@ -511,6 +661,12 @@ func (f *ChannelFlow) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ChannelFlow) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
  err = WriteBit(writer, f.Active)
   if err != nil {
     return errors.New("Error writing field Active")
@@ -527,6 +683,12 @@ var MethodIdChannelFlowOk uint16 = 21
 type ChannelFlowOk struct {
   Active bool
 }
+
+
+func (f* ChannelFlowOk) MethodIdentifier() (uint16, uint16) {
+  return 20, 21
+}
+
 func (f *ChannelFlowOk) Read(reader io.Reader) (err error) {
   f.Active, err = ReadBit(reader)
   if err != nil {
@@ -536,6 +698,12 @@ func (f *ChannelFlowOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ChannelFlowOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 21); err != nil {
+    return err
+  }
  err = WriteBit(writer, f.Active)
   if err != nil {
     return errors.New("Error writing field Active")
@@ -555,6 +723,12 @@ type ChannelClose struct {
   ClassId uint16
   MethodId uint16
 }
+
+
+func (f* ChannelClose) MethodIdentifier() (uint16, uint16) {
+  return 20, 40
+}
+
 func (f *ChannelClose) Read(reader io.Reader) (err error) {
   f.ReplyCode, err = ReadReplyCode(reader)
   if err != nil {
@@ -579,6 +753,12 @@ func (f *ChannelClose) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ChannelClose) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 40); err != nil {
+    return err
+  }
  err = WriteReplyCode(writer, f.ReplyCode)
   if err != nil {
     return errors.New("Error writing field ReplyCode")
@@ -609,10 +789,22 @@ func (f *ChannelClose) Write(writer io.Writer) (err error) {
 var MethodIdChannelCloseOk uint16 = 41
 type ChannelCloseOk struct {
 }
+
+
+func (f* ChannelCloseOk) MethodIdentifier() (uint16, uint16) {
+  return 20, 41
+}
+
 func (f *ChannelCloseOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ChannelCloseOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 41); err != nil {
+    return err
+  }
   return
 }
 
@@ -642,6 +834,12 @@ type ExchangeDeclare struct {
   NoWait bool
   Arguments Table
 }
+
+
+func (f* ExchangeDeclare) MethodIdentifier() (uint16, uint16) {
+  return 40, 10
+}
+
 func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -691,6 +889,12 @@ func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ExchangeDeclare) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 40); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -746,10 +950,22 @@ func (f *ExchangeDeclare) Write(writer io.Writer) (err error) {
 var MethodIdExchangeDeclareOk uint16 = 11
 type ExchangeDeclareOk struct {
 }
+
+
+func (f* ExchangeDeclareOk) MethodIdentifier() (uint16, uint16) {
+  return 40, 11
+}
+
 func (f *ExchangeDeclareOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ExchangeDeclareOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 40); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 11); err != nil {
+    return err
+  }
   return
 }
 
@@ -764,6 +980,12 @@ type ExchangeDelete struct {
   IfUnused bool
   NoWait bool
 }
+
+
+func (f* ExchangeDelete) MethodIdentifier() (uint16, uint16) {
+  return 40, 20
+}
+
 func (f *ExchangeDelete) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -788,6 +1010,12 @@ func (f *ExchangeDelete) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ExchangeDelete) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 40); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -818,10 +1046,22 @@ func (f *ExchangeDelete) Write(writer io.Writer) (err error) {
 var MethodIdExchangeDeleteOk uint16 = 21
 type ExchangeDeleteOk struct {
 }
+
+
+func (f* ExchangeDeleteOk) MethodIdentifier() (uint16, uint16) {
+  return 40, 21
+}
+
 func (f *ExchangeDeleteOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *ExchangeDeleteOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 40); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 21); err != nil {
+    return err
+  }
   return
 }
 
@@ -850,6 +1090,12 @@ type QueueDeclare struct {
   NoWait bool
   Arguments Table
 }
+
+
+func (f* QueueDeclare) MethodIdentifier() (uint16, uint16) {
+  return 50, 10
+}
+
 func (f *QueueDeclare) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -894,6 +1140,12 @@ func (f *QueueDeclare) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueueDeclare) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -947,6 +1199,12 @@ type QueueDeclareOk struct {
   MessageCount uint32
   ConsumerCount uint32
 }
+
+
+func (f* QueueDeclareOk) MethodIdentifier() (uint16, uint16) {
+  return 50, 11
+}
+
 func (f *QueueDeclareOk) Read(reader io.Reader) (err error) {
   f.Queue, err = ReadQueueName(reader)
   if err != nil {
@@ -966,6 +1224,12 @@ func (f *QueueDeclareOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueueDeclareOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 11); err != nil {
+    return err
+  }
  err = WriteQueueName(writer, f.Queue)
   if err != nil {
     return errors.New("Error writing field Queue")
@@ -997,6 +1261,12 @@ type QueueBind struct {
   NoWait bool
   Arguments Table
 }
+
+
+func (f* QueueBind) MethodIdentifier() (uint16, uint16) {
+  return 50, 20
+}
+
 func (f *QueueBind) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -1031,6 +1301,12 @@ func (f *QueueBind) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueueBind) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -1071,10 +1347,22 @@ func (f *QueueBind) Write(writer io.Writer) (err error) {
 var MethodIdQueueBindOk uint16 = 21
 type QueueBindOk struct {
 }
+
+
+func (f* QueueBindOk) MethodIdentifier() (uint16, uint16) {
+  return 50, 21
+}
+
 func (f *QueueBindOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueueBindOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 21); err != nil {
+    return err
+  }
   return
 }
 
@@ -1090,6 +1378,12 @@ type QueueUnbind struct {
   RoutingKey string
   Arguments Table
 }
+
+
+func (f* QueueUnbind) MethodIdentifier() (uint16, uint16) {
+  return 50, 50
+}
+
 func (f *QueueUnbind) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -1119,6 +1413,12 @@ func (f *QueueUnbind) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueueUnbind) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -1154,10 +1454,22 @@ func (f *QueueUnbind) Write(writer io.Writer) (err error) {
 var MethodIdQueueUnbindOk uint16 = 51
 type QueueUnbindOk struct {
 }
+
+
+func (f* QueueUnbindOk) MethodIdentifier() (uint16, uint16) {
+  return 50, 51
+}
+
 func (f *QueueUnbindOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueueUnbindOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 51); err != nil {
+    return err
+  }
   return
 }
 
@@ -1171,6 +1483,12 @@ type QueuePurge struct {
   Queue string
   NoWait bool
 }
+
+
+func (f* QueuePurge) MethodIdentifier() (uint16, uint16) {
+  return 50, 30
+}
+
 func (f *QueuePurge) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -1190,6 +1508,12 @@ func (f *QueuePurge) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueuePurge) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 30); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -1216,6 +1540,12 @@ var MethodIdQueuePurgeOk uint16 = 31
 type QueuePurgeOk struct {
   MessageCount uint32
 }
+
+
+func (f* QueuePurgeOk) MethodIdentifier() (uint16, uint16) {
+  return 50, 31
+}
+
 func (f *QueuePurgeOk) Read(reader io.Reader) (err error) {
   f.MessageCount, err = ReadMessageCount(reader)
   if err != nil {
@@ -1225,6 +1555,12 @@ func (f *QueuePurgeOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueuePurgeOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 31); err != nil {
+    return err
+  }
  err = WriteMessageCount(writer, f.MessageCount)
   if err != nil {
     return errors.New("Error writing field MessageCount")
@@ -1245,6 +1581,12 @@ type QueueDelete struct {
   IfEmpty bool
   NoWait bool
 }
+
+
+func (f* QueueDelete) MethodIdentifier() (uint16, uint16) {
+  return 50, 40
+}
+
 func (f *QueueDelete) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -1274,6 +1616,12 @@ func (f *QueueDelete) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueueDelete) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 40); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -1310,6 +1658,12 @@ var MethodIdQueueDeleteOk uint16 = 41
 type QueueDeleteOk struct {
   MessageCount uint32
 }
+
+
+func (f* QueueDeleteOk) MethodIdentifier() (uint16, uint16) {
+  return 50, 41
+}
+
 func (f *QueueDeleteOk) Read(reader io.Reader) (err error) {
   f.MessageCount, err = ReadMessageCount(reader)
   if err != nil {
@@ -1319,6 +1673,12 @@ func (f *QueueDeleteOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *QueueDeleteOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 41); err != nil {
+    return err
+  }
  err = WriteMessageCount(writer, f.MessageCount)
   if err != nil {
     return errors.New("Error writing field MessageCount")
@@ -1347,6 +1707,12 @@ type BasicQos struct {
   PrefetchCount uint16
   Global bool
 }
+
+
+func (f* BasicQos) MethodIdentifier() (uint16, uint16) {
+  return 60, 10
+}
+
 func (f *BasicQos) Read(reader io.Reader) (err error) {
   f.PrefetchSize, err = ReadLong(reader)
   if err != nil {
@@ -1366,6 +1732,12 @@ func (f *BasicQos) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicQos) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
  err = WriteLong(writer, f.PrefetchSize)
   if err != nil {
     return errors.New("Error writing field PrefetchSize")
@@ -1391,10 +1763,22 @@ func (f *BasicQos) Write(writer io.Writer) (err error) {
 var MethodIdBasicQosOk uint16 = 11
 type BasicQosOk struct {
 }
+
+
+func (f* BasicQosOk) MethodIdentifier() (uint16, uint16) {
+  return 60, 11
+}
+
 func (f *BasicQosOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicQosOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 11); err != nil {
+    return err
+  }
   return
 }
 
@@ -1413,6 +1797,12 @@ type BasicConsume struct {
   NoWait bool
   Arguments Table
 }
+
+
+func (f* BasicConsume) MethodIdentifier() (uint16, uint16) {
+  return 60, 20
+}
+
 func (f *BasicConsume) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -1457,6 +1847,12 @@ func (f *BasicConsume) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicConsume) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -1508,6 +1904,12 @@ var MethodIdBasicConsumeOk uint16 = 21
 type BasicConsumeOk struct {
   ConsumerTag string
 }
+
+
+func (f* BasicConsumeOk) MethodIdentifier() (uint16, uint16) {
+  return 60, 21
+}
+
 func (f *BasicConsumeOk) Read(reader io.Reader) (err error) {
   f.ConsumerTag, err = ReadConsumerTag(reader)
   if err != nil {
@@ -1517,6 +1919,12 @@ func (f *BasicConsumeOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicConsumeOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 21); err != nil {
+    return err
+  }
  err = WriteConsumerTag(writer, f.ConsumerTag)
   if err != nil {
     return errors.New("Error writing field ConsumerTag")
@@ -1534,6 +1942,12 @@ type BasicCancel struct {
   ConsumerTag string
   NoWait bool
 }
+
+
+func (f* BasicCancel) MethodIdentifier() (uint16, uint16) {
+  return 60, 30
+}
+
 func (f *BasicCancel) Read(reader io.Reader) (err error) {
   f.ConsumerTag, err = ReadConsumerTag(reader)
   if err != nil {
@@ -1548,6 +1962,12 @@ func (f *BasicCancel) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicCancel) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 30); err != nil {
+    return err
+  }
  err = WriteConsumerTag(writer, f.ConsumerTag)
   if err != nil {
     return errors.New("Error writing field ConsumerTag")
@@ -1569,6 +1989,12 @@ var MethodIdBasicCancelOk uint16 = 31
 type BasicCancelOk struct {
   ConsumerTag string
 }
+
+
+func (f* BasicCancelOk) MethodIdentifier() (uint16, uint16) {
+  return 60, 31
+}
+
 func (f *BasicCancelOk) Read(reader io.Reader) (err error) {
   f.ConsumerTag, err = ReadConsumerTag(reader)
   if err != nil {
@@ -1578,6 +2004,12 @@ func (f *BasicCancelOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicCancelOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 31); err != nil {
+    return err
+  }
  err = WriteConsumerTag(writer, f.ConsumerTag)
   if err != nil {
     return errors.New("Error writing field ConsumerTag")
@@ -1598,6 +2030,12 @@ type BasicPublish struct {
   Mandatory bool
   Immediate bool
 }
+
+
+func (f* BasicPublish) MethodIdentifier() (uint16, uint16) {
+  return 60, 40
+}
+
 func (f *BasicPublish) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -1627,6 +2065,12 @@ func (f *BasicPublish) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicPublish) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 40); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -1666,6 +2110,12 @@ type BasicReturn struct {
   Exchange string
   RoutingKey string
 }
+
+
+func (f* BasicReturn) MethodIdentifier() (uint16, uint16) {
+  return 60, 50
+}
+
 func (f *BasicReturn) Read(reader io.Reader) (err error) {
   f.ReplyCode, err = ReadReplyCode(reader)
   if err != nil {
@@ -1690,6 +2140,12 @@ func (f *BasicReturn) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicReturn) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 50); err != nil {
+    return err
+  }
  err = WriteReplyCode(writer, f.ReplyCode)
   if err != nil {
     return errors.New("Error writing field ReplyCode")
@@ -1725,6 +2181,12 @@ type BasicDeliver struct {
   Exchange string
   RoutingKey string
 }
+
+
+func (f* BasicDeliver) MethodIdentifier() (uint16, uint16) {
+  return 60, 60
+}
+
 func (f *BasicDeliver) Read(reader io.Reader) (err error) {
   f.ConsumerTag, err = ReadConsumerTag(reader)
   if err != nil {
@@ -1754,6 +2216,12 @@ func (f *BasicDeliver) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicDeliver) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
  err = WriteConsumerTag(writer, f.ConsumerTag)
   if err != nil {
     return errors.New("Error writing field ConsumerTag")
@@ -1792,6 +2260,12 @@ type BasicGet struct {
   Queue string
   NoAck bool
 }
+
+
+func (f* BasicGet) MethodIdentifier() (uint16, uint16) {
+  return 60, 70
+}
+
 func (f *BasicGet) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
@@ -1811,6 +2285,12 @@ func (f *BasicGet) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicGet) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 70); err != nil {
+    return err
+  }
  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -1841,6 +2321,12 @@ type BasicGetOk struct {
   RoutingKey string
   MessageCount uint32
 }
+
+
+func (f* BasicGetOk) MethodIdentifier() (uint16, uint16) {
+  return 60, 71
+}
+
 func (f *BasicGetOk) Read(reader io.Reader) (err error) {
   f.DeliveryTag, err = ReadDeliveryTag(reader)
   if err != nil {
@@ -1870,6 +2356,12 @@ func (f *BasicGetOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicGetOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 71); err != nil {
+    return err
+  }
  err = WriteDeliveryTag(writer, f.DeliveryTag)
   if err != nil {
     return errors.New("Error writing field DeliveryTag")
@@ -1906,6 +2398,12 @@ var MethodIdBasicGetEmpty uint16 = 72
 type BasicGetEmpty struct {
   Reserved1 string
 }
+
+
+func (f* BasicGetEmpty) MethodIdentifier() (uint16, uint16) {
+  return 60, 72
+}
+
 func (f *BasicGetEmpty) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShortstr(reader)
   if err != nil {
@@ -1915,6 +2413,12 @@ func (f *BasicGetEmpty) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicGetEmpty) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 72); err != nil {
+    return err
+  }
  err = WriteShortstr(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
@@ -1932,6 +2436,12 @@ type BasicAck struct {
   DeliveryTag uint64
   Multiple bool
 }
+
+
+func (f* BasicAck) MethodIdentifier() (uint16, uint16) {
+  return 60, 80
+}
+
 func (f *BasicAck) Read(reader io.Reader) (err error) {
   f.DeliveryTag, err = ReadDeliveryTag(reader)
   if err != nil {
@@ -1946,6 +2456,12 @@ func (f *BasicAck) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicAck) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 80); err != nil {
+    return err
+  }
  err = WriteDeliveryTag(writer, f.DeliveryTag)
   if err != nil {
     return errors.New("Error writing field DeliveryTag")
@@ -1968,6 +2484,12 @@ type BasicReject struct {
   DeliveryTag uint64
   Requeue bool
 }
+
+
+func (f* BasicReject) MethodIdentifier() (uint16, uint16) {
+  return 60, 90
+}
+
 func (f *BasicReject) Read(reader io.Reader) (err error) {
   f.DeliveryTag, err = ReadDeliveryTag(reader)
   if err != nil {
@@ -1982,6 +2504,12 @@ func (f *BasicReject) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicReject) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 90); err != nil {
+    return err
+  }
  err = WriteDeliveryTag(writer, f.DeliveryTag)
   if err != nil {
     return errors.New("Error writing field DeliveryTag")
@@ -2003,6 +2531,12 @@ var MethodIdBasicRecoverAsync uint16 = 100
 type BasicRecoverAsync struct {
   Requeue bool
 }
+
+
+func (f* BasicRecoverAsync) MethodIdentifier() (uint16, uint16) {
+  return 60, 100
+}
+
 func (f *BasicRecoverAsync) Read(reader io.Reader) (err error) {
   f.Requeue, err = ReadBit(reader)
   if err != nil {
@@ -2012,6 +2546,12 @@ func (f *BasicRecoverAsync) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicRecoverAsync) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 100); err != nil {
+    return err
+  }
  err = WriteBit(writer, f.Requeue)
   if err != nil {
     return errors.New("Error writing field Requeue")
@@ -2028,6 +2568,12 @@ var MethodIdBasicRecover uint16 = 110
 type BasicRecover struct {
   Requeue bool
 }
+
+
+func (f* BasicRecover) MethodIdentifier() (uint16, uint16) {
+  return 60, 110
+}
+
 func (f *BasicRecover) Read(reader io.Reader) (err error) {
   f.Requeue, err = ReadBit(reader)
   if err != nil {
@@ -2037,6 +2583,12 @@ func (f *BasicRecover) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicRecover) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 110); err != nil {
+    return err
+  }
  err = WriteBit(writer, f.Requeue)
   if err != nil {
     return errors.New("Error writing field Requeue")
@@ -2052,10 +2604,22 @@ func (f *BasicRecover) Write(writer io.Writer) (err error) {
 var MethodIdBasicRecoverOk uint16 = 111
 type BasicRecoverOk struct {
 }
+
+
+func (f* BasicRecoverOk) MethodIdentifier() (uint16, uint16) {
+  return 60, 111
+}
+
 func (f *BasicRecoverOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *BasicRecoverOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 60); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 111); err != nil {
+    return err
+  }
   return
 }
 
@@ -2076,10 +2640,22 @@ var ClassIdTx uint16 = 90
 var MethodIdTxSelect uint16 = 10
 type TxSelect struct {
 }
+
+
+func (f* TxSelect) MethodIdentifier() (uint16, uint16) {
+  return 90, 10
+}
+
 func (f *TxSelect) Read(reader io.Reader) (err error) {
   return
 }
 func (f *TxSelect) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 90); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 10); err != nil {
+    return err
+  }
   return
 }
 
@@ -2090,10 +2666,22 @@ func (f *TxSelect) Write(writer io.Writer) (err error) {
 var MethodIdTxSelectOk uint16 = 11
 type TxSelectOk struct {
 }
+
+
+func (f* TxSelectOk) MethodIdentifier() (uint16, uint16) {
+  return 90, 11
+}
+
 func (f *TxSelectOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *TxSelectOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 90); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 11); err != nil {
+    return err
+  }
   return
 }
 
@@ -2104,10 +2692,22 @@ func (f *TxSelectOk) Write(writer io.Writer) (err error) {
 var MethodIdTxCommit uint16 = 20
 type TxCommit struct {
 }
+
+
+func (f* TxCommit) MethodIdentifier() (uint16, uint16) {
+  return 90, 20
+}
+
 func (f *TxCommit) Read(reader io.Reader) (err error) {
   return
 }
 func (f *TxCommit) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 90); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 20); err != nil {
+    return err
+  }
   return
 }
 
@@ -2118,10 +2718,22 @@ func (f *TxCommit) Write(writer io.Writer) (err error) {
 var MethodIdTxCommitOk uint16 = 21
 type TxCommitOk struct {
 }
+
+
+func (f* TxCommitOk) MethodIdentifier() (uint16, uint16) {
+  return 90, 21
+}
+
 func (f *TxCommitOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *TxCommitOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 90); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 21); err != nil {
+    return err
+  }
   return
 }
 
@@ -2132,10 +2744,22 @@ func (f *TxCommitOk) Write(writer io.Writer) (err error) {
 var MethodIdTxRollback uint16 = 30
 type TxRollback struct {
 }
+
+
+func (f* TxRollback) MethodIdentifier() (uint16, uint16) {
+  return 90, 30
+}
+
 func (f *TxRollback) Read(reader io.Reader) (err error) {
   return
 }
 func (f *TxRollback) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 90); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 30); err != nil {
+    return err
+  }
   return
 }
 
@@ -2146,9 +2770,429 @@ func (f *TxRollback) Write(writer io.Writer) (err error) {
 var MethodIdTxRollbackOk uint16 = 31
 type TxRollbackOk struct {
 }
+
+
+func (f* TxRollbackOk) MethodIdentifier() (uint16, uint16) {
+  return 90, 31
+}
+
 func (f *TxRollbackOk) Read(reader io.Reader) (err error) {
   return
 }
 func (f *TxRollbackOk) Write(writer io.Writer) (err error) {
+  if err = WriteShort(writer, 90); err != nil {
+    return err
+  }
+  if err = WriteShort(writer, 31); err != nil {
+    return err
+  }
   return
+}
+func ReadMethod(reader io.Reader) (MethodFrame, error) {
+  classIndex, err := ReadShort(reader)
+  if err != nil {
+    return nil, err
+  }
+  methodIndex, err := ReadShort(reader)
+  if err != nil {
+    return nil, err
+  }
+  switch {
+    // Connection
+    case classIndex == 10:
+      switch {
+      case methodIndex == 10: // ConnectionStart
+        var method = &ConnectionStart{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 11: // ConnectionStartOk
+        var method = &ConnectionStartOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 20: // ConnectionSecure
+        var method = &ConnectionSecure{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 21: // ConnectionSecureOk
+        var method = &ConnectionSecureOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 30: // ConnectionTune
+        var method = &ConnectionTune{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 31: // ConnectionTuneOk
+        var method = &ConnectionTuneOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 40: // ConnectionOpen
+        var method = &ConnectionOpen{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 41: // ConnectionOpenOk
+        var method = &ConnectionOpenOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 50: // ConnectionClose
+        var method = &ConnectionClose{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 51: // ConnectionCloseOk
+        var method = &ConnectionCloseOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+    }
+    // Channel
+    case classIndex == 20:
+      switch {
+      case methodIndex == 10: // ChannelOpen
+        var method = &ChannelOpen{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 11: // ChannelOpenOk
+        var method = &ChannelOpenOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 20: // ChannelFlow
+        var method = &ChannelFlow{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 21: // ChannelFlowOk
+        var method = &ChannelFlowOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 40: // ChannelClose
+        var method = &ChannelClose{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 41: // ChannelCloseOk
+        var method = &ChannelCloseOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+    }
+    // Exchange
+    case classIndex == 40:
+      switch {
+      case methodIndex == 10: // ExchangeDeclare
+        var method = &ExchangeDeclare{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 11: // ExchangeDeclareOk
+        var method = &ExchangeDeclareOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 20: // ExchangeDelete
+        var method = &ExchangeDelete{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 21: // ExchangeDeleteOk
+        var method = &ExchangeDeleteOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+    }
+    // Queue
+    case classIndex == 50:
+      switch {
+      case methodIndex == 10: // QueueDeclare
+        var method = &QueueDeclare{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 11: // QueueDeclareOk
+        var method = &QueueDeclareOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 20: // QueueBind
+        var method = &QueueBind{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 21: // QueueBindOk
+        var method = &QueueBindOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 30: // QueuePurge
+        var method = &QueuePurge{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 31: // QueuePurgeOk
+        var method = &QueuePurgeOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 40: // QueueDelete
+        var method = &QueueDelete{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 41: // QueueDeleteOk
+        var method = &QueueDeleteOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 50: // QueueUnbind
+        var method = &QueueUnbind{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 51: // QueueUnbindOk
+        var method = &QueueUnbindOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+    }
+    // Basic
+    case classIndex == 60:
+      switch {
+      case methodIndex == 10: // BasicQos
+        var method = &BasicQos{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 100: // BasicRecoverAsync
+        var method = &BasicRecoverAsync{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 11: // BasicQosOk
+        var method = &BasicQosOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 110: // BasicRecover
+        var method = &BasicRecover{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 111: // BasicRecoverOk
+        var method = &BasicRecoverOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 20: // BasicConsume
+        var method = &BasicConsume{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 21: // BasicConsumeOk
+        var method = &BasicConsumeOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 30: // BasicCancel
+        var method = &BasicCancel{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 31: // BasicCancelOk
+        var method = &BasicCancelOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 40: // BasicPublish
+        var method = &BasicPublish{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 50: // BasicReturn
+        var method = &BasicReturn{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 60: // BasicDeliver
+        var method = &BasicDeliver{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 70: // BasicGet
+        var method = &BasicGet{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 71: // BasicGetOk
+        var method = &BasicGetOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 72: // BasicGetEmpty
+        var method = &BasicGetEmpty{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 80: // BasicAck
+        var method = &BasicAck{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 90: // BasicReject
+        var method = &BasicReject{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+    }
+    // Tx
+    case classIndex == 90:
+      switch {
+      case methodIndex == 10: // TxSelect
+        var method = &TxSelect{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 11: // TxSelectOk
+        var method = &TxSelectOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 20: // TxCommit
+        var method = &TxCommit{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 21: // TxCommitOk
+        var method = &TxCommitOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 30: // TxRollback
+        var method = &TxRollback{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+      case methodIndex == 31: // TxRollbackOk
+        var method = &TxRollbackOk{}
+        err = method.Read(reader)
+        if err != nil {
+          return nil, err
+        }
+        return method, nil
+    }
+  }
+  return nil, errors.New("Bad method or class Id!")
 }

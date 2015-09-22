@@ -4,14 +4,14 @@ package main
 import (
   "fmt"
   "net"
+  "errors"
   "os"
   "bytes"
-  "encoding/binary"
   "github.com/jeffjenkins/mq/amqp"
 )
 
 func handleConnection(conn net.Conn) {
-  fmt.Println("Got connection!")
+  fmt.Println("=====> Incoming connection!")
   // Negotiate Protocol
   buf := make([]byte, 8)
   _, err := conn.Read(buf)
@@ -24,63 +24,73 @@ func handleConnection(conn net.Conn) {
     conn.Close()
     return
   }
+  if startConnection(conn) != nil {
+    panic("Error opening connection")
+  }
   fmt.Println("Connection open!")
-  // Connection is open!
-  fmt.Println("Sending Start")
-  start(conn)
-  var ok, sokerr = startOk(conn)
-  if sokerr != nil {
-    panic("Error in startOK!")
-  }
-  for key := range ok.ClientProperties {
-    fmt.Println("ClientProperties", key)
-  }
-
-  fmt.Println("Mechanism"             , ok.Mechanism)
-  fmt.Println("Response"              , ok.Response, string(ok.Response))
-  fmt.Println("Locale"                , ok.Locale)
 }
 
-func startOk(conn net.Conn) (amqp.ConnectionStartOk, error) {
-  var ftype, _ = amqp.ReadOctet(conn) // frame type
-  fmt.Println("ftype: ", ftype)
-
-  var channel, _ = amqp.ReadShort(conn) // channel
-  fmt.Println("channel: ", channel)
-
-  var length, _ = amqp.ReadLong(conn)  // paload length
-  fmt.Println("length: ", length)
-
-  var payload = make([]byte, length)
-  fmt.Println("Reading payload")
-  binary.Read(conn, binary.BigEndian, &payload)
-
-  var methodReader = bytes.NewReader(payload)
-  fmt.Println("Payload length:", len(payload))
-
-  amqp.ReadShort(methodReader) // ClassId
-  amqp.ReadShort(methodReader) // MethodId
-
-  var method = amqp.ConnectionStartOk{}
-  method.Read(methodReader)
-  return method, nil
+func tuneOk(conn net.Conn) error {
+  fmt.Println("=====> Receiving 'tuneOk'")
+  panic("Not implemented!")
 }
 
-func start(conn net.Conn) {
+func tune(conn net.Conn, startOk *amqp.ConnectionStartOk) error {
+  fmt.Println("=====> Sending 'tune'")
+  panic("Implement tune!")
+
+  // Method
   var buf = bytes.NewBuffer([]byte{})
-  // Method headers
+  var tune = amqp.ConnectionTune{
 
-  amqp.WriteShort(buf, amqp.ClassIdConnection)
-  amqp.WriteShort(buf, amqp.MethodIdConnectionStart)
+  }
+  tune.Write(buf)
+
+  // Frame
+  var frame = &amqp.FrameWrapper{uint8(amqp.FrameMethod), 0, buf.Bytes()}
+  amqp.WriteFrame(conn, frame)
+
+  // Receive tuneOk
+  return tuneOk(conn)
+}
+
+func startOk(conn net.Conn) error {
+  fmt.Println("=====> Receiving 'startOk'")
+  frame, err := amqp.ReadFrame(conn)
+  if err != nil {
+    return err
+  }
+  var methodReader = bytes.NewReader(frame.Payload)
+  method, err := amqp.ReadMethod(methodReader)
+  if err != nil {
+    return err
+  }
+  sok, rightType := method.(*amqp.ConnectionStartOk)
+  if !rightType {
+    return errors.New("Got the wrong frame type. Expected startOk")
+  }
+  // for key := range ok.ClientProperties {
+  //   fmt.Println("ClientProperties", key)
+  // }
+  // fmt.Println("Mechanism"             , ok.Mechanism)
+  // fmt.Println("Response"              , ok.Response, string(ok.Response))
+  // fmt.Println("Locale"                , ok.Locale)
+  return tune(conn, sok)
+}
+
+func startConnection(conn net.Conn) error {
+  fmt.Println("=====> Sending 'start'")
+  // Method
+  var buf = bytes.NewBuffer([]byte{})
   var start = amqp.ConnectionStart{0, 9, amqp.Table{}, []byte("PLAIN"), []byte("en_US")}
   start.Write(buf)
 
-  // Frame header
-  amqp.WriteOctet(conn, uint8(amqp.FrameMethod))
-  amqp.WriteShort(conn, 0)
-  amqp.WriteLong(conn, uint32(buf.Len()))
-  conn.Write(buf.Bytes())
-  amqp.WriteFrameEnd(conn)
+  // Frame
+  var frame = &amqp.FrameWrapper{uint8(amqp.FrameMethod), 0, buf.Bytes()}
+  amqp.WriteFrame(conn, frame)
+
+  // Receive startOk
+  return startOk(conn)
 }
 
 func main() {

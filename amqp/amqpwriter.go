@@ -6,6 +6,14 @@ import (
   "errors"
 )
 
+func WriteFrame(buf io.Writer, frame *FrameWrapper) {
+  WriteOctet(buf, frame.FrameType)
+  WriteShort(buf, frame.Channel)
+  WriteLongstr(buf, frame.Payload)
+  // buf.Write(frame.Payload.Bytes())
+  WriteFrameEnd(buf)
+}
+
 // Constants
 
 func WriteProtocolHeader(buf io.Writer) error {

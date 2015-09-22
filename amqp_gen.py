@@ -48,20 +48,24 @@ def handle_classes(root, domains):
   "errors"
   //"bytes"
 )\n\n\n''')
+    methods = []
     for child in root:
       if child.tag != 'class':
         continue
-      handle_class(f, child, domains)
+      methods.extend(handle_class(f, child, domains))
+    handle_method_frame_reader(f, methods)
 
 def handle_class(f, node, domains):
   cls_name = normalize_name(node.attrib['name'])
   cls_index = node.attrib['index']
   comment_header(f, cls_name, big=True)
   f.write('var ClassId{} uint16 = {}\n'.format(cls_name, cls_index))
+  methods = []
   for child in node:
     if child.tag != 'method':
       continue
-    handle_method(f, child, cls_name, cls_index, domains)
+    methods.append(handle_method(f, child, cls_name, cls_index, domains))
+  return methods
 
 def handle_method(f, node, cls_name, cls_index, domains):
   method_name = normalize_name(node.attrib['name'])
@@ -86,16 +90,21 @@ def handle_method(f, node, cls_name, cls_index, domains):
         print child, child.attrib['name'], child.attrib
         raise
   struct_name = '{}{}'.format(cls_name, method_name)
-  handle_method_struct(f, struct_name, fields)
+  handle_method_struct(f, struct_name, fields, cls_index, method_index)
   handle_method_reader(f, struct_name, fields)
-  handle_method_writer(f, struct_name, fields)
+  handle_method_writer(f, struct_name, fields, cls_index, method_index)
+  return (cls_index, cls_name, method_index, struct_name)
 
 
-def handle_method_struct(f, struct_name, fields):
+def handle_method_struct(f, struct_name, fields, cls_index, method_index):
   f.write('''type {} struct {{\n'''.format(struct_name))
   for field in fields:
     f.write('  {} {}\n'.format(field['name'], field['type']))
-  f.write('}\n')
+  f.write('}\n\n')
+  f.write('''
+func (f* {}) MethodIdentifier() (uint16, uint16) {{
+  return {}, {}
+}}\n\n'''.format(struct_name, cls_index, method_index))
 
 def handle_method_reader(f, struct_name, fields):
   f.write('''func (f *{}) Read(reader io.Reader) (err error) {{\n'''.format(struct_name))
@@ -107,8 +116,12 @@ def handle_method_reader(f, struct_name, fields):
   f.write('  return\n')
   f.write('}\n')
 
-def handle_method_writer(f, struct_name, fields):
+def handle_method_writer(f, struct_name, fields, cls_index, method_index):
   f.write('''func (f *{}) Write(writer io.Writer) (err error) {{\n'''.format(struct_name))
+  for name in [cls_index, method_index]:
+    f.write('''  if err = WriteShort(writer, {}); err != nil {{
+    return err
+  }}\n'''.format(name))
   for field in fields:
     f.write(''' err = Write{serializer}(writer, f.{name})
   if err != nil {{
@@ -142,6 +155,43 @@ def handle_domains(node):
 
   return domains
 
+def handle_method_frame_reader(f, methods):
+  methods = sorted(methods)
+  # open fn body, open switch
+  f.write('''func ReadMethod(reader io.Reader) (MethodFrame, error) {
+  classIndex, err := ReadShort(reader)
+  if err != nil {
+    return nil, err
+  }
+  methodIndex, err := ReadShort(reader)
+  if err != nil {
+    return nil, err
+  }
+  switch {
+''')
+  last_class = -1
+  for cls_index, cls_name, method_index, struct_name in methods:
+    if cls_index != last_class:
+      # close inner switch
+      if last_class != -1:
+        f.write('    }\n')
+      f.write('''    // {cls_name}
+    case classIndex == {cls_index}:
+      switch {{\n'''.format(**vars()))
+    f.write('''      case methodIndex == {method_index}: // {struct_name}
+        var method = &{struct_name}{{}}
+        err = method.Read(reader)
+        if err != nil {{
+          return nil, err
+        }}
+        return method, nil\n'''.format(**vars()))
+    last_class = cls_index
+  # close last inner switch, close switch
+  f.write('    }\n  }\n')
+  # close fn body
+  f.write('  return nil, errors.New("Bad method or class Id!")\n')
+  f.write('}')
+
 def normalize_name(name):
   return ''.join([w.capitalize() for w in name.split('-')])
 
@@ -151,4 +201,5 @@ if __name__ == '__main__':
 
   domains = handle_domains(root)
   handle_constants(root)
-  handle_classes(root, domains)
+  methods = handle_classes(root, domains)
+

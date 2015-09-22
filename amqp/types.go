@@ -1,7 +1,7 @@
 package amqp
 
 import (
-  "fmt"
+  _ "fmt"
   "encoding/binary"
   "io"
   "errors"
@@ -15,9 +15,17 @@ type Decimal struct {
 
 type Table map[string]interface{}
 
+type MethodFrame interface {
+  MethodIdentifier() (uint16, uint16)
+}
+
+type FrameWrapper struct {
+  FrameType byte
+  Channel uint16
+  Payload []byte
+}
+
 func ReadTable(reader io.Reader) (Table, error) {
-  fmt.Println("**********  START **********")
-  fmt.Println("read table")
   var table = make(Table)
   var byteData, err = ReadLongstr(reader)
   if err != nil {
@@ -26,7 +34,6 @@ func ReadTable(reader io.Reader) (Table, error) {
   var data = bytes.NewBuffer(byteData)
   for data.Len() > 0 {
     var key, errs = ReadShortstr(data)
-    fmt.Println("\tkey", key)
     if errs != nil {
       return nil, errs
     }
@@ -36,7 +43,6 @@ func ReadTable(reader io.Reader) (Table, error) {
     }
     table[key] = value
   }
-  fmt.Println("*********  END ***********")
   return table, nil
 }
 
@@ -45,7 +51,6 @@ func readValue(reader io.Reader) (interface{}, error) {
   if err != nil {
     return nil, err
   }
-  fmt.Println("\tvalue type:", string(t))
 
   switch {
   case t == 't':
