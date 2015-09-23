@@ -17,6 +17,8 @@ type Table map[string]interface{}
 
 type MethodFrame interface {
   MethodIdentifier() (uint16, uint16)
+  Read(reader io.Reader) (err error)
+  Write(writer io.Writer) (err error)
 }
 
 type FrameWrapper struct {

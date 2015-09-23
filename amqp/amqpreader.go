@@ -20,6 +20,7 @@ func ReadFrame (reader io.Reader) (*FrameWrapper, error) {
   if err != nil {
     return nil, err
   }
+  ReadOctet(reader) // Frame end, TODO: assert that this is the right byte.
   f.FrameType = frameType
   f.Channel = channel
   f.Payload = payload
@@ -75,7 +76,12 @@ func ReadMethodPayloadHeader(buf io.Reader) (classId uint16, methodId uint16, er
 // Fields
 
 func ReadBit(buf io.Reader) (bool, error) {
-  panic("Not implemented!")
+  var data byte
+  err := binary.Read(buf, binary.BigEndian, &data)
+  if err != nil {
+    return false, errors.New("Could not read byte")
+  }
+  return data != 0, nil
 }
 
 func ReadOctet(buf io.Reader) (data byte, err error) {
