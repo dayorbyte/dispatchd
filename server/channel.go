@@ -62,6 +62,8 @@ func (channel *Channel) route(methodFrame amqp.MethodFrame) {
       channel.channelRoute(methodFrame)
     case classId == 40:
       channel.exchangeRoute(methodFrame)
+    case classId == 85:
+      channel.confirmRoute(methodFrame)
     default:
       panic("Not implemented! " + strconv.FormatUint(uint64(classId), 10))
   }
