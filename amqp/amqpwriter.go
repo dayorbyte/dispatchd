@@ -4,6 +4,8 @@ import (
   "encoding/binary"
   "io"
   "errors"
+  "time"
+  "bytes"
 )
 
 func WriteFrame(buf io.Writer, frame *FrameWrapper) {
@@ -100,11 +102,102 @@ func WriteLongstr(buf io.Writer, bytes []byte) (err error) {
   return nil
 }
 
-func WriteTimestamp(buf io.Writer, timestamp uint64) error {
-  return binary.Write(buf, binary.BigEndian, timestamp)
+func WriteTimestamp(buf io.Writer, timestamp time.Time) error {
+  return binary.Write(buf, binary.BigEndian, uint64(timestamp.Unix()))
 }
 
-func WriteTable(buf io.Writer, t Table) error {
-  // TODO
-  return binary.Write(buf, binary.BigEndian, uint32(0))
+func WriteTable(writer io.Writer, table Table) error {
+  var buf = bytes.NewBuffer([]byte{})
+  for k, v := range table {
+    WriteShortstr(buf, k)
+    writeValue(buf, v)
+  }
+  return WriteLongstr(writer, buf.Bytes())
 }
+
+func writeArray(writer io.Writer, array []interface{}) error {
+  var buf = bytes.NewBuffer([]byte{})
+  for _, v := range array {
+    if err := writeValue(buf, v); err != nil {
+      return err
+    }
+  }
+  return WriteLongstr(writer, buf.Bytes())
+}
+
+func writeValue(writer io.Writer, value interface{}) (err error){
+  switch v := value.(type) {
+  case bool:
+    if err = binary.Write(writer, binary.BigEndian, byte('t')); err == nil {
+      err = WriteBit(writer, v)
+    }
+  case int8:
+    if err = binary.Write(writer, binary.BigEndian, byte('b')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, int8(v))
+    }
+  case uint8:
+    if err = binary.Write(writer, binary.BigEndian, byte('B')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, uint8(v))
+    }
+  case int16:
+    if err = binary.Write(writer, binary.BigEndian, byte('U')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, int16(v))
+    }
+  case uint16:
+    if err = binary.Write(writer, binary.BigEndian, byte('u')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, uint16(v))
+    }
+  case int32:
+    if err = binary.Write(writer, binary.BigEndian, byte('I')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, int32(v))
+    }
+  case uint32:
+    if err = binary.Write(writer, binary.BigEndian, byte('i')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, uint32(v))
+    }
+  case int64:
+    if err = binary.Write(writer, binary.BigEndian, byte('L')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, int64(v))
+    }
+  case uint64:
+    if err = binary.Write(writer, binary.BigEndian, byte('l')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, uint64(v))
+    }
+  case float32:
+    if err = binary.Write(writer, binary.BigEndian, byte('f')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, float32(v))
+    }
+  case float64:
+    if err = binary.Write(writer, binary.BigEndian, byte('d')); err == nil {
+      err = binary.Write(writer, binary.BigEndian, float64(v))
+    }
+  case Decimal:
+    if err = binary.Write(writer, binary.BigEndian, byte(v.scale)); err == nil {
+      err = binary.Write(writer, binary.BigEndian, uint32(v.value))
+    }
+  case string:
+    if err = WriteOctet(writer, byte('s')); err == nil {
+      err = WriteShortstr(writer, v)
+    }
+  case []byte:
+    if err = WriteOctet(writer, byte('S')); err == nil {
+      err = WriteLongstr(writer, v)
+    }
+  case []interface{}:
+    if err = WriteOctet(writer, byte('A')); err == nil {
+      err = writeArray(writer, v)
+    }
+  case time.Time:
+    if err = WriteOctet(writer, byte('T')); err == nil {
+      err = WriteTimestamp(writer, v)
+    }
+  case Table:
+    if err = WriteOctet(writer, byte('F')); err == nil {
+      err = WriteTable(writer, v)
+    }
+  case nil:
+    err = binary.Write(writer, binary.BigEndian, byte('V'))
+  }
+  return
+}
+
