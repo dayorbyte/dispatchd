@@ -883,7 +883,7 @@ func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
-    return errors.New("Error reading field Arguments")
+    return errors.New("Error reading field Arguments: " + err.Error())
   }
 
   return

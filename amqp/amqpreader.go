@@ -158,17 +158,17 @@ func ReadTable(reader io.Reader) (Table, error) {
   var table = make(Table)
   var byteData, err = ReadLongstr(reader)
   if err != nil {
-    return nil, err
+    return nil, errors.New("Error reading table longstr: " + err.Error())
   }
   var data = bytes.NewBuffer(byteData)
   for data.Len() > 0 {
-    var key, errs = ReadShortstr(data)
-    if errs != nil {
-      return nil, errs
+    key, err := ReadShortstr(data)
+    if err != nil {
+      return nil, errors.New("Error reading key: " + err.Error())
     }
-    var value, errv = readValue(data)
-    if errv != nil {
-      return nil, errv
+    value, err := readValue(data)
+    if err != nil {
+      return nil, errors.New("Error reading value for " + key + ": " + err.Error())
     }
     table[key] = value
   }
