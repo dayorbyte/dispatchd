@@ -4,6 +4,7 @@ import (
   "fmt"
   "bytes"
   "github.com/jeffjenkins/mq/amqp"
+  "strconv"
 )
 
 type Channel struct {
@@ -59,7 +60,9 @@ func (channel *Channel) route(methodFrame amqp.MethodFrame) {
       channel.connectionRoute(methodFrame)
     case classId == 20:
       channel.channelRoute(methodFrame)
+    case classId == 40:
+      channel.exchangeRoute(methodFrame)
     default:
-      panic("Not implemented!")
+      panic("Not implemented! " + strconv.FormatUint(uint64(classId), 10))
   }
 }

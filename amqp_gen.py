@@ -47,6 +47,7 @@ def handle_classes(root, domains):
   "io"
   "errors"
   //"bytes"
+  "strconv"
 )\n\n\n''')
     methods = []
     for child in root:
@@ -108,13 +109,29 @@ func (f* {}) MethodIdentifier() (uint16, uint16) {{
 
 def handle_method_reader(f, struct_name, fields):
   f.write('''func (f *{}) Read(reader io.Reader) (err error) {{\n'''.format(struct_name))
+  bits = 0
   for field in fields:
-    f.write('''  f.{name}, err = Read{serializer}(reader)
+    if field['type'] == 'bool':
+      if bits == 0:
+        read_bits(f)
+      f.write('''  f.{name} = (bits & (1 << {bits}) > 0)\n\n'''.format(bits=bits, **field))
+      bits += 1
+    else:
+      bits = 0
+      f.write('''  f.{name}, err = Read{serializer}(reader)
   if err != nil {{
     return errors.New("Error reading field {name}")
   }}\n\n'''.format(**field))
   f.write('  return\n')
   f.write('}\n')
+
+def read_bits(f):
+  f.write('''
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}\n\n
+''')
 
 def handle_method_writer(f, struct_name, fields, cls_index, method_index):
   f.write('''func (f *{}) Write(writer io.Writer) (err error) {{\n'''.format(struct_name))
@@ -122,14 +139,31 @@ def handle_method_writer(f, struct_name, fields, cls_index, method_index):
     f.write('''  if err = WriteShort(writer, {}); err != nil {{
     return err
   }}\n'''.format(name))
+  bits = 0
   for field in fields:
-    f.write(''' err = Write{serializer}(writer, f.{name})
+    if field['type'] == 'bool':
+      if bits == 0:
+        f.write('  var bits byte\n')
+      f.write('''  if f.{name} {{\n    bits |= 1 << {bits}\n  }}\n'''.format(bits=bits, **field))
+      bits += 1
+    else:
+      if bits > 0:
+        write_bits(f)
+        bits = 0
+      f.write('''  err = Write{serializer}(writer, f.{name})
   if err != nil {{
     return errors.New("Error writing field {name}")
   }}\n\n'''.format(**field))
+  if bits > 0:
+    write_bits(f)
   f.write('  return\n')
   f.write('}\n')
 
+def write_bits(f):
+  f.write('''  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}\n\n''')
 
 def comment_header(f, name, big=False):
   f.write('\n// ' + '*' * 70 + '\n')
@@ -189,7 +223,11 @@ def handle_method_frame_reader(f, methods):
   # close last inner switch, close switch
   f.write('    }\n  }\n')
   # close fn body
-  f.write('  return nil, errors.New("Bad method or class Id!")\n')
+  f.write('''  return nil, errors.New(
+    "Bad method or class Id! classId:" +
+    strconv.FormatUint(uint64(classIndex), 10) +
+    " methodIndex: " +
+    strconv.FormatUint(uint64(methodIndex), 10))\n''')
   f.write('}')
 
 def normalize_name(name):

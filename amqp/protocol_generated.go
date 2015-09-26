@@ -5,6 +5,7 @@ import (
   "io"
   "errors"
   //"bytes"
+  "strconv"
 )
 
 
@@ -72,27 +73,27 @@ func (f *ConnectionStart) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 10); err != nil {
     return err
   }
- err = WriteOctet(writer, f.VersionMajor)
+  err = WriteOctet(writer, f.VersionMajor)
   if err != nil {
     return errors.New("Error writing field VersionMajor")
   }
 
- err = WriteOctet(writer, f.VersionMinor)
+  err = WriteOctet(writer, f.VersionMinor)
   if err != nil {
     return errors.New("Error writing field VersionMinor")
   }
 
- err = WritePeerProperties(writer, f.ServerProperties)
+  err = WritePeerProperties(writer, f.ServerProperties)
   if err != nil {
     return errors.New("Error writing field ServerProperties")
   }
 
- err = WriteLongstr(writer, f.Mechanisms)
+  err = WriteLongstr(writer, f.Mechanisms)
   if err != nil {
     return errors.New("Error writing field Mechanisms")
   }
 
- err = WriteLongstr(writer, f.Locales)
+  err = WriteLongstr(writer, f.Locales)
   if err != nil {
     return errors.New("Error writing field Locales")
   }
@@ -147,22 +148,22 @@ func (f *ConnectionStartOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 11); err != nil {
     return err
   }
- err = WritePeerProperties(writer, f.ClientProperties)
+  err = WritePeerProperties(writer, f.ClientProperties)
   if err != nil {
     return errors.New("Error writing field ClientProperties")
   }
 
- err = WriteShortstr(writer, f.Mechanism)
+  err = WriteShortstr(writer, f.Mechanism)
   if err != nil {
     return errors.New("Error writing field Mechanism")
   }
 
- err = WriteLongstr(writer, f.Response)
+  err = WriteLongstr(writer, f.Response)
   if err != nil {
     return errors.New("Error writing field Response")
   }
 
- err = WriteShortstr(writer, f.Locale)
+  err = WriteShortstr(writer, f.Locale)
   if err != nil {
     return errors.New("Error writing field Locale")
   }
@@ -199,7 +200,7 @@ func (f *ConnectionSecure) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 20); err != nil {
     return err
   }
- err = WriteLongstr(writer, f.Challenge)
+  err = WriteLongstr(writer, f.Challenge)
   if err != nil {
     return errors.New("Error writing field Challenge")
   }
@@ -236,7 +237,7 @@ func (f *ConnectionSecureOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 21); err != nil {
     return err
   }
- err = WriteLongstr(writer, f.Response)
+  err = WriteLongstr(writer, f.Response)
   if err != nil {
     return errors.New("Error writing field Response")
   }
@@ -285,17 +286,17 @@ func (f *ConnectionTune) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 30); err != nil {
     return err
   }
- err = WriteShort(writer, f.ChannelMax)
+  err = WriteShort(writer, f.ChannelMax)
   if err != nil {
     return errors.New("Error writing field ChannelMax")
   }
 
- err = WriteLong(writer, f.FrameMax)
+  err = WriteLong(writer, f.FrameMax)
   if err != nil {
     return errors.New("Error writing field FrameMax")
   }
 
- err = WriteShort(writer, f.Heartbeat)
+  err = WriteShort(writer, f.Heartbeat)
   if err != nil {
     return errors.New("Error writing field Heartbeat")
   }
@@ -344,17 +345,17 @@ func (f *ConnectionTuneOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 31); err != nil {
     return err
   }
- err = WriteShort(writer, f.ChannelMax)
+  err = WriteShort(writer, f.ChannelMax)
   if err != nil {
     return errors.New("Error writing field ChannelMax")
   }
 
- err = WriteLong(writer, f.FrameMax)
+  err = WriteLong(writer, f.FrameMax)
   if err != nil {
     return errors.New("Error writing field FrameMax")
   }
 
- err = WriteShort(writer, f.Heartbeat)
+  err = WriteShort(writer, f.Heartbeat)
   if err != nil {
     return errors.New("Error writing field Heartbeat")
   }
@@ -389,10 +390,14 @@ func (f *ConnectionOpen) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field Reserved1")
   }
 
-  f.Reserved2, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Reserved2")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Reserved2 = (bits & (1 << 0) > 0)
 
   return
 }
@@ -403,20 +408,24 @@ func (f *ConnectionOpen) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 40); err != nil {
     return err
   }
- err = WritePath(writer, f.VirtualHost)
+  err = WritePath(writer, f.VirtualHost)
   if err != nil {
     return errors.New("Error writing field VirtualHost")
   }
 
- err = WriteShortstr(writer, f.Reserved1)
+  err = WriteShortstr(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteBit(writer, f.Reserved2)
-  if err != nil {
-    return errors.New("Error writing field Reserved2")
+  var bits byte
+  if f.Reserved2 {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -450,7 +459,7 @@ func (f *ConnectionOpenOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 41); err != nil {
     return err
   }
- err = WriteShortstr(writer, f.Reserved1)
+  err = WriteShortstr(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
@@ -505,22 +514,22 @@ func (f *ConnectionClose) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 50); err != nil {
     return err
   }
- err = WriteReplyCode(writer, f.ReplyCode)
+  err = WriteReplyCode(writer, f.ReplyCode)
   if err != nil {
     return errors.New("Error writing field ReplyCode")
   }
 
- err = WriteReplyText(writer, f.ReplyText)
+  err = WriteReplyText(writer, f.ReplyText)
   if err != nil {
     return errors.New("Error writing field ReplyText")
   }
 
- err = WriteClassId(writer, f.ClassId)
+  err = WriteClassId(writer, f.ClassId)
   if err != nil {
     return errors.New("Error writing field ClassId")
   }
 
- err = WriteMethodId(writer, f.MethodId)
+  err = WriteMethodId(writer, f.MethodId)
   if err != nil {
     return errors.New("Error writing field MethodId")
   }
@@ -593,7 +602,7 @@ func (f *ChannelOpen) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 10); err != nil {
     return err
   }
- err = WriteShortstr(writer, f.Reserved1)
+  err = WriteShortstr(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
@@ -630,7 +639,7 @@ func (f *ChannelOpenOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 11); err != nil {
     return err
   }
- err = WriteLongstr(writer, f.Reserved1)
+  err = WriteLongstr(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
@@ -653,10 +662,14 @@ func (f* ChannelFlow) MethodIdentifier() (uint16, uint16) {
 }
 
 func (f *ChannelFlow) Read(reader io.Reader) (err error) {
-  f.Active, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Active")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Active = (bits & (1 << 0) > 0)
 
   return
 }
@@ -667,10 +680,14 @@ func (f *ChannelFlow) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 20); err != nil {
     return err
   }
- err = WriteBit(writer, f.Active)
-  if err != nil {
-    return errors.New("Error writing field Active")
+  var bits byte
+  if f.Active {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -690,10 +707,14 @@ func (f* ChannelFlowOk) MethodIdentifier() (uint16, uint16) {
 }
 
 func (f *ChannelFlowOk) Read(reader io.Reader) (err error) {
-  f.Active, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Active")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Active = (bits & (1 << 0) > 0)
 
   return
 }
@@ -704,10 +725,14 @@ func (f *ChannelFlowOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 21); err != nil {
     return err
   }
- err = WriteBit(writer, f.Active)
-  if err != nil {
-    return errors.New("Error writing field Active")
+  var bits byte
+  if f.Active {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -759,22 +784,22 @@ func (f *ChannelClose) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 40); err != nil {
     return err
   }
- err = WriteReplyCode(writer, f.ReplyCode)
+  err = WriteReplyCode(writer, f.ReplyCode)
   if err != nil {
     return errors.New("Error writing field ReplyCode")
   }
 
- err = WriteReplyText(writer, f.ReplyText)
+  err = WriteReplyText(writer, f.ReplyText)
   if err != nil {
     return errors.New("Error writing field ReplyText")
   }
 
- err = WriteClassId(writer, f.ClassId)
+  err = WriteClassId(writer, f.ClassId)
   if err != nil {
     return errors.New("Error writing field ClassId")
   }
 
- err = WriteMethodId(writer, f.MethodId)
+  err = WriteMethodId(writer, f.MethodId)
   if err != nil {
     return errors.New("Error writing field MethodId")
   }
@@ -856,34 +881,26 @@ func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field Type")
   }
 
-  f.Passive, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Passive")
-  }
 
-  f.Durable, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Durable")
-  }
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
 
-  f.Reserved2, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Reserved2")
-  }
 
-  f.Reserved3, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Reserved3")
-  }
+  f.Passive = (bits & (1 << 0) > 0)
 
-  f.NoWait, err = ReadNoWait(reader)
-  if err != nil {
-    return errors.New("Error reading field NoWait")
-  }
+  f.Durable = (bits & (1 << 1) > 0)
+
+  f.Reserved2 = (bits & (1 << 2) > 0)
+
+  f.Reserved3 = (bits & (1 << 3) > 0)
+
+  f.NoWait = (bits & (1 << 4) > 0)
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
-    return errors.New("Error reading field Arguments: " + err.Error())
+    return errors.New("Error reading field Arguments")
   }
 
   return
@@ -895,47 +912,43 @@ func (f *ExchangeDeclare) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 10); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteExchangeName(writer, f.Exchange)
+  err = WriteExchangeName(writer, f.Exchange)
   if err != nil {
     return errors.New("Error writing field Exchange")
   }
 
- err = WriteShortstr(writer, f.Type)
+  err = WriteShortstr(writer, f.Type)
   if err != nil {
     return errors.New("Error writing field Type")
   }
 
- err = WriteBit(writer, f.Passive)
-  if err != nil {
-    return errors.New("Error writing field Passive")
+  var bits byte
+  if f.Passive {
+    bits |= 1 << 0
   }
-
- err = WriteBit(writer, f.Durable)
-  if err != nil {
-    return errors.New("Error writing field Durable")
+  if f.Durable {
+    bits |= 1 << 1
   }
-
- err = WriteBit(writer, f.Reserved2)
-  if err != nil {
-    return errors.New("Error writing field Reserved2")
+  if f.Reserved2 {
+    bits |= 1 << 2
   }
-
- err = WriteBit(writer, f.Reserved3)
-  if err != nil {
-    return errors.New("Error writing field Reserved3")
+  if f.Reserved3 {
+    bits |= 1 << 3
   }
-
- err = WriteNoWait(writer, f.NoWait)
-  if err != nil {
-    return errors.New("Error writing field NoWait")
+  if f.NoWait {
+    bits |= 1 << 4
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
- err = WriteTable(writer, f.Arguments)
+  err = WriteTable(writer, f.Arguments)
   if err != nil {
     return errors.New("Error writing field Arguments")
   }
@@ -997,15 +1010,16 @@ func (f *ExchangeDelete) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field Exchange")
   }
 
-  f.IfUnused, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field IfUnused")
-  }
 
-  f.NoWait, err = ReadNoWait(reader)
-  if err != nil {
-    return errors.New("Error reading field NoWait")
-  }
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.IfUnused = (bits & (1 << 0) > 0)
+
+  f.NoWait = (bits & (1 << 1) > 0)
 
   return
 }
@@ -1016,25 +1030,27 @@ func (f *ExchangeDelete) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 20); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteExchangeName(writer, f.Exchange)
+  err = WriteExchangeName(writer, f.Exchange)
   if err != nil {
     return errors.New("Error writing field Exchange")
   }
 
- err = WriteBit(writer, f.IfUnused)
-  if err != nil {
-    return errors.New("Error writing field IfUnused")
+  var bits byte
+  if f.IfUnused {
+    bits |= 1 << 0
   }
-
- err = WriteNoWait(writer, f.NoWait)
-  if err != nil {
-    return errors.New("Error writing field NoWait")
+  if f.NoWait {
+    bits |= 1 << 1
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -1107,30 +1123,22 @@ func (f *QueueDeclare) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field Queue")
   }
 
-  f.Passive, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Passive")
-  }
 
-  f.Durable, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Durable")
-  }
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
 
-  f.Exclusive, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Exclusive")
-  }
 
-  f.AutoDelete, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field AutoDelete")
-  }
+  f.Passive = (bits & (1 << 0) > 0)
 
-  f.NoWait, err = ReadNoWait(reader)
-  if err != nil {
-    return errors.New("Error reading field NoWait")
-  }
+  f.Durable = (bits & (1 << 1) > 0)
+
+  f.Exclusive = (bits & (1 << 2) > 0)
+
+  f.AutoDelete = (bits & (1 << 3) > 0)
+
+  f.NoWait = (bits & (1 << 4) > 0)
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
@@ -1146,42 +1154,38 @@ func (f *QueueDeclare) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 10); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteQueueName(writer, f.Queue)
+  err = WriteQueueName(writer, f.Queue)
   if err != nil {
     return errors.New("Error writing field Queue")
   }
 
- err = WriteBit(writer, f.Passive)
-  if err != nil {
-    return errors.New("Error writing field Passive")
+  var bits byte
+  if f.Passive {
+    bits |= 1 << 0
   }
-
- err = WriteBit(writer, f.Durable)
-  if err != nil {
-    return errors.New("Error writing field Durable")
+  if f.Durable {
+    bits |= 1 << 1
   }
-
- err = WriteBit(writer, f.Exclusive)
-  if err != nil {
-    return errors.New("Error writing field Exclusive")
+  if f.Exclusive {
+    bits |= 1 << 2
   }
-
- err = WriteBit(writer, f.AutoDelete)
-  if err != nil {
-    return errors.New("Error writing field AutoDelete")
+  if f.AutoDelete {
+    bits |= 1 << 3
   }
-
- err = WriteNoWait(writer, f.NoWait)
-  if err != nil {
-    return errors.New("Error writing field NoWait")
+  if f.NoWait {
+    bits |= 1 << 4
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
- err = WriteTable(writer, f.Arguments)
+  err = WriteTable(writer, f.Arguments)
   if err != nil {
     return errors.New("Error writing field Arguments")
   }
@@ -1230,17 +1234,17 @@ func (f *QueueDeclareOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 11); err != nil {
     return err
   }
- err = WriteQueueName(writer, f.Queue)
+  err = WriteQueueName(writer, f.Queue)
   if err != nil {
     return errors.New("Error writing field Queue")
   }
 
- err = WriteMessageCount(writer, f.MessageCount)
+  err = WriteMessageCount(writer, f.MessageCount)
   if err != nil {
     return errors.New("Error writing field MessageCount")
   }
 
- err = WriteLong(writer, f.ConsumerCount)
+  err = WriteLong(writer, f.ConsumerCount)
   if err != nil {
     return errors.New("Error writing field ConsumerCount")
   }
@@ -1288,10 +1292,14 @@ func (f *QueueBind) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field RoutingKey")
   }
 
-  f.NoWait, err = ReadNoWait(reader)
-  if err != nil {
-    return errors.New("Error reading field NoWait")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.NoWait = (bits & (1 << 0) > 0)
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
@@ -1307,32 +1315,36 @@ func (f *QueueBind) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 20); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteQueueName(writer, f.Queue)
+  err = WriteQueueName(writer, f.Queue)
   if err != nil {
     return errors.New("Error writing field Queue")
   }
 
- err = WriteExchangeName(writer, f.Exchange)
+  err = WriteExchangeName(writer, f.Exchange)
   if err != nil {
     return errors.New("Error writing field Exchange")
   }
 
- err = WriteShortstr(writer, f.RoutingKey)
+  err = WriteShortstr(writer, f.RoutingKey)
   if err != nil {
     return errors.New("Error writing field RoutingKey")
   }
 
- err = WriteNoWait(writer, f.NoWait)
-  if err != nil {
-    return errors.New("Error writing field NoWait")
+  var bits byte
+  if f.NoWait {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
- err = WriteTable(writer, f.Arguments)
+  err = WriteTable(writer, f.Arguments)
   if err != nil {
     return errors.New("Error writing field Arguments")
   }
@@ -1419,27 +1431,27 @@ func (f *QueueUnbind) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 50); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteQueueName(writer, f.Queue)
+  err = WriteQueueName(writer, f.Queue)
   if err != nil {
     return errors.New("Error writing field Queue")
   }
 
- err = WriteExchangeName(writer, f.Exchange)
+  err = WriteExchangeName(writer, f.Exchange)
   if err != nil {
     return errors.New("Error writing field Exchange")
   }
 
- err = WriteShortstr(writer, f.RoutingKey)
+  err = WriteShortstr(writer, f.RoutingKey)
   if err != nil {
     return errors.New("Error writing field RoutingKey")
   }
 
- err = WriteTable(writer, f.Arguments)
+  err = WriteTable(writer, f.Arguments)
   if err != nil {
     return errors.New("Error writing field Arguments")
   }
@@ -1500,10 +1512,14 @@ func (f *QueuePurge) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field Queue")
   }
 
-  f.NoWait, err = ReadNoWait(reader)
-  if err != nil {
-    return errors.New("Error reading field NoWait")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.NoWait = (bits & (1 << 0) > 0)
 
   return
 }
@@ -1514,20 +1530,24 @@ func (f *QueuePurge) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 30); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteQueueName(writer, f.Queue)
+  err = WriteQueueName(writer, f.Queue)
   if err != nil {
     return errors.New("Error writing field Queue")
   }
 
- err = WriteNoWait(writer, f.NoWait)
-  if err != nil {
-    return errors.New("Error writing field NoWait")
+  var bits byte
+  if f.NoWait {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -1561,7 +1581,7 @@ func (f *QueuePurgeOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 31); err != nil {
     return err
   }
- err = WriteMessageCount(writer, f.MessageCount)
+  err = WriteMessageCount(writer, f.MessageCount)
   if err != nil {
     return errors.New("Error writing field MessageCount")
   }
@@ -1598,20 +1618,18 @@ func (f *QueueDelete) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field Queue")
   }
 
-  f.IfUnused, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field IfUnused")
-  }
 
-  f.IfEmpty, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field IfEmpty")
-  }
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
 
-  f.NoWait, err = ReadNoWait(reader)
-  if err != nil {
-    return errors.New("Error reading field NoWait")
-  }
+
+  f.IfUnused = (bits & (1 << 0) > 0)
+
+  f.IfEmpty = (bits & (1 << 1) > 0)
+
+  f.NoWait = (bits & (1 << 2) > 0)
 
   return
 }
@@ -1622,30 +1640,30 @@ func (f *QueueDelete) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 40); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteQueueName(writer, f.Queue)
+  err = WriteQueueName(writer, f.Queue)
   if err != nil {
     return errors.New("Error writing field Queue")
   }
 
- err = WriteBit(writer, f.IfUnused)
-  if err != nil {
-    return errors.New("Error writing field IfUnused")
+  var bits byte
+  if f.IfUnused {
+    bits |= 1 << 0
   }
-
- err = WriteBit(writer, f.IfEmpty)
-  if err != nil {
-    return errors.New("Error writing field IfEmpty")
+  if f.IfEmpty {
+    bits |= 1 << 1
   }
-
- err = WriteNoWait(writer, f.NoWait)
-  if err != nil {
-    return errors.New("Error writing field NoWait")
+  if f.NoWait {
+    bits |= 1 << 2
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -1679,7 +1697,7 @@ func (f *QueueDeleteOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 41); err != nil {
     return err
   }
- err = WriteMessageCount(writer, f.MessageCount)
+  err = WriteMessageCount(writer, f.MessageCount)
   if err != nil {
     return errors.New("Error writing field MessageCount")
   }
@@ -1724,10 +1742,14 @@ func (f *BasicQos) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field PrefetchCount")
   }
 
-  f.Global, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Global")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Global = (bits & (1 << 0) > 0)
 
   return
 }
@@ -1738,20 +1760,24 @@ func (f *BasicQos) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 10); err != nil {
     return err
   }
- err = WriteLong(writer, f.PrefetchSize)
+  err = WriteLong(writer, f.PrefetchSize)
   if err != nil {
     return errors.New("Error writing field PrefetchSize")
   }
 
- err = WriteShort(writer, f.PrefetchCount)
+  err = WriteShort(writer, f.PrefetchCount)
   if err != nil {
     return errors.New("Error writing field PrefetchCount")
   }
 
- err = WriteBit(writer, f.Global)
-  if err != nil {
-    return errors.New("Error writing field Global")
+  var bits byte
+  if f.Global {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -1819,25 +1845,20 @@ func (f *BasicConsume) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field ConsumerTag")
   }
 
-  f.NoLocal, err = ReadNoLocal(reader)
-  if err != nil {
-    return errors.New("Error reading field NoLocal")
-  }
 
-  f.NoAck, err = ReadNoAck(reader)
-  if err != nil {
-    return errors.New("Error reading field NoAck")
-  }
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
 
-  f.Exclusive, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Exclusive")
-  }
 
-  f.NoWait, err = ReadNoWait(reader)
-  if err != nil {
-    return errors.New("Error reading field NoWait")
-  }
+  f.NoLocal = (bits & (1 << 0) > 0)
+
+  f.NoAck = (bits & (1 << 1) > 0)
+
+  f.Exclusive = (bits & (1 << 2) > 0)
+
+  f.NoWait = (bits & (1 << 3) > 0)
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
@@ -1853,42 +1874,40 @@ func (f *BasicConsume) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 20); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteQueueName(writer, f.Queue)
+  err = WriteQueueName(writer, f.Queue)
   if err != nil {
     return errors.New("Error writing field Queue")
   }
 
- err = WriteConsumerTag(writer, f.ConsumerTag)
+  err = WriteConsumerTag(writer, f.ConsumerTag)
   if err != nil {
     return errors.New("Error writing field ConsumerTag")
   }
 
- err = WriteNoLocal(writer, f.NoLocal)
-  if err != nil {
-    return errors.New("Error writing field NoLocal")
+  var bits byte
+  if f.NoLocal {
+    bits |= 1 << 0
   }
-
- err = WriteNoAck(writer, f.NoAck)
-  if err != nil {
-    return errors.New("Error writing field NoAck")
+  if f.NoAck {
+    bits |= 1 << 1
   }
-
- err = WriteBit(writer, f.Exclusive)
-  if err != nil {
-    return errors.New("Error writing field Exclusive")
+  if f.Exclusive {
+    bits |= 1 << 2
   }
-
- err = WriteNoWait(writer, f.NoWait)
-  if err != nil {
-    return errors.New("Error writing field NoWait")
+  if f.NoWait {
+    bits |= 1 << 3
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
- err = WriteTable(writer, f.Arguments)
+  err = WriteTable(writer, f.Arguments)
   if err != nil {
     return errors.New("Error writing field Arguments")
   }
@@ -1925,7 +1944,7 @@ func (f *BasicConsumeOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 21); err != nil {
     return err
   }
- err = WriteConsumerTag(writer, f.ConsumerTag)
+  err = WriteConsumerTag(writer, f.ConsumerTag)
   if err != nil {
     return errors.New("Error writing field ConsumerTag")
   }
@@ -1954,10 +1973,14 @@ func (f *BasicCancel) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field ConsumerTag")
   }
 
-  f.NoWait, err = ReadNoWait(reader)
-  if err != nil {
-    return errors.New("Error reading field NoWait")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.NoWait = (bits & (1 << 0) > 0)
 
   return
 }
@@ -1968,15 +1991,19 @@ func (f *BasicCancel) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 30); err != nil {
     return err
   }
- err = WriteConsumerTag(writer, f.ConsumerTag)
+  err = WriteConsumerTag(writer, f.ConsumerTag)
   if err != nil {
     return errors.New("Error writing field ConsumerTag")
   }
 
- err = WriteNoWait(writer, f.NoWait)
-  if err != nil {
-    return errors.New("Error writing field NoWait")
+  var bits byte
+  if f.NoWait {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -2010,7 +2037,7 @@ func (f *BasicCancelOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 31); err != nil {
     return err
   }
- err = WriteConsumerTag(writer, f.ConsumerTag)
+  err = WriteConsumerTag(writer, f.ConsumerTag)
   if err != nil {
     return errors.New("Error writing field ConsumerTag")
   }
@@ -2052,15 +2079,16 @@ func (f *BasicPublish) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field RoutingKey")
   }
 
-  f.Mandatory, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Mandatory")
-  }
 
-  f.Immediate, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Immediate")
-  }
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Mandatory = (bits & (1 << 0) > 0)
+
+  f.Immediate = (bits & (1 << 1) > 0)
 
   return
 }
@@ -2071,30 +2099,32 @@ func (f *BasicPublish) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 40); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteExchangeName(writer, f.Exchange)
+  err = WriteExchangeName(writer, f.Exchange)
   if err != nil {
     return errors.New("Error writing field Exchange")
   }
 
- err = WriteShortstr(writer, f.RoutingKey)
+  err = WriteShortstr(writer, f.RoutingKey)
   if err != nil {
     return errors.New("Error writing field RoutingKey")
   }
 
- err = WriteBit(writer, f.Mandatory)
-  if err != nil {
-    return errors.New("Error writing field Mandatory")
+  var bits byte
+  if f.Mandatory {
+    bits |= 1 << 0
   }
-
- err = WriteBit(writer, f.Immediate)
-  if err != nil {
-    return errors.New("Error writing field Immediate")
+  if f.Immediate {
+    bits |= 1 << 1
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -2146,22 +2176,22 @@ func (f *BasicReturn) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 50); err != nil {
     return err
   }
- err = WriteReplyCode(writer, f.ReplyCode)
+  err = WriteReplyCode(writer, f.ReplyCode)
   if err != nil {
     return errors.New("Error writing field ReplyCode")
   }
 
- err = WriteReplyText(writer, f.ReplyText)
+  err = WriteReplyText(writer, f.ReplyText)
   if err != nil {
     return errors.New("Error writing field ReplyText")
   }
 
- err = WriteExchangeName(writer, f.Exchange)
+  err = WriteExchangeName(writer, f.Exchange)
   if err != nil {
     return errors.New("Error writing field Exchange")
   }
 
- err = WriteShortstr(writer, f.RoutingKey)
+  err = WriteShortstr(writer, f.RoutingKey)
   if err != nil {
     return errors.New("Error writing field RoutingKey")
   }
@@ -2198,10 +2228,14 @@ func (f *BasicDeliver) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field DeliveryTag")
   }
 
-  f.Redelivered, err = ReadRedelivered(reader)
-  if err != nil {
-    return errors.New("Error reading field Redelivered")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Redelivered = (bits & (1 << 0) > 0)
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
@@ -2222,27 +2256,31 @@ func (f *BasicDeliver) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 60); err != nil {
     return err
   }
- err = WriteConsumerTag(writer, f.ConsumerTag)
+  err = WriteConsumerTag(writer, f.ConsumerTag)
   if err != nil {
     return errors.New("Error writing field ConsumerTag")
   }
 
- err = WriteDeliveryTag(writer, f.DeliveryTag)
+  err = WriteDeliveryTag(writer, f.DeliveryTag)
   if err != nil {
     return errors.New("Error writing field DeliveryTag")
   }
 
- err = WriteRedelivered(writer, f.Redelivered)
-  if err != nil {
-    return errors.New("Error writing field Redelivered")
+  var bits byte
+  if f.Redelivered {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
- err = WriteExchangeName(writer, f.Exchange)
+  err = WriteExchangeName(writer, f.Exchange)
   if err != nil {
     return errors.New("Error writing field Exchange")
   }
 
- err = WriteShortstr(writer, f.RoutingKey)
+  err = WriteShortstr(writer, f.RoutingKey)
   if err != nil {
     return errors.New("Error writing field RoutingKey")
   }
@@ -2277,10 +2315,14 @@ func (f *BasicGet) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field Queue")
   }
 
-  f.NoAck, err = ReadNoAck(reader)
-  if err != nil {
-    return errors.New("Error reading field NoAck")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.NoAck = (bits & (1 << 0) > 0)
 
   return
 }
@@ -2291,20 +2333,24 @@ func (f *BasicGet) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 70); err != nil {
     return err
   }
- err = WriteShort(writer, f.Reserved1)
+  err = WriteShort(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
 
- err = WriteQueueName(writer, f.Queue)
+  err = WriteQueueName(writer, f.Queue)
   if err != nil {
     return errors.New("Error writing field Queue")
   }
 
- err = WriteNoAck(writer, f.NoAck)
-  if err != nil {
-    return errors.New("Error writing field NoAck")
+  var bits byte
+  if f.NoAck {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -2333,10 +2379,14 @@ func (f *BasicGetOk) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field DeliveryTag")
   }
 
-  f.Redelivered, err = ReadRedelivered(reader)
-  if err != nil {
-    return errors.New("Error reading field Redelivered")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Redelivered = (bits & (1 << 0) > 0)
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
@@ -2362,27 +2412,31 @@ func (f *BasicGetOk) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 71); err != nil {
     return err
   }
- err = WriteDeliveryTag(writer, f.DeliveryTag)
+  err = WriteDeliveryTag(writer, f.DeliveryTag)
   if err != nil {
     return errors.New("Error writing field DeliveryTag")
   }
 
- err = WriteRedelivered(writer, f.Redelivered)
-  if err != nil {
-    return errors.New("Error writing field Redelivered")
+  var bits byte
+  if f.Redelivered {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
- err = WriteExchangeName(writer, f.Exchange)
+  err = WriteExchangeName(writer, f.Exchange)
   if err != nil {
     return errors.New("Error writing field Exchange")
   }
 
- err = WriteShortstr(writer, f.RoutingKey)
+  err = WriteShortstr(writer, f.RoutingKey)
   if err != nil {
     return errors.New("Error writing field RoutingKey")
   }
 
- err = WriteMessageCount(writer, f.MessageCount)
+  err = WriteMessageCount(writer, f.MessageCount)
   if err != nil {
     return errors.New("Error writing field MessageCount")
   }
@@ -2419,7 +2473,7 @@ func (f *BasicGetEmpty) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 72); err != nil {
     return err
   }
- err = WriteShortstr(writer, f.Reserved1)
+  err = WriteShortstr(writer, f.Reserved1)
   if err != nil {
     return errors.New("Error writing field Reserved1")
   }
@@ -2448,10 +2502,14 @@ func (f *BasicAck) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field DeliveryTag")
   }
 
-  f.Multiple, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Multiple")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Multiple = (bits & (1 << 0) > 0)
 
   return
 }
@@ -2462,15 +2520,19 @@ func (f *BasicAck) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 80); err != nil {
     return err
   }
- err = WriteDeliveryTag(writer, f.DeliveryTag)
+  err = WriteDeliveryTag(writer, f.DeliveryTag)
   if err != nil {
     return errors.New("Error writing field DeliveryTag")
   }
 
- err = WriteBit(writer, f.Multiple)
-  if err != nil {
-    return errors.New("Error writing field Multiple")
+  var bits byte
+  if f.Multiple {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -2496,10 +2558,14 @@ func (f *BasicReject) Read(reader io.Reader) (err error) {
     return errors.New("Error reading field DeliveryTag")
   }
 
-  f.Requeue, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Requeue")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Requeue = (bits & (1 << 0) > 0)
 
   return
 }
@@ -2510,15 +2576,19 @@ func (f *BasicReject) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 90); err != nil {
     return err
   }
- err = WriteDeliveryTag(writer, f.DeliveryTag)
+  err = WriteDeliveryTag(writer, f.DeliveryTag)
   if err != nil {
     return errors.New("Error writing field DeliveryTag")
   }
 
- err = WriteBit(writer, f.Requeue)
-  if err != nil {
-    return errors.New("Error writing field Requeue")
+  var bits byte
+  if f.Requeue {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -2538,10 +2608,14 @@ func (f* BasicRecoverAsync) MethodIdentifier() (uint16, uint16) {
 }
 
 func (f *BasicRecoverAsync) Read(reader io.Reader) (err error) {
-  f.Requeue, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Requeue")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Requeue = (bits & (1 << 0) > 0)
 
   return
 }
@@ -2552,10 +2626,14 @@ func (f *BasicRecoverAsync) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 100); err != nil {
     return err
   }
- err = WriteBit(writer, f.Requeue)
-  if err != nil {
-    return errors.New("Error writing field Requeue")
+  var bits byte
+  if f.Requeue {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -2575,10 +2653,14 @@ func (f* BasicRecover) MethodIdentifier() (uint16, uint16) {
 }
 
 func (f *BasicRecover) Read(reader io.Reader) (err error) {
-  f.Requeue, err = ReadBit(reader)
-  if err != nil {
-    return errors.New("Error reading field Requeue")
-  }
+
+  bits, err := ReadOctet(reader)
+  if err != nil {{
+    return errors.New("Error reading field {name}")
+  }}
+
+
+  f.Requeue = (bits & (1 << 0) > 0)
 
   return
 }
@@ -2589,10 +2671,14 @@ func (f *BasicRecover) Write(writer io.Writer) (err error) {
   if err = WriteShort(writer, 110); err != nil {
     return err
   }
- err = WriteBit(writer, f.Requeue)
-  if err != nil {
-    return errors.New("Error writing field Requeue")
+  var bits byte
+  if f.Requeue {
+    bits |= 1 << 0
   }
+  err = WriteOctet(writer, bits)
+  if err != nil {{
+    return errors.New("Error writing bit fields")
+  }}
 
   return
 }
@@ -3194,5 +3280,9 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
         return method, nil
     }
   }
-  return nil, errors.New("Bad method or class Id!")
+  return nil, errors.New(
+    "Bad method or class Id! classId:" +
+    strconv.FormatUint(uint64(classIndex), 10) +
+    " methodIndex: " +
+    strconv.FormatUint(uint64(methodIndex), 10))
 }
