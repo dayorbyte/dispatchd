@@ -17,6 +17,5 @@
 
 ## Future Goals
 
-* Full compliance with the AMQP specification
-* Maybe support for the rabbitmq extensions
+* Full compliance with the AMQP specification (plus rabbitmq's extensions)
 * Functional and performance testing

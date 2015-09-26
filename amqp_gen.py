@@ -234,7 +234,7 @@ def normalize_name(name):
   return ''.join([w.capitalize() for w in name.split('-')])
 
 if __name__ == '__main__':
-  tree = ET.parse('amqp-0-9-1.xml')
+  tree = ET.parse('amqp0-9-1.extended.xml')
   root = tree.getroot()
 
   domains = handle_domains(root)
