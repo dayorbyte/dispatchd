@@ -8,7 +8,7 @@ import (
   "bytes"
 )
 
-func WriteFrame(buf io.Writer, frame *FrameWrapper) {
+func WriteFrame(buf io.Writer, frame *WireFrame) {
   WriteOctet(buf, frame.FrameType)
   WriteShort(buf, frame.Channel)
   WriteLongstr(buf, frame.Payload)

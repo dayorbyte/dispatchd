@@ -6,10 +6,11 @@ import (
   "errors"
   "bytes"
   "time"
+  // "strconv"
 )
 
-func ReadFrame (reader io.Reader) (*FrameWrapper, error) {
-  var f = &FrameWrapper{}
+func ReadFrame (reader io.Reader) (*WireFrame, error) {
+  var f = &WireFrame{}
   frameType, err := ReadOctet(reader)
   if err != nil {
     return nil, err
@@ -60,21 +61,6 @@ func ReadFrameEnd(buf io.Reader) (err error) {
   return nil
 }
 
-// Composite Types
-
-func ReadFrameHeader(buf io.Reader) (frameType byte, channel uint16, payloadSize uint32, err error) {
-  binary.Read(buf, binary.BigEndian, &frameType)
-  binary.Read(buf, binary.BigEndian, &channel)
-  binary.Read(buf, binary.BigEndian, &payloadSize)
-  return frameType, channel, payloadSize, nil
-}
-
-func ReadMethodPayloadHeader(buf io.Reader) (classId uint16, methodId uint16, err error) {
-  binary.Read(buf, binary.BigEndian, &classId)
-  binary.Read(buf, binary.BigEndian, &methodId)
-  return
-}
-
 // Fields
 
 func ReadBit(buf io.Reader) (bool, error) {
@@ -89,7 +75,7 @@ func ReadBit(buf io.Reader) (bool, error) {
 func ReadOctet(buf io.Reader) (data byte, err error) {
   err = binary.Read(buf, binary.BigEndian, &data)
   if err != nil {
-    return 0, errors.New("Could not read byte")
+    return 0, errors.New("Could not read byte: " + err.Error())
   }
   return data, nil
 }
@@ -97,7 +83,7 @@ func ReadOctet(buf io.Reader) (data byte, err error) {
 func ReadShort(buf io.Reader) (data uint16, err error) {
   err = binary.Read(buf, binary.BigEndian, &data)
   if err != nil {
-    return 0, errors.New("Could not read uint16")
+    return 0, errors.New("Could not read uint16: " + err.Error())
   }
   return data, nil
 }
@@ -105,7 +91,7 @@ func ReadShort(buf io.Reader) (data uint16, err error) {
 func ReadLong(buf io.Reader) (data uint32, err error) {
   err = binary.Read(buf, binary.BigEndian, &data)
   if err != nil {
-    return 0, errors.New("Could not read uint32")
+    return 0, errors.New("Could not read uint32: " + err.Error())
   }
   return data, nil
 }
@@ -113,7 +99,7 @@ func ReadLong(buf io.Reader) (data uint32, err error) {
 func ReadLonglong(buf io.Reader) (data uint64, err error) {
   err = binary.Read(buf, binary.BigEndian, &data)
   if err != nil {
-    return 0, errors.New("Could not read uint64")
+    return 0, errors.New("Could not read uint64: " + err.Error())
   }
   return data, nil
 }
@@ -121,7 +107,7 @@ func ReadLonglong(buf io.Reader) (data uint64, err error) {
 func ReadStringChar(buf io.Reader) (data byte, err error) {
   err = binary.Read(buf, binary.BigEndian, &data)
   if err != nil {
-    return 0, errors.New("Could not read byte")
+    return 0, errors.New("Could not read byte: " + err.Error())
   }
   return data, nil
 }

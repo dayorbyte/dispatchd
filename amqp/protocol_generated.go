@@ -38,30 +38,36 @@ func (f* ConnectionStart) MethodIdentifier() (uint16, uint16) {
   return 10, 10
 }
 
+func (f* ConnectionStart) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionStart) Read(reader io.Reader) (err error) {
   f.VersionMajor, err = ReadOctet(reader)
   if err != nil {
-    return errors.New("Error reading field VersionMajor")
+    return errors.New("Error reading field VersionMajor: " + err.Error())
   }
 
   f.VersionMinor, err = ReadOctet(reader)
   if err != nil {
-    return errors.New("Error reading field VersionMinor")
+    return errors.New("Error reading field VersionMinor: " + err.Error())
   }
 
   f.ServerProperties, err = ReadPeerProperties(reader)
   if err != nil {
-    return errors.New("Error reading field ServerProperties")
+    return errors.New("Error reading field ServerProperties: " + err.Error())
   }
 
   f.Mechanisms, err = ReadLongstr(reader)
   if err != nil {
-    return errors.New("Error reading field Mechanisms")
+    return errors.New("Error reading field Mechanisms: " + err.Error())
   }
 
   f.Locales, err = ReadLongstr(reader)
   if err != nil {
-    return errors.New("Error reading field Locales")
+    return errors.New("Error reading field Locales: " + err.Error())
   }
 
   return
@@ -118,25 +124,31 @@ func (f* ConnectionStartOk) MethodIdentifier() (uint16, uint16) {
   return 10, 11
 }
 
+func (f* ConnectionStartOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionStartOk) Read(reader io.Reader) (err error) {
   f.ClientProperties, err = ReadPeerProperties(reader)
   if err != nil {
-    return errors.New("Error reading field ClientProperties")
+    return errors.New("Error reading field ClientProperties: " + err.Error())
   }
 
   f.Mechanism, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field Mechanism")
+    return errors.New("Error reading field Mechanism: " + err.Error())
   }
 
   f.Response, err = ReadLongstr(reader)
   if err != nil {
-    return errors.New("Error reading field Response")
+    return errors.New("Error reading field Response: " + err.Error())
   }
 
   f.Locale, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field Locale")
+    return errors.New("Error reading field Locale: " + err.Error())
   }
 
   return
@@ -185,10 +197,16 @@ func (f* ConnectionSecure) MethodIdentifier() (uint16, uint16) {
   return 10, 20
 }
 
+func (f* ConnectionSecure) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionSecure) Read(reader io.Reader) (err error) {
   f.Challenge, err = ReadLongstr(reader)
   if err != nil {
-    return errors.New("Error reading field Challenge")
+    return errors.New("Error reading field Challenge: " + err.Error())
   }
 
   return
@@ -222,10 +240,16 @@ func (f* ConnectionSecureOk) MethodIdentifier() (uint16, uint16) {
   return 10, 21
 }
 
+func (f* ConnectionSecureOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionSecureOk) Read(reader io.Reader) (err error) {
   f.Response, err = ReadLongstr(reader)
   if err != nil {
-    return errors.New("Error reading field Response")
+    return errors.New("Error reading field Response: " + err.Error())
   }
 
   return
@@ -261,20 +285,26 @@ func (f* ConnectionTune) MethodIdentifier() (uint16, uint16) {
   return 10, 30
 }
 
+func (f* ConnectionTune) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionTune) Read(reader io.Reader) (err error) {
   f.ChannelMax, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field ChannelMax")
+    return errors.New("Error reading field ChannelMax: " + err.Error())
   }
 
   f.FrameMax, err = ReadLong(reader)
   if err != nil {
-    return errors.New("Error reading field FrameMax")
+    return errors.New("Error reading field FrameMax: " + err.Error())
   }
 
   f.Heartbeat, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Heartbeat")
+    return errors.New("Error reading field Heartbeat: " + err.Error())
   }
 
   return
@@ -320,20 +350,26 @@ func (f* ConnectionTuneOk) MethodIdentifier() (uint16, uint16) {
   return 10, 31
 }
 
+func (f* ConnectionTuneOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionTuneOk) Read(reader io.Reader) (err error) {
   f.ChannelMax, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field ChannelMax")
+    return errors.New("Error reading field ChannelMax: " + err.Error())
   }
 
   f.FrameMax, err = ReadLong(reader)
   if err != nil {
-    return errors.New("Error reading field FrameMax")
+    return errors.New("Error reading field FrameMax: " + err.Error())
   }
 
   f.Heartbeat, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Heartbeat")
+    return errors.New("Error reading field Heartbeat: " + err.Error())
   }
 
   return
@@ -379,21 +415,27 @@ func (f* ConnectionOpen) MethodIdentifier() (uint16, uint16) {
   return 10, 40
 }
 
+func (f* ConnectionOpen) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionOpen) Read(reader io.Reader) (err error) {
   f.VirtualHost, err = ReadPath(reader)
   if err != nil {
-    return errors.New("Error reading field VirtualHost")
+    return errors.New("Error reading field VirtualHost: " + err.Error())
   }
 
   f.Reserved1, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -444,10 +486,16 @@ func (f* ConnectionOpenOk) MethodIdentifier() (uint16, uint16) {
   return 10, 41
 }
 
+func (f* ConnectionOpenOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionOpenOk) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   return
@@ -484,25 +532,31 @@ func (f* ConnectionClose) MethodIdentifier() (uint16, uint16) {
   return 10, 50
 }
 
+func (f* ConnectionClose) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionClose) Read(reader io.Reader) (err error) {
   f.ReplyCode, err = ReadReplyCode(reader)
   if err != nil {
-    return errors.New("Error reading field ReplyCode")
+    return errors.New("Error reading field ReplyCode: " + err.Error())
   }
 
   f.ReplyText, err = ReadReplyText(reader)
   if err != nil {
-    return errors.New("Error reading field ReplyText")
+    return errors.New("Error reading field ReplyText: " + err.Error())
   }
 
   f.ClassId, err = ReadClassId(reader)
   if err != nil {
-    return errors.New("Error reading field ClassId")
+    return errors.New("Error reading field ClassId: " + err.Error())
   }
 
   f.MethodId, err = ReadMethodId(reader)
   if err != nil {
-    return errors.New("Error reading field MethodId")
+    return errors.New("Error reading field MethodId: " + err.Error())
   }
 
   return
@@ -550,6 +604,12 @@ func (f* ConnectionCloseOk) MethodIdentifier() (uint16, uint16) {
   return 10, 51
 }
 
+func (f* ConnectionCloseOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionCloseOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -577,10 +637,16 @@ func (f* ConnectionBlocked) MethodIdentifier() (uint16, uint16) {
   return 10, 60
 }
 
+func (f* ConnectionBlocked) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConnectionBlocked) Read(reader io.Reader) (err error) {
   f.Reason, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field Reason")
+    return errors.New("Error reading field Reason: " + err.Error())
   }
 
   return
@@ -612,6 +678,12 @@ type ConnectionUnblocked struct {
 func (f* ConnectionUnblocked) MethodIdentifier() (uint16, uint16) {
   return 10, 61
 }
+
+func (f* ConnectionUnblocked) FrameType() byte {
+  return 1
+}
+
+
 
 func (f *ConnectionUnblocked) Read(reader io.Reader) (err error) {
   return
@@ -650,10 +722,16 @@ func (f* ChannelOpen) MethodIdentifier() (uint16, uint16) {
   return 20, 10
 }
 
+func (f* ChannelOpen) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ChannelOpen) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   return
@@ -687,10 +765,16 @@ func (f* ChannelOpenOk) MethodIdentifier() (uint16, uint16) {
   return 20, 11
 }
 
+func (f* ChannelOpenOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ChannelOpenOk) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadLongstr(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   return
@@ -724,11 +808,17 @@ func (f* ChannelFlow) MethodIdentifier() (uint16, uint16) {
   return 20, 20
 }
 
+func (f* ChannelFlow) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ChannelFlow) Read(reader io.Reader) (err error) {
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -769,11 +859,17 @@ func (f* ChannelFlowOk) MethodIdentifier() (uint16, uint16) {
   return 20, 21
 }
 
+func (f* ChannelFlowOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ChannelFlowOk) Read(reader io.Reader) (err error) {
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -817,25 +913,31 @@ func (f* ChannelClose) MethodIdentifier() (uint16, uint16) {
   return 20, 40
 }
 
+func (f* ChannelClose) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ChannelClose) Read(reader io.Reader) (err error) {
   f.ReplyCode, err = ReadReplyCode(reader)
   if err != nil {
-    return errors.New("Error reading field ReplyCode")
+    return errors.New("Error reading field ReplyCode: " + err.Error())
   }
 
   f.ReplyText, err = ReadReplyText(reader)
   if err != nil {
-    return errors.New("Error reading field ReplyText")
+    return errors.New("Error reading field ReplyText: " + err.Error())
   }
 
   f.ClassId, err = ReadClassId(reader)
   if err != nil {
-    return errors.New("Error reading field ClassId")
+    return errors.New("Error reading field ClassId: " + err.Error())
   }
 
   f.MethodId, err = ReadMethodId(reader)
   if err != nil {
-    return errors.New("Error reading field MethodId")
+    return errors.New("Error reading field MethodId: " + err.Error())
   }
 
   return
@@ -883,6 +985,12 @@ func (f* ChannelCloseOk) MethodIdentifier() (uint16, uint16) {
   return 20, 41
 }
 
+func (f* ChannelCloseOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ChannelCloseOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -928,26 +1036,32 @@ func (f* ExchangeDeclare) MethodIdentifier() (uint16, uint16) {
   return 40, 10
 }
 
+func (f* ExchangeDeclare) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Exchange")
+    return errors.New("Error reading field Exchange: " + err.Error())
   }
 
   f.Type, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field Type")
+    return errors.New("Error reading field Type: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -963,7 +1077,7 @@ func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
-    return errors.New("Error reading field Arguments")
+    return errors.New("Error reading field Arguments: " + err.Error())
   }
 
   return
@@ -1032,6 +1146,12 @@ func (f* ExchangeDeclareOk) MethodIdentifier() (uint16, uint16) {
   return 40, 11
 }
 
+func (f* ExchangeDeclareOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ExchangeDeclareOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -1062,21 +1182,27 @@ func (f* ExchangeDelete) MethodIdentifier() (uint16, uint16) {
   return 40, 20
 }
 
+func (f* ExchangeDelete) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ExchangeDelete) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Exchange")
+    return errors.New("Error reading field Exchange: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -1131,6 +1257,12 @@ func (f* ExchangeDeleteOk) MethodIdentifier() (uint16, uint16) {
   return 40, 21
 }
 
+func (f* ExchangeDeleteOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ExchangeDeleteOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -1163,31 +1295,37 @@ func (f* ExchangeBind) MethodIdentifier() (uint16, uint16) {
   return 40, 30
 }
 
+func (f* ExchangeBind) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ExchangeBind) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Destination, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Destination")
+    return errors.New("Error reading field Destination: " + err.Error())
   }
 
   f.Source, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Source")
+    return errors.New("Error reading field Source: " + err.Error())
   }
 
   f.RoutingKey, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field RoutingKey")
+    return errors.New("Error reading field RoutingKey: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -1195,7 +1333,7 @@ func (f *ExchangeBind) Read(reader io.Reader) (err error) {
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
-    return errors.New("Error reading field Arguments")
+    return errors.New("Error reading field Arguments: " + err.Error())
   }
 
   return
@@ -1257,6 +1395,12 @@ func (f* ExchangeBindOk) MethodIdentifier() (uint16, uint16) {
   return 40, 31
 }
 
+func (f* ExchangeBindOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ExchangeBindOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -1289,31 +1433,37 @@ func (f* ExchangeUnbind) MethodIdentifier() (uint16, uint16) {
   return 40, 40
 }
 
+func (f* ExchangeUnbind) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ExchangeUnbind) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Destination, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Destination")
+    return errors.New("Error reading field Destination: " + err.Error())
   }
 
   f.Source, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Source")
+    return errors.New("Error reading field Source: " + err.Error())
   }
 
   f.RoutingKey, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field RoutingKey")
+    return errors.New("Error reading field RoutingKey: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -1321,7 +1471,7 @@ func (f *ExchangeUnbind) Read(reader io.Reader) (err error) {
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
-    return errors.New("Error reading field Arguments")
+    return errors.New("Error reading field Arguments: " + err.Error())
   }
 
   return
@@ -1383,6 +1533,12 @@ func (f* ExchangeUnbindOk) MethodIdentifier() (uint16, uint16) {
   return 40, 51
 }
 
+func (f* ExchangeUnbindOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ExchangeUnbindOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -1427,21 +1583,27 @@ func (f* QueueDeclare) MethodIdentifier() (uint16, uint16) {
   return 50, 10
 }
 
+func (f* QueueDeclare) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueueDeclare) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Queue, err = ReadQueueName(reader)
   if err != nil {
-    return errors.New("Error reading field Queue")
+    return errors.New("Error reading field Queue: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -1457,7 +1619,7 @@ func (f *QueueDeclare) Read(reader io.Reader) (err error) {
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
-    return errors.New("Error reading field Arguments")
+    return errors.New("Error reading field Arguments: " + err.Error())
   }
 
   return
@@ -1524,20 +1686,26 @@ func (f* QueueDeclareOk) MethodIdentifier() (uint16, uint16) {
   return 50, 11
 }
 
+func (f* QueueDeclareOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueueDeclareOk) Read(reader io.Reader) (err error) {
   f.Queue, err = ReadQueueName(reader)
   if err != nil {
-    return errors.New("Error reading field Queue")
+    return errors.New("Error reading field Queue: " + err.Error())
   }
 
   f.MessageCount, err = ReadMessageCount(reader)
   if err != nil {
-    return errors.New("Error reading field MessageCount")
+    return errors.New("Error reading field MessageCount: " + err.Error())
   }
 
   f.ConsumerCount, err = ReadLong(reader)
   if err != nil {
-    return errors.New("Error reading field ConsumerCount")
+    return errors.New("Error reading field ConsumerCount: " + err.Error())
   }
 
   return
@@ -1586,31 +1754,37 @@ func (f* QueueBind) MethodIdentifier() (uint16, uint16) {
   return 50, 20
 }
 
+func (f* QueueBind) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueueBind) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Queue, err = ReadQueueName(reader)
   if err != nil {
-    return errors.New("Error reading field Queue")
+    return errors.New("Error reading field Queue: " + err.Error())
   }
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Exchange")
+    return errors.New("Error reading field Exchange: " + err.Error())
   }
 
   f.RoutingKey, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field RoutingKey")
+    return errors.New("Error reading field RoutingKey: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -1618,7 +1792,7 @@ func (f *QueueBind) Read(reader io.Reader) (err error) {
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
-    return errors.New("Error reading field Arguments")
+    return errors.New("Error reading field Arguments: " + err.Error())
   }
 
   return
@@ -1680,6 +1854,12 @@ func (f* QueueBindOk) MethodIdentifier() (uint16, uint16) {
   return 50, 21
 }
 
+func (f* QueueBindOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueueBindOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -1711,30 +1891,36 @@ func (f* QueueUnbind) MethodIdentifier() (uint16, uint16) {
   return 50, 50
 }
 
+func (f* QueueUnbind) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueueUnbind) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Queue, err = ReadQueueName(reader)
   if err != nil {
-    return errors.New("Error reading field Queue")
+    return errors.New("Error reading field Queue: " + err.Error())
   }
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Exchange")
+    return errors.New("Error reading field Exchange: " + err.Error())
   }
 
   f.RoutingKey, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field RoutingKey")
+    return errors.New("Error reading field RoutingKey: " + err.Error())
   }
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
-    return errors.New("Error reading field Arguments")
+    return errors.New("Error reading field Arguments: " + err.Error())
   }
 
   return
@@ -1787,6 +1973,12 @@ func (f* QueueUnbindOk) MethodIdentifier() (uint16, uint16) {
   return 50, 51
 }
 
+func (f* QueueUnbindOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueueUnbindOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -1816,21 +2008,27 @@ func (f* QueuePurge) MethodIdentifier() (uint16, uint16) {
   return 50, 30
 }
 
+func (f* QueuePurge) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueuePurge) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Queue, err = ReadQueueName(reader)
   if err != nil {
-    return errors.New("Error reading field Queue")
+    return errors.New("Error reading field Queue: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -1881,10 +2079,16 @@ func (f* QueuePurgeOk) MethodIdentifier() (uint16, uint16) {
   return 50, 31
 }
 
+func (f* QueuePurgeOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueuePurgeOk) Read(reader io.Reader) (err error) {
   f.MessageCount, err = ReadMessageCount(reader)
   if err != nil {
-    return errors.New("Error reading field MessageCount")
+    return errors.New("Error reading field MessageCount: " + err.Error())
   }
 
   return
@@ -1922,21 +2126,27 @@ func (f* QueueDelete) MethodIdentifier() (uint16, uint16) {
   return 50, 40
 }
 
+func (f* QueueDelete) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueueDelete) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Queue, err = ReadQueueName(reader)
   if err != nil {
-    return errors.New("Error reading field Queue")
+    return errors.New("Error reading field Queue: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -1997,10 +2207,16 @@ func (f* QueueDeleteOk) MethodIdentifier() (uint16, uint16) {
   return 50, 41
 }
 
+func (f* QueueDeleteOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *QueueDeleteOk) Read(reader io.Reader) (err error) {
   f.MessageCount, err = ReadMessageCount(reader)
   if err != nil {
-    return errors.New("Error reading field MessageCount")
+    return errors.New("Error reading field MessageCount: " + err.Error())
   }
 
   return
@@ -2046,21 +2262,27 @@ func (f* BasicQos) MethodIdentifier() (uint16, uint16) {
   return 60, 10
 }
 
+func (f* BasicQos) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicQos) Read(reader io.Reader) (err error) {
   f.PrefetchSize, err = ReadLong(reader)
   if err != nil {
-    return errors.New("Error reading field PrefetchSize")
+    return errors.New("Error reading field PrefetchSize: " + err.Error())
   }
 
   f.PrefetchCount, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field PrefetchCount")
+    return errors.New("Error reading field PrefetchCount: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2110,6 +2332,12 @@ func (f* BasicQosOk) MethodIdentifier() (uint16, uint16) {
   return 60, 11
 }
 
+func (f* BasicQosOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicQosOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -2144,26 +2372,32 @@ func (f* BasicConsume) MethodIdentifier() (uint16, uint16) {
   return 60, 20
 }
 
+func (f* BasicConsume) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicConsume) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Queue, err = ReadQueueName(reader)
   if err != nil {
-    return errors.New("Error reading field Queue")
+    return errors.New("Error reading field Queue: " + err.Error())
   }
 
   f.ConsumerTag, err = ReadConsumerTag(reader)
   if err != nil {
-    return errors.New("Error reading field ConsumerTag")
+    return errors.New("Error reading field ConsumerTag: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2177,7 +2411,7 @@ func (f *BasicConsume) Read(reader io.Reader) (err error) {
 
   f.Arguments, err = ReadTable(reader)
   if err != nil {
-    return errors.New("Error reading field Arguments")
+    return errors.New("Error reading field Arguments: " + err.Error())
   }
 
   return
@@ -2244,10 +2478,16 @@ func (f* BasicConsumeOk) MethodIdentifier() (uint16, uint16) {
   return 60, 21
 }
 
+func (f* BasicConsumeOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicConsumeOk) Read(reader io.Reader) (err error) {
   f.ConsumerTag, err = ReadConsumerTag(reader)
   if err != nil {
-    return errors.New("Error reading field ConsumerTag")
+    return errors.New("Error reading field ConsumerTag: " + err.Error())
   }
 
   return
@@ -2282,16 +2522,22 @@ func (f* BasicCancel) MethodIdentifier() (uint16, uint16) {
   return 60, 30
 }
 
+func (f* BasicCancel) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicCancel) Read(reader io.Reader) (err error) {
   f.ConsumerTag, err = ReadConsumerTag(reader)
   if err != nil {
-    return errors.New("Error reading field ConsumerTag")
+    return errors.New("Error reading field ConsumerTag: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2337,10 +2583,16 @@ func (f* BasicCancelOk) MethodIdentifier() (uint16, uint16) {
   return 60, 31
 }
 
+func (f* BasicCancelOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicCancelOk) Read(reader io.Reader) (err error) {
   f.ConsumerTag, err = ReadConsumerTag(reader)
   if err != nil {
-    return errors.New("Error reading field ConsumerTag")
+    return errors.New("Error reading field ConsumerTag: " + err.Error())
   }
 
   return
@@ -2378,26 +2630,32 @@ func (f* BasicPublish) MethodIdentifier() (uint16, uint16) {
   return 60, 40
 }
 
+func (f* BasicPublish) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicPublish) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Exchange")
+    return errors.New("Error reading field Exchange: " + err.Error())
   }
 
   f.RoutingKey, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field RoutingKey")
+    return errors.New("Error reading field RoutingKey: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2461,25 +2719,31 @@ func (f* BasicReturn) MethodIdentifier() (uint16, uint16) {
   return 60, 50
 }
 
+func (f* BasicReturn) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicReturn) Read(reader io.Reader) (err error) {
   f.ReplyCode, err = ReadReplyCode(reader)
   if err != nil {
-    return errors.New("Error reading field ReplyCode")
+    return errors.New("Error reading field ReplyCode: " + err.Error())
   }
 
   f.ReplyText, err = ReadReplyText(reader)
   if err != nil {
-    return errors.New("Error reading field ReplyText")
+    return errors.New("Error reading field ReplyText: " + err.Error())
   }
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Exchange")
+    return errors.New("Error reading field Exchange: " + err.Error())
   }
 
   f.RoutingKey, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field RoutingKey")
+    return errors.New("Error reading field RoutingKey: " + err.Error())
   }
 
   return
@@ -2532,21 +2796,27 @@ func (f* BasicDeliver) MethodIdentifier() (uint16, uint16) {
   return 60, 60
 }
 
+func (f* BasicDeliver) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicDeliver) Read(reader io.Reader) (err error) {
   f.ConsumerTag, err = ReadConsumerTag(reader)
   if err != nil {
-    return errors.New("Error reading field ConsumerTag")
+    return errors.New("Error reading field ConsumerTag: " + err.Error())
   }
 
   f.DeliveryTag, err = ReadDeliveryTag(reader)
   if err != nil {
-    return errors.New("Error reading field DeliveryTag")
+    return errors.New("Error reading field DeliveryTag: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2554,12 +2824,12 @@ func (f *BasicDeliver) Read(reader io.Reader) (err error) {
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Exchange")
+    return errors.New("Error reading field Exchange: " + err.Error())
   }
 
   f.RoutingKey, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field RoutingKey")
+    return errors.New("Error reading field RoutingKey: " + err.Error())
   }
 
   return
@@ -2619,21 +2889,27 @@ func (f* BasicGet) MethodIdentifier() (uint16, uint16) {
   return 60, 70
 }
 
+func (f* BasicGet) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicGet) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShort(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   f.Queue, err = ReadQueueName(reader)
   if err != nil {
-    return errors.New("Error reading field Queue")
+    return errors.New("Error reading field Queue: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2688,16 +2964,22 @@ func (f* BasicGetOk) MethodIdentifier() (uint16, uint16) {
   return 60, 71
 }
 
+func (f* BasicGetOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicGetOk) Read(reader io.Reader) (err error) {
   f.DeliveryTag, err = ReadDeliveryTag(reader)
   if err != nil {
-    return errors.New("Error reading field DeliveryTag")
+    return errors.New("Error reading field DeliveryTag: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2705,17 +2987,17 @@ func (f *BasicGetOk) Read(reader io.Reader) (err error) {
 
   f.Exchange, err = ReadExchangeName(reader)
   if err != nil {
-    return errors.New("Error reading field Exchange")
+    return errors.New("Error reading field Exchange: " + err.Error())
   }
 
   f.RoutingKey, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field RoutingKey")
+    return errors.New("Error reading field RoutingKey: " + err.Error())
   }
 
   f.MessageCount, err = ReadMessageCount(reader)
   if err != nil {
-    return errors.New("Error reading field MessageCount")
+    return errors.New("Error reading field MessageCount: " + err.Error())
   }
 
   return
@@ -2773,10 +3055,16 @@ func (f* BasicGetEmpty) MethodIdentifier() (uint16, uint16) {
   return 60, 72
 }
 
+func (f* BasicGetEmpty) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicGetEmpty) Read(reader io.Reader) (err error) {
   f.Reserved1, err = ReadShortstr(reader)
   if err != nil {
-    return errors.New("Error reading field Reserved1")
+    return errors.New("Error reading field Reserved1: " + err.Error())
   }
 
   return
@@ -2811,16 +3099,22 @@ func (f* BasicAck) MethodIdentifier() (uint16, uint16) {
   return 60, 80
 }
 
+func (f* BasicAck) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicAck) Read(reader io.Reader) (err error) {
   f.DeliveryTag, err = ReadDeliveryTag(reader)
   if err != nil {
-    return errors.New("Error reading field DeliveryTag")
+    return errors.New("Error reading field DeliveryTag: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2867,16 +3161,22 @@ func (f* BasicReject) MethodIdentifier() (uint16, uint16) {
   return 60, 90
 }
 
+func (f* BasicReject) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicReject) Read(reader io.Reader) (err error) {
   f.DeliveryTag, err = ReadDeliveryTag(reader)
   if err != nil {
-    return errors.New("Error reading field DeliveryTag")
+    return errors.New("Error reading field DeliveryTag: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2922,11 +3222,17 @@ func (f* BasicRecoverAsync) MethodIdentifier() (uint16, uint16) {
   return 60, 100
 }
 
+func (f* BasicRecoverAsync) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicRecoverAsync) Read(reader io.Reader) (err error) {
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -2967,11 +3273,17 @@ func (f* BasicRecover) MethodIdentifier() (uint16, uint16) {
   return 60, 110
 }
 
+func (f* BasicRecover) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicRecover) Read(reader io.Reader) (err error) {
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -3011,6 +3323,12 @@ func (f* BasicRecoverOk) MethodIdentifier() (uint16, uint16) {
   return 60, 111
 }
 
+func (f* BasicRecoverOk) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicRecoverOk) Read(reader io.Reader) (err error) {
   return
 }
@@ -3040,16 +3358,22 @@ func (f* BasicNack) MethodIdentifier() (uint16, uint16) {
   return 60, 120
 }
 
+func (f* BasicNack) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *BasicNack) Read(reader io.Reader) (err error) {
   f.DeliveryTag, err = ReadDeliveryTag(reader)
   if err != nil {
-    return errors.New("Error reading field DeliveryTag")
+    return errors.New("Error reading field DeliveryTag: " + err.Error())
   }
 
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -3109,6 +3433,12 @@ func (f* TxSelect) MethodIdentifier() (uint16, uint16) {
   return 90, 10
 }
 
+func (f* TxSelect) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *TxSelect) Read(reader io.Reader) (err error) {
   return
 }
@@ -3134,6 +3464,12 @@ type TxSelectOk struct {
 func (f* TxSelectOk) MethodIdentifier() (uint16, uint16) {
   return 90, 11
 }
+
+func (f* TxSelectOk) FrameType() byte {
+  return 1
+}
+
+
 
 func (f *TxSelectOk) Read(reader io.Reader) (err error) {
   return
@@ -3161,6 +3497,12 @@ func (f* TxCommit) MethodIdentifier() (uint16, uint16) {
   return 90, 20
 }
 
+func (f* TxCommit) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *TxCommit) Read(reader io.Reader) (err error) {
   return
 }
@@ -3186,6 +3528,12 @@ type TxCommitOk struct {
 func (f* TxCommitOk) MethodIdentifier() (uint16, uint16) {
   return 90, 21
 }
+
+func (f* TxCommitOk) FrameType() byte {
+  return 1
+}
+
+
 
 func (f *TxCommitOk) Read(reader io.Reader) (err error) {
   return
@@ -3213,6 +3561,12 @@ func (f* TxRollback) MethodIdentifier() (uint16, uint16) {
   return 90, 30
 }
 
+func (f* TxRollback) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *TxRollback) Read(reader io.Reader) (err error) {
   return
 }
@@ -3238,6 +3592,12 @@ type TxRollbackOk struct {
 func (f* TxRollbackOk) MethodIdentifier() (uint16, uint16) {
   return 90, 31
 }
+
+func (f* TxRollbackOk) FrameType() byte {
+  return 1
+}
+
+
 
 func (f *TxRollbackOk) Read(reader io.Reader) (err error) {
   return
@@ -3276,11 +3636,17 @@ func (f* ConfirmSelect) MethodIdentifier() (uint16, uint16) {
   return 85, 10
 }
 
+func (f* ConfirmSelect) FrameType() byte {
+  return 1
+}
+
+
+
 func (f *ConfirmSelect) Read(reader io.Reader) (err error) {
 
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}
 
 
@@ -3319,6 +3685,12 @@ type ConfirmSelectOk struct {
 func (f* ConfirmSelectOk) MethodIdentifier() (uint16, uint16) {
   return 85, 11
 }
+
+func (f* ConfirmSelectOk) FrameType() byte {
+  return 1
+}
+
+
 
 func (f *ConfirmSelectOk) Read(reader io.Reader) (err error) {
   return

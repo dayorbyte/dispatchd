@@ -9,15 +9,30 @@ import (
 
 type Channel struct {
   id uint16
-  incoming chan *amqp.FrameWrapper
-  outgoing chan *amqp.FrameWrapper
+  server *Server
+  incoming chan *amqp.WireFrame
+  outgoing chan *amqp.WireFrame
   conn *AMQPConnection
   open bool
   done bool
+  lastMethodFrame *amqp.MethodFrame
+
+
 }
 
 func NewChannel(id uint16, conn *AMQPConnection) *Channel {
-  return &Channel{id, make(chan *amqp.FrameWrapper), conn.outgoing, conn, false, false}
+  return &Channel{
+    id,
+    conn.server,
+    make(chan *amqp.WireFrame),
+    conn.outgoing,
+    conn,
+    false,
+    false,
+    nil,
+    nil,
+    make([]ContentBodyFrame, 0, 1),
+  }
 }
 
 func (channel *Channel) start() {
@@ -50,7 +65,7 @@ func (channel *Channel) startChannel() {
 func (channel *Channel) sendMethod(method amqp.MethodFrame) {
   var buf = bytes.NewBuffer([]byte{})
   method.Write(buf)
-  channel.outgoing <- &amqp.FrameWrapper{uint8(amqp.FrameMethod), channel.id, buf.Bytes()}
+  channel.outgoing <- &amqp.WireFrame{uint8(amqp.FrameMethod), channel.id, buf.Bytes()}
 }
 
 func (channel *Channel) route(methodFrame amqp.MethodFrame) {
@@ -62,6 +77,8 @@ func (channel *Channel) route(methodFrame amqp.MethodFrame) {
       channel.channelRoute(methodFrame)
     case classId == 40:
       channel.exchangeRoute(methodFrame)
+    case classId == 60:
+      channel.basicRoute(methodFrame)
     case classId == 85:
       channel.confirmRoute(methodFrame)
     default:

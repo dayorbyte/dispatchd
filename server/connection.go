@@ -28,19 +28,21 @@ type AMQPConnection struct {
   // this is thread-safe because only channel 0 manages these fields
   nextChannel int
   channels map[uint16]*Channel
-  outgoing chan *amqp.FrameWrapper
+  outgoing chan *amqp.WireFrame
   connectStatus ConnectStatus
+  server *Server
 }
 
-func NewAMQPConnection(network net.Conn) *AMQPConnection {
+func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
   return &AMQPConnection{
     network,
     false,
     false,
     0,
     make(map[uint16]*Channel),
-    make(chan *amqp.FrameWrapper),
+    make(chan *amqp.WireFrame),
     ConnectStatus{},
+    server,
   }
 }
 
@@ -94,10 +96,16 @@ func (conn *AMQPConnection) handleIncoming() {
       conn.network.Close()
       break
     }
-    fmt.Println("Got frame from client")
     // Cleanup. Remove things which have expired, etc
     conn.cleanUp()
 
+    switch {
+    case frame.FrameType == 8:
+      // heartbeat
+      fmt.Println("Got heartbeat from client")
+      continue
+    }
+    fmt.Println("Got frame from client")
     // TODO: handle non-method frames (maybe?)
 
     // If we haven't finished the handshake, ignore frames on channels other

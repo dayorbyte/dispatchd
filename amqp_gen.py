@@ -105,7 +105,13 @@ def handle_method_struct(f, struct_name, fields, cls_index, method_index):
   f.write('''
 func (f* {}) MethodIdentifier() (uint16, uint16) {{
   return {}, {}
-}}\n\n'''.format(struct_name, cls_index, method_index))
+}}
+
+func (f* {}) FrameType() byte {{
+  return 1
+}}
+
+\n\n'''.format(struct_name, cls_index, method_index, struct_name))
 
 def handle_method_reader(f, struct_name, fields):
   f.write('''func (f *{}) Read(reader io.Reader) (err error) {{\n'''.format(struct_name))
@@ -120,7 +126,7 @@ def handle_method_reader(f, struct_name, fields):
       bits = 0
       f.write('''  f.{name}, err = Read{serializer}(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}: " + err.Error())
   }}\n\n'''.format(**field))
   f.write('  return\n')
   f.write('}\n')
@@ -129,7 +135,7 @@ def read_bits(f):
   f.write('''
   bits, err := ReadOctet(reader)
   if err != nil {{
-    return errors.New("Error reading field {name}")
+    return errors.New("Error reading field {name}" + err.Error())
   }}\n\n
 ''')
 
