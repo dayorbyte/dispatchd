@@ -11,6 +11,7 @@ import (
 func (channel *Channel) confirmRoute(methodFrame amqp.MethodFrame) error {
   switch method := methodFrame.(type) {
   case *amqp.ConfirmSelect:
+    channel.confirmMode = true
     return channel.confirmSelect(method)
     // case *amqp.ConfirmSelectOk:
     //   return channel.confirmSelectOk(method)

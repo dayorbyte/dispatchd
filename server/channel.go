@@ -15,10 +15,11 @@ type Channel struct {
   conn *AMQPConnection
   open bool
   done bool
+  confirmMode bool
   lastMethodFrame amqp.MethodFrame
   lastHeaderFrame *amqp.ContentHeaderFrame
   bodyFrames []*amqp.WireFrame
-
+  msgIndex uint64
 }
 
 func NewChannel(id uint16, conn *AMQPConnection) *Channel {
@@ -30,9 +31,11 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
     conn,
     false,
     false,
+    false,
     nil,
     nil,
     make([]*amqp.WireFrame, 0, 1),
+    0,
   }
 }
 
@@ -104,6 +107,10 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
   }
   fmt.Println("Dispatching")
   channel.routeBodyMethod(channel.lastMethodFrame, channel.lastHeaderFrame, channel.bodyFrames)
+  if channel.confirmMode {
+    channel.msgIndex += 1
+    channel.sendMethod(&amqp.BasicAck{channel.msgIndex, false})
+  }
 
 }
 
