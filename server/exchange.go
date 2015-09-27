@@ -29,6 +29,6 @@ func (exchange *Exchange) start() {
   }()
 }
 
-func (*Exchange) route(message interface{}) {
-
+func (exchange *Exchange) publish(method *amqp.BasicPublish, header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
+  fmt.Printf("Got message in exchange %s\n", exchange.name)
 }

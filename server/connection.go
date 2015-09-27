@@ -105,7 +105,7 @@ func (conn *AMQPConnection) handleIncoming() {
       fmt.Println("Got heartbeat from client")
       continue
     }
-    fmt.Println("Got frame from client")
+    fmt.Printf("Got frame from client. Type: %d\n", frame.FrameType)
     // TODO: handle non-method frames (maybe?)
 
     // If we haven't finished the handshake, ignore frames on channels other

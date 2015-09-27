@@ -102,6 +102,7 @@ func (channel *Channel) basicCancelOk(method *amqp.BasicCancelOk) error {
 
 func (channel *Channel) basicPublish(method *amqp.BasicPublish) error {
   fmt.Println("Handling BasicPublish")
+  channel.lastMethodFrame = method
   return nil
 }
 

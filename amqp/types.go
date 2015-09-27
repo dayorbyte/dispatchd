@@ -31,7 +31,7 @@ type WireFrame struct {
 }
 
 type ContentHeaderFrame struct {
-  ContentClass byte
+  ContentClass uint16
   ContentWeight uint16
   ContentBodySize uint64
   PropertyFlags uint16
@@ -43,7 +43,7 @@ func (frame *ContentHeaderFrame) FrameType() byte {
 }
 
 func (frame *ContentHeaderFrame) Read(reader io.Reader) (err error) {
-  frame.ContentClass, err = ReadOctet(reader)
+  frame.ContentClass, err = ReadShort(reader)
   if err != nil {
     return err
   }
