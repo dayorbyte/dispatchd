@@ -15,8 +15,8 @@ type Channel struct {
   conn *AMQPConnection
   open bool
   done bool
-  lastMethodFrame *amqp.MethodFrame
-
+  // lastMethodFrame *amqp.MethodFrame
+  // lastHeaderFrame *amqp.HeaderFrame
 
 }
 
@@ -29,9 +29,9 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
     conn,
     false,
     false,
-    nil,
-    nil,
-    make([]ContentBodyFrame, 0, 1),
+    // nil,
+    // nil,
+    // make([]ContentBodyFrame, 0, 1),
   }
 }
 
