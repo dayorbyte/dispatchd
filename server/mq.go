@@ -7,8 +7,7 @@ import (
 )
 
 func handleConnection(server *Server, conn net.Conn) {
-	c := NewAMQPConnection(server, conn)
-	c.openConnection()
+	server.openConnection(conn)
 }
 
 func main() {

@@ -18,30 +18,28 @@ type ConnectStatus struct {
 	tuneOk   bool
 	open     bool
 	openOk   bool
+	closing  bool
+	closed   bool
 }
 
 type AMQPConnection struct {
-	network net.Conn
-	open    bool
-	done    bool
-	// this is thread-safe because only channel 0 manages these fields
+	id            uint64
 	nextChannel   int
 	channels      map[uint16]*Channel
 	outgoing      chan *amqp.WireFrame
 	connectStatus ConnectStatus
 	server        *Server
+	network       net.Conn
 }
 
 func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
 	return &AMQPConnection{
-		network,
-		false,
-		false,
-		0,
-		make(map[uint16]*Channel),
-		make(chan *amqp.WireFrame),
-		ConnectStatus{},
-		server,
+		id:            server.nextConnId(),
+		network:       network,
+		channels:      make(map[uint16]*Channel),
+		outgoing:      make(chan *amqp.WireFrame),
+		connectStatus: ConnectStatus{},
+		server:        server,
 	}
 }
 
@@ -50,14 +48,14 @@ func (conn *AMQPConnection) openConnection() {
 	buf := make([]byte, 8)
 	_, err := conn.network.Read(buf)
 	if err != nil {
-		fmt.Println("Error reading:", err.Error())
+		conn.destructor()
+		return
 	}
 
 	var supported = []byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}
 	if bytes.Compare(buf, supported) != 0 {
 		conn.network.Write(supported)
-		conn.network.Close()
-		fmt.Println("Bad version from client")
+		conn.destructor()
 		return
 	}
 
@@ -76,6 +74,11 @@ func (conn *AMQPConnection) deregisterChannel(id uint16) {
 	delete(conn.channels, id)
 }
 
+func (conn *AMQPConnection) destructor() {
+	conn.network.Close()
+	conn.server.deregisterConnection(conn.id)
+}
+
 func (conn *AMQPConnection) handleOutgoing() {
 	go func() {
 		for {
@@ -88,7 +91,7 @@ func (conn *AMQPConnection) handleOutgoing() {
 func (conn *AMQPConnection) handleIncoming() {
 	for {
 		// If the connection is done, we stop handling frames
-		if conn.done {
+		if conn.connectStatus.closed {
 			break
 		}
 		// Read from the network
@@ -112,7 +115,7 @@ func (conn *AMQPConnection) handleIncoming() {
 
 		// If we haven't finished the handshake, ignore frames on channels other
 		// than 0
-		if !conn.open && frame.Channel != 0 {
+		if !conn.connectStatus.open && frame.Channel != 0 {
 			fmt.Println("Non-0 channel for unopened connection")
 			conn.network.Close()
 			break

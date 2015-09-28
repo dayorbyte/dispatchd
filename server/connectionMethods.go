@@ -30,7 +30,6 @@ func (channel *Channel) connectionOpen(method *amqp.ConnectionOpen) error {
 	channel.conn.connectStatus.open = true
 	channel.sendMethod(&amqp.ConnectionOpenOk{""})
 	channel.conn.connectStatus.openOk = true
-	channel.conn.open = true
 	return nil
 }
 
