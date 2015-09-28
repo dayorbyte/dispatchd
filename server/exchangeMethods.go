@@ -23,12 +23,7 @@ func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) error {
   return errors.New("Unable to route method frame")
 }
 
-
-
-
-
 func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
-  fmt.Println("Declaring exchange: Start")
   var err = channel.server.declareExchange(method)
   if err != nil {
     fmt.Println("Declaring exchange: Error")

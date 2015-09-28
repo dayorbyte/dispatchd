@@ -7,14 +7,20 @@ import (
   "strconv"
 )
 
+const (
+  CH_STATE_INIT = iota
+  CH_STATE_OPEN = iota
+  CH_STATE_CLOSING = iota
+  CH_STATE_CLOSED = iota
+)
+
 type Channel struct {
   id uint16
   server *Server
   incoming chan *amqp.WireFrame
   outgoing chan *amqp.WireFrame
   conn *AMQPConnection
-  open bool
-  done bool
+  state uint8
   confirmMode bool
   lastMethodFrame amqp.MethodFrame
   lastHeaderFrame *amqp.ContentHeaderFrame
@@ -29,8 +35,7 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
     make(chan *amqp.WireFrame),
     conn.outgoing,
     conn,
-    false,
-    false,
+    CH_STATE_INIT,
     false,
     nil,
     nil,
@@ -41,22 +46,27 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 
 func (channel *Channel) start() {
   if channel.id == 0 {
+    channel.state = CH_STATE_OPEN
     go channel.startConnection()
   } else {
-    channel.open = true
+    channel.state = CH_STATE_OPEN
     go channel.startChannel()
   }
 
   // Receive method frames from the client and route them
   go func() {
+    defer channel.destructor()
     for {
+      if channel.state == CH_STATE_CLOSED {
+        break
+      }
       var frame = <- channel.incoming
       switch {
-      case frame.FrameType == 1:
+      case frame.FrameType == uint8(amqp.FrameMethod):
         channel.routeMethod(frame)
-      case frame.FrameType == 2:
+      case frame.FrameType == uint8(amqp.FrameHeader):
         channel.handleContentHeader(frame)
-      case frame.FrameType == 3:
+      case frame.FrameType == uint8(amqp.FrameBody):
         channel.handleContentBody(frame)
       default:
         fmt.Println("Unknown frame type!")
@@ -66,7 +76,21 @@ func (channel *Channel) start() {
 }
 
 func (channel *Channel) startChannel() {
-  fmt.Println("Start channel", channel.id)
+
+}
+
+func (channel *Channel) close(code uint16, reason string, classId uint16, methodId uint16) {
+  channel.sendMethod(&amqp.ChannelClose{
+    ReplyCode : code,
+    ReplyText : reason,
+    ClassId   : classId,
+    MethodId  : methodId,
+  })
+  channel.state = CH_STATE_CLOSING
+}
+
+func (channel *Channel) destructor() {
+  channel.conn.deregisterChannel(channel.id)
 }
 
 // Send a method frame out to the client
@@ -102,10 +126,8 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
     size += uint64(len(body.Payload))
   }
   if size < channel.lastHeaderFrame.ContentBodySize {
-    fmt.Println("More body to come!")
     return
   }
-  fmt.Println("Dispatching")
   channel.routeBodyMethod(channel.lastMethodFrame, channel.lastHeaderFrame, channel.bodyFrames)
   if channel.confirmMode {
     channel.msgIndex += 1
@@ -120,7 +142,16 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
   if err != nil {
     fmt.Println("ERROR: ", err)
   }
-  var classId, _ = methodFrame.MethodIdentifier()
+  var classId, methodId = methodFrame.MethodIdentifier()
+
+  // If the method isn't closing related and we're closing, ignore the frames
+  var closeChannel = classId == amqp.ClassIdChannel && (methodId == amqp.MethodIdChannelClose || methodId == amqp.MethodIdChannelCloseOk)
+  var closeConnection = classId == amqp.ClassIdConnection && (methodId == amqp.MethodIdConnectionClose || methodId == amqp.MethodIdConnectionCloseOk)
+  if channel.state == CH_STATE_CLOSING && !(closeChannel || closeConnection) {
+    return nil
+  }
+
+  // Route
   switch {
     case classId == 10:
       channel.connectionRoute(methodFrame)
@@ -138,7 +169,8 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
   return nil
 }
 
-func (channel *Channel) routeBodyMethod(methodFrame amqp.MethodFrame, header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
+func (channel *Channel) routeBodyMethod(methodFrame amqp.MethodFrame,
+  header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
   switch method := methodFrame.(type) {
   case *amqp.BasicPublish:
     channel.server.exchanges[method.Exchange].publish(method, header, bodyFrames)

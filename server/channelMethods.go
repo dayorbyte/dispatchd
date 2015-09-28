@@ -29,7 +29,6 @@ func (channel *Channel) channelRoute(methodFrame amqp.MethodFrame) error {
 
 
 func (channel *Channel) channelOpen(method *amqp.ChannelOpen) error {
-  channel.open = true
   channel.sendMethod(&amqp.ChannelOpenOk{})
   return nil
 }
@@ -47,11 +46,12 @@ func (channel *Channel) channelFlowOk(method *amqp.ChannelFlowOk) error {
 func (channel *Channel) channelClose(method *amqp.ChannelClose) error {
   // TODO: close channel
   channel.sendMethod(&amqp.ChannelCloseOk{})
+  channel.state = CH_STATE_CLOSED
   return nil
 }
 
 func (channel *Channel) channelCloseOk(method *amqp.ChannelCloseOk) error {
   // TODO(close channel)
-  channel.done = true
+  channel.state = CH_STATE_CLOSED
   return nil
 }

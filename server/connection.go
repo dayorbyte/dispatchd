@@ -47,7 +47,6 @@ func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
 }
 
 func (conn *AMQPConnection) openConnection() {
-    fmt.Println("=====> Incoming connection!")
   // Negotiate Protocol
   buf := make([]byte, 8)
   _, err := conn.network.Read(buf)
@@ -72,6 +71,10 @@ func (conn *AMQPConnection) openConnection() {
 
 func (conn *AMQPConnection) cleanUp() {
 
+}
+
+func (conn *AMQPConnection) deregisterChannel(id uint16) {
+  delete(conn.channels, id)
 }
 
 func (conn *AMQPConnection) handleOutgoing() {

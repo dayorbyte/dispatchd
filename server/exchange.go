@@ -3,8 +3,6 @@ package main
 
 import (
   "fmt"
-  // "errors"
-  // "bytes"
   "github.com/jeffjenkins/mq/amqp"
 )
 
