@@ -48,14 +48,14 @@ func (conn *AMQPConnection) openConnection() {
 	buf := make([]byte, 8)
 	_, err := conn.network.Read(buf)
 	if err != nil {
-		conn.destructor()
+		conn.hardClose()
 		return
 	}
 
 	var supported = []byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}
 	if bytes.Compare(buf, supported) != 0 {
 		conn.network.Write(supported)
-		conn.destructor()
+		conn.hardClose()
 		return
 	}
 
@@ -77,7 +77,7 @@ func (conn *AMQPConnection) deregisterChannel(id uint16) {
 func (conn *AMQPConnection) hardClose() {
 	conn.network.Close()
 	conn.server.deregisterConnection(conn.id)
-	for id, channel := range conn.channels {
+	for _, channel := range conn.channels {
 		if channel.state != CH_STATE_CLOSED {
 			channel.destructor()
 		}
@@ -85,12 +85,22 @@ func (conn *AMQPConnection) hardClose() {
 }
 
 func (conn *AMQPConnection) handleOutgoing() {
+	// TODO(MUST): Use SetWriteDeadline so we never wait too long. It should be
+	// higher than the heartbeat in use. It should be reset after the heartbeat
+	// interval is known.
 	go func() {
 		for {
 			var frame = <-conn.outgoing
+			// TODO(MUST): Hard close on irrecoverable errors, retry on recoverable
+			// ones some number of times.
 			amqp.WriteFrame(conn.network, frame)
 		}
 	}()
+}
+
+func (conn *AMQPConnection) connectionError(code uint16, message string) {
+	// TODO(SHOULD): Add a timeout to hard close the connection if we get no reply
+	conn.channels[0].sendMethod(&amqp.ConnectionClose{code, message, 0, 0})
 }
 
 func (conn *AMQPConnection) handleIncoming() {
@@ -100,6 +110,9 @@ func (conn *AMQPConnection) handleIncoming() {
 			break
 		}
 		// Read from the network
+		// TODO(MUST): Add a timeout to the read, esp. if there is no heartbeat
+		// TODO(MUST): Hard close on unrecoverable errors, retry (with backoff?)
+		// for recoverable ones
 		frame, err := amqp.ReadFrame(conn.network)
 		if err != nil {
 			fmt.Println("Error reading frame")
@@ -111,28 +124,23 @@ func (conn *AMQPConnection) handleIncoming() {
 
 		switch {
 		case frame.FrameType == 8:
-			// heartbeat
-			fmt.Println("Got heartbeat from client")
+			// TODO(MUST): Update last heartbeat time
 			continue
 		}
-		fmt.Printf("Got frame from client. Type: %d\n", frame.FrameType)
-		// TODO: handle non-method frames (maybe?)
 
-		// If we haven't finished the handshake, ignore frames on channels other
-		// than 0
 		if !conn.connectStatus.open && frame.Channel != 0 {
 			fmt.Println("Non-0 channel for unopened connection")
-			conn.network.Close()
+			conn.hardClose()
 			break
 		}
 		var channel, ok = conn.channels[frame.Channel]
+		// TODO(MUST): Check that the channel number if in the valid range
 		if !ok {
 			channel = NewChannel(frame.Channel, conn)
 			conn.channels[frame.Channel] = channel
 			conn.channels[frame.Channel].start()
 		}
 		// Dispatch
-		fmt.Println("Sending frame to", channel.id)
 		channel.incoming <- frame
 	}
 }

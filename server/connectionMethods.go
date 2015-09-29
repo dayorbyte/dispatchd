@@ -16,8 +16,8 @@ func (channel *Channel) connectionRoute(methodFrame amqp.MethodFrame) error {
 		return channel.connectionOpen(method)
 	case *amqp.ConnectionClose:
 		return channel.connectionClose(method)
-	case *amqp.SecureOk:
-		return channel.secureOk(method)
+	case *amqp.ConnectionSecureOk:
+		return channel.connectionSecureOk(method)
 	case *amqp.ConnectionCloseOk:
 		return channel.connectionCloseOk(method)
 	case *amqp.ConnectionBlocked:
@@ -68,7 +68,7 @@ func (channel *Channel) connectionClose(method *amqp.ConnectionClose) error {
 	return nil
 }
 
-func (channel *Channel) secureOk(method *amqp.ConnectionSecureOk) error {
+func (channel *Channel) connectionSecureOk(method *amqp.ConnectionSecureOk) error {
 	// TODO(MAY): If other security mechanisms are in place, handle this
 	return errors.New("Server does not support secure/secure-ok. Use PLAIN auth in start-ok method")
 }
