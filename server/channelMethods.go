@@ -26,29 +26,32 @@ func (channel *Channel) channelRoute(methodFrame amqp.MethodFrame) error {
 }
 
 func (channel *Channel) channelOpen(method *amqp.ChannelOpen) error {
+	// TODO(MUST): if channel is open, send 504 ChannelError
 	channel.sendMethod(&amqp.ChannelOpenOk{})
+	channel.state = CH_STATE_OPEN
 	return nil
 }
 
 func (channel *Channel) channelFlow(method *amqp.ChannelFlow) error {
-	// TODO
+	// TODO(MUST): Error 540 NotImplemented
 	return nil
 }
 
 func (channel *Channel) channelFlowOk(method *amqp.ChannelFlowOk) error {
-	// TODO
+	// TODO(MUST): Error 540 NotImplemented
 	return nil
 }
 
 func (channel *Channel) channelClose(method *amqp.ChannelClose) error {
-	// TODO: close channel
+	// TODO(MAY): Report the class and method that are the reason for the close
 	channel.sendMethod(&amqp.ChannelCloseOk{})
 	channel.state = CH_STATE_CLOSED
+	channel.destructor()
 	return nil
 }
 
 func (channel *Channel) channelCloseOk(method *amqp.ChannelCloseOk) error {
-	// TODO(close channel)
 	channel.state = CH_STATE_CLOSED
+	channel.destructor()
 	return nil
 }

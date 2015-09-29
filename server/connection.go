@@ -74,9 +74,14 @@ func (conn *AMQPConnection) deregisterChannel(id uint16) {
 	delete(conn.channels, id)
 }
 
-func (conn *AMQPConnection) destructor() {
+func (conn *AMQPConnection) hardClose() {
 	conn.network.Close()
 	conn.server.deregisterConnection(conn.id)
+	for id, channel := range conn.channels {
+		if channel.state != CH_STATE_CLOSED {
+			channel.destructor()
+		}
+	}
 }
 
 func (conn *AMQPConnection) handleOutgoing() {

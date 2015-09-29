@@ -45,7 +45,6 @@ func (channel *Channel) start() {
 		channel.state = CH_STATE_OPEN
 		go channel.startConnection()
 	} else {
-		channel.state = CH_STATE_OPEN
 		go channel.startChannel()
 	}
 
