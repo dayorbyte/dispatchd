@@ -2,8 +2,8 @@ package main
 
 import (
 	"errors"
-	// "bytes"
 	"github.com/jeffjenkins/mq/amqp"
+	"time"
 )
 
 func (channel *Channel) connectionRoute(methodFrame amqp.MethodFrame) error {
@@ -41,17 +41,40 @@ func (channel *Channel) connectionTuneOk(method *amqp.ConnectionTuneOk) error {
 	// TODO(MUST): Start sending and monitoring heartbeats
 	// TODO(MUST): If client gives higher frame max or channel max, hard close
 	channel.conn.connectStatus.tuneOk = true
+	if method.ChannelMax > channel.conn.maxChannels || method.FrameMax > channel.conn.maxFrameSize {
+		channel.conn.hardClose()
+		return nil
+	}
+
+	if method.Heartbeat > 0 {
+		// Start sending heartbeats to the client
+		channel.conn.sendHeartbeatInterval = time.Duration(method.Heartbeat) * time.Second
+		channel.conn.handleSendHeartbeat()
+	}
+	// Start listening for heartbeats from the client
+	channel.conn.handleClientHeartbeatTimeout()
 	return nil
 }
 
 func (channel *Channel) connectionStartOk(method *amqp.ConnectionStartOk) error {
 	// TODO(SHOULD): record product/version/platform/copyright/information
-	// TODO(MUST): bad security mechanism => hard close the connection
 	// TODO(MUST): assert mechanism, response, locale are not null
+	// TODO(MUST): if the auth is wrong, send 403 access-refused
 	channel.conn.connectStatus.startOk = true
-	// TODO(MUST): factor out these constants, and add support for
-	// 						 them being enforced at the connection level.
-	channel.sendMethod(&amqp.ConnectionTune{256, 8192, 10})
+
+	if method.Mechanism != "PLAIN" {
+		channel.conn.hardClose()
+	}
+
+	// TODO(MUST): add support these being enforced at the connection level.
+	channel.sendMethod(&amqp.ConnectionTune{
+		channel.conn.maxChannels,
+		channel.conn.maxFrameSize,
+		uint16(channel.conn.receiveHeartbeatInterval.Nanoseconds() / int64(time.Second)),
+	})
+	// TODO: Implement secure/secure-ok later if needed
+	channel.conn.connectStatus.secure = true
+	channel.conn.connectStatus.secureOk = true
 	channel.conn.connectStatus.tune = true
 	return nil
 }

@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"net"
+	"time"
 	// "errors"
 	// "os"
 	"bytes"
 	"github.com/jeffjenkins/mq/amqp"
+	"sync"
 )
 
 type ConnectStatus struct {
@@ -23,13 +25,19 @@ type ConnectStatus struct {
 }
 
 type AMQPConnection struct {
-	id            uint64
-	nextChannel   int
-	channels      map[uint16]*Channel
-	outgoing      chan *amqp.WireFrame
-	connectStatus ConnectStatus
-	server        *Server
-	network       net.Conn
+	id                       uint64
+	nextChannel              int
+	channels                 map[uint16]*Channel
+	outgoing                 chan *amqp.WireFrame
+	connectStatus            ConnectStatus
+	server                   *Server
+	network                  net.Conn
+	lock                     sync.Mutex
+	ttl                      time.Time
+	sendHeartbeatInterval    time.Duration
+	receiveHeartbeatInterval time.Duration
+	maxChannels              uint16
+	maxFrameSize             uint32
 }
 
 func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
@@ -40,6 +48,9 @@ func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
 		outgoing:      make(chan *amqp.WireFrame),
 		connectStatus: ConnectStatus{},
 		server:        server,
+		receiveHeartbeatInterval: 10 * time.Second,
+		maxChannels:              4096,
+		maxFrameSize:             65536,
 	}
 }
 
@@ -84,6 +95,35 @@ func (conn *AMQPConnection) hardClose() {
 	}
 }
 
+func (conn *AMQPConnection) handleSendHeartbeat() {
+	go func() {
+		for {
+			if conn.connectStatus.closed {
+				break
+			}
+			time.Sleep(conn.sendHeartbeatInterval / 2)
+			conn.outgoing <- &amqp.WireFrame{8, 0, make([]byte, 0)}
+		}
+	}()
+}
+
+func (conn *AMQPConnection) handleClientHeartbeatTimeout() {
+	// TODO(MUST): The spec is that any octet is a heartbeat substitute. Right
+	// now this is only looking at frames, so a long send could cause a timeout
+	go func() {
+		for {
+			if conn.connectStatus.closed {
+				break
+			}
+			time.Sleep(conn.receiveHeartbeatInterval / 2) //
+			// If now is higher than TTL we need to time the client out
+			if conn.ttl.Before(time.Now()) {
+				conn.hardClose()
+			}
+		}
+	}()
+}
+
 func (conn *AMQPConnection) handleOutgoing() {
 	// TODO(MUST): Use SetWriteDeadline so we never wait too long. It should be
 	// higher than the heartbeat in use. It should be reset after the heartbeat
@@ -100,7 +140,12 @@ func (conn *AMQPConnection) handleOutgoing() {
 
 func (conn *AMQPConnection) connectionError(code uint16, message string) {
 	// TODO(SHOULD): Add a timeout to hard close the connection if we get no reply
-	conn.channels[0].sendMethod(&amqp.ConnectionClose{code, message, 0, 0})
+	conn.connectionErrorWithMethod(code, message, 0, 0)
+}
+
+func (conn *AMQPConnection) connectionErrorWithMethod(code uint16, message string, classId uint16, methodId uint16) {
+	// TODO(SHOULD): Add a timeout to hard close the connection if we get no reply
+	conn.channels[0].sendMethod(&amqp.ConnectionClose{code, message, classId, methodId})
 }
 
 func (conn *AMQPConnection) handleIncoming() {
@@ -119,8 +164,10 @@ func (conn *AMQPConnection) handleIncoming() {
 			conn.network.Close()
 			break
 		}
-		// Cleanup. Remove things which have expired, etc
+
+		// Upkeep. Remove things which have expired, etc
 		conn.cleanUp()
+		conn.ttl = time.Now().Add(conn.receiveHeartbeatInterval * 2)
 
 		switch {
 		case frame.FrameType == 8:
