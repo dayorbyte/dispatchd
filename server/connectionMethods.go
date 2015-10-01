@@ -29,7 +29,8 @@ func (channel *Channel) connectionRoute(methodFrame amqp.MethodFrame) error {
 }
 
 func (channel *Channel) connectionOpen(method *amqp.ConnectionOpen) error {
-	// TODO(MAY): Add support for virtual hosts
+	// TODO(MAY): Add support for virtual hosts. Check for access to the
+	// selected one
 	channel.conn.connectStatus.open = true
 	channel.sendMethod(&amqp.ConnectionOpenOk{""})
 	channel.conn.connectStatus.openOk = true
@@ -37,21 +38,23 @@ func (channel *Channel) connectionOpen(method *amqp.ConnectionOpen) error {
 }
 
 func (channel *Channel) connectionTuneOk(method *amqp.ConnectionTuneOk) error {
-	// TODO(MUST): Lower the limits from startOk if the client gives lower values
-	// TODO(MUST): Start sending and monitoring heartbeats
-	// TODO(MUST): If client gives higher frame max or channel max, hard close
 	channel.conn.connectStatus.tuneOk = true
 	if method.ChannelMax > channel.conn.maxChannels || method.FrameMax > channel.conn.maxFrameSize {
 		channel.conn.hardClose()
 		return nil
 	}
 
+	channel.conn.maxChannels = method.ChannelMax
+	channel.conn.maxFrameSize = method.FrameMax
+
 	if method.Heartbeat > 0 {
 		// Start sending heartbeats to the client
 		channel.conn.sendHeartbeatInterval = time.Duration(method.Heartbeat) * time.Second
 		channel.conn.handleSendHeartbeat()
 	}
-	// Start listening for heartbeats from the client
+	// Start listening for heartbeats from the client.
+	// We always ask for them since we want to shut down
+	// connections not in use
 	channel.conn.handleClientHeartbeatTimeout()
 	return nil
 }
@@ -91,22 +94,23 @@ func (channel *Channel) connectionClose(method *amqp.ConnectionClose) error {
 	return nil
 }
 
-func (channel *Channel) connectionSecureOk(method *amqp.ConnectionSecureOk) error {
-	// TODO(MAY): If other security mechanisms are in place, handle this
-	return errors.New("Server does not support secure/secure-ok. Use PLAIN auth in start-ok method")
-}
-
 func (channel *Channel) connectionCloseOk(method *amqp.ConnectionCloseOk) error {
 	// TODO(MUST): Log class-id and method-id of the failing method, if available
 	return nil
 }
 
+func (channel *Channel) connectionSecureOk(method *amqp.ConnectionSecureOk) error {
+	// TODO(MAY): If other security mechanisms are in place, handle this
+	channel.conn.hardClose()
+	return nil
+}
+
 func (channel *Channel) connectionBlocked(method *amqp.ConnectionBlocked) error {
-	// TODO(MUST): Error 540 NotImplemented
+	channel.conn.connectionErrorWithMethod(540, "Not implemented", 10, 60)
 	return nil
 }
 
 func (channel *Channel) connectionUnblocked(method *amqp.ConnectionUnblocked) error {
-	// TODO(MUST): Error 540 NotImplemented
+	channel.conn.connectionErrorWithMethod(540, "Not implemented", 10, 61)
 	return nil
 }

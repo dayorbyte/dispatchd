@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+// TODO: we can only be "in" one of these at once, so this should probably
+// be one field
 type ConnectStatus struct {
 	start    bool
 	startOk  bool
@@ -110,6 +112,8 @@ func (conn *AMQPConnection) handleSendHeartbeat() {
 func (conn *AMQPConnection) handleClientHeartbeatTimeout() {
 	// TODO(MUST): The spec is that any octet is a heartbeat substitute. Right
 	// now this is only looking at frames, so a long send could cause a timeout
+	// TODO(MUST): if the client isn't heartbeating how do we know when it's
+	// gone?
 	go func() {
 		for {
 			if conn.connectStatus.closed {
@@ -139,12 +143,11 @@ func (conn *AMQPConnection) handleOutgoing() {
 }
 
 func (conn *AMQPConnection) connectionError(code uint16, message string) {
-	// TODO(SHOULD): Add a timeout to hard close the connection if we get no reply
 	conn.connectionErrorWithMethod(code, message, 0, 0)
 }
 
 func (conn *AMQPConnection) connectionErrorWithMethod(code uint16, message string, classId uint16, methodId uint16) {
-	// TODO(SHOULD): Add a timeout to hard close the connection if we get no reply
+	conn.connectStatus.closing = true
 	conn.channels[0].sendMethod(&amqp.ConnectionClose{code, message, classId, methodId})
 }
 

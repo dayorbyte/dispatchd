@@ -18,6 +18,7 @@ func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) error {
 		// case *amqp.ExchangeDeleteOk:
 		//   return channel.exchangeDeleteOk(method)
 	}
+	// TODO(MUST): make this a client error
 	return errors.New("Unable to route method frame")
 }
 

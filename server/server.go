@@ -21,6 +21,7 @@ func NewServer() *Server {
 		exchanges: make(map[string]*Exchange),
 		queues:    make(map[string]*Queue),
 		bindings:  make([]*Binding, 0),
+		conns:     make(map[uint64]*AMQPConnection),
 	}
 }
 

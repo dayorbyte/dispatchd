@@ -33,12 +33,13 @@ func (channel *Channel) channelOpen(method *amqp.ChannelOpen) error {
 }
 
 func (channel *Channel) channelFlow(method *amqp.ChannelFlow) error {
-	// TODO(MUST): Error 540 NotImplemented
+	var classId, methodId = method.MethodIdentifier()
+	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
 	return nil
 }
 
 func (channel *Channel) channelFlowOk(method *amqp.ChannelFlowOk) error {
-	// TODO(MUST): Error 540 NotImplemented
+	channel.conn.connectionErrorWithMethod(540, "Not implemented", 20, 21)
 	return nil
 }
 
