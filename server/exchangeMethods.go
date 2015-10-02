@@ -1,9 +1,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	// "bytes"
 	"github.com/jeffjenkins/mq/amqp"
 )
 
@@ -11,15 +9,16 @@ func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) error {
 	switch method := methodFrame.(type) {
 	case *amqp.ExchangeDeclare:
 		return channel.exchangeDeclare(method)
-	// case *amqp.ExchangeDeclareOk:
-	//   return channel.exchangeDeclareOk(method)
+	case *amqp.ExchangeBind:
+		return channel.exchangeBind(method)
+	case *amqp.ExchangeUnbind:
+		return channel.exchangeUnbind(method)
 	case *amqp.ExchangeDelete:
 		return channel.exchangeDelete(method)
-		// case *amqp.ExchangeDeleteOk:
-		//   return channel.exchangeDeleteOk(method)
 	}
-	// TODO(MUST): make this a client error
-	return errors.New("Unable to route method frame")
+	var classId, methodId = methodFrame.MethodIdentifier()
+	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	return nil
 }
 
 func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
@@ -41,5 +40,16 @@ func (channel *Channel) exchangeDelete(method *amqp.ExchangeDelete) error {
 		return err
 	}
 	channel.sendMethod(&amqp.ExchangeDeleteOk{})
+	return nil
+}
+
+func (channel *Channel) exchangeBind(method *amqp.ExchangeBind) error {
+	var classId, methodId = method.MethodIdentifier()
+	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	return nil
+}
+func (channel *Channel) exchangeUnbind(method *amqp.ExchangeUnbind) error {
+	var classId, methodId = method.MethodIdentifier()
+	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
 	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
-	"strconv"
 )
 
 const (
@@ -90,6 +89,7 @@ func (channel *Channel) destructor() {
 
 // Send a method frame out to the client
 func (channel *Channel) sendMethod(method amqp.MethodFrame) {
+	fmt.Println("Sending method")
 	var buf = bytes.NewBuffer([]byte{})
 	method.Write(buf)
 	channel.outgoing <- &amqp.WireFrame{uint8(amqp.FrameMethod), channel.id, buf.Bytes()}
@@ -157,12 +157,14 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
 		channel.channelRoute(methodFrame)
 	case classId == 40:
 		channel.exchangeRoute(methodFrame)
+	case classId == 50:
+		channel.queueRoute(methodFrame)
 	case classId == 60:
 		channel.basicRoute(methodFrame)
 	case classId == 85:
 		channel.confirmRoute(methodFrame)
 	default:
-		panic("Not implemented! " + strconv.FormatUint(uint64(classId), 10))
+		channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
 	}
 	return nil
 }

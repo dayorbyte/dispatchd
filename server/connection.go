@@ -135,6 +135,7 @@ func (conn *AMQPConnection) handleOutgoing() {
 	go func() {
 		for {
 			var frame = <-conn.outgoing
+			fmt.Println("Sending outgoing message")
 			// TODO(MUST): Hard close on irrecoverable errors, retry on recoverable
 			// ones some number of times.
 			amqp.WriteFrame(conn.network, frame)
@@ -147,6 +148,7 @@ func (conn *AMQPConnection) connectionError(code uint16, message string) {
 }
 
 func (conn *AMQPConnection) connectionErrorWithMethod(code uint16, message string, classId uint16, methodId uint16) {
+	fmt.Println("Sending connection error:", message)
 	conn.connectStatus.closing = true
 	conn.channels[0].sendMethod(&amqp.ConnectionClose{code, message, classId, methodId})
 }
