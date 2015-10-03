@@ -89,6 +89,7 @@ func (conn *AMQPConnection) deregisterChannel(id uint16) {
 
 func (conn *AMQPConnection) hardClose() {
 	conn.network.Close()
+	conn.connectStatus.closed = true
 	conn.server.deregisterConnection(conn.id)
 	for _, channel := range conn.channels {
 		if channel.state != CH_STATE_CLOSED {
@@ -134,11 +135,20 @@ func (conn *AMQPConnection) handleOutgoing() {
 	// interval is known.
 	go func() {
 		for {
+			if conn.connectStatus.closed {
+				break
+			}
 			var frame = <-conn.outgoing
-			fmt.Println("Sending outgoing message")
+			fmt.Printf("Sending outgoing message. type: %d\n", frame.FrameType)
 			// TODO(MUST): Hard close on irrecoverable errors, retry on recoverable
 			// ones some number of times.
+
 			amqp.WriteFrame(conn.network, frame)
+			// for wire protocol debugging:
+			// for _, b := range frame.Payload {
+			// 	fmt.Printf("%d,", b)
+			// }
+			// fmt.Printf("\n")
 		}
 	}()
 }
@@ -165,8 +175,8 @@ func (conn *AMQPConnection) handleIncoming() {
 		// for recoverable ones
 		frame, err := amqp.ReadFrame(conn.network)
 		if err != nil {
-			fmt.Println("Error reading frame")
-			conn.network.Close()
+			fmt.Println("Error reading frame: " + err.Error())
+			conn.hardClose()
 			break
 		}
 

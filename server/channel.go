@@ -89,7 +89,7 @@ func (channel *Channel) destructor() {
 
 // Send a method frame out to the client
 func (channel *Channel) sendMethod(method amqp.MethodFrame) {
-	fmt.Println("Sending method")
+	fmt.Printf("Sending method: %s\n", method.MethodName())
 	var buf = bytes.NewBuffer([]byte{})
 	method.Write(buf)
 	channel.outgoing <- &amqp.WireFrame{uint8(amqp.FrameMethod), channel.id, buf.Bytes()}
@@ -150,6 +150,7 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
 	}
 
 	// Route
+	fmt.Println("Routing method: " + methodFrame.MethodName())
 	switch {
 	case classId == 10:
 		channel.connectionRoute(methodFrame)

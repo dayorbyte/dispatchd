@@ -89,7 +89,11 @@ func WriteShortstr(buf io.Writer, s string) error {
 	if len(s) > int(MaxShortStringLength) {
 		return errors.New("String too long for short string")
 	}
-	return binary.Write(buf, binary.BigEndian, byte(len(s)))
+	err := binary.Write(buf, binary.BigEndian, byte(len(s)))
+	if err != nil {
+		return errors.New("Could not write bytes: " + err.Error())
+	}
+	return binary.Write(buf, binary.BigEndian, []byte(s))
 }
 
 func WriteLongstr(buf io.Writer, bytes []byte) (err error) {

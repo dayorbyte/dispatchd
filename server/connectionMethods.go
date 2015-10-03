@@ -95,7 +95,7 @@ func (channel *Channel) connectionClose(method *amqp.ConnectionClose) error {
 }
 
 func (channel *Channel) connectionCloseOk(method *amqp.ConnectionCloseOk) error {
-	// TODO(MUST): Log class-id and method-id of the failing method, if available
+	channel.conn.hardClose()
 	return nil
 }
 

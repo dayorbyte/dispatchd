@@ -17,25 +17,88 @@ type Server struct {
 }
 
 func NewServer() *Server {
-	return &Server{
+	var server = &Server{
 		exchanges: make(map[string]*Exchange),
 		queues:    make(map[string]*Queue),
 		bindings:  make([]*Binding, 0),
 		conns:     make(map[uint64]*AMQPConnection),
 	}
+
+	server.createSystemExchanges()
+
+	return server
+}
+
+func (server *Server) createSystemExchanges() {
+	// Default exchange
+	var defaultEx = &Exchange{
+		name:       "",
+		extype:     EX_TYPE_DIRECT,
+		durable:    false,
+		autodelete: false,
+		internal:   false,
+		arguments:  amqp.Table{},
+		incoming:   make(chan amqp.Frame),
+		system:     true,
+	}
+	var _, hasKey = server.exchanges[defaultEx.name]
+	if hasKey {
+		panic("Default system exchange already exists!")
+	}
+	server.exchanges[defaultEx.name] = defaultEx
+
+	// amq.direct
+	var directEx = &Exchange{
+		name:       "amq.direct",
+		extype:     EX_TYPE_DIRECT,
+		durable:    false,
+		autodelete: false,
+		internal:   false,
+		arguments:  amqp.Table{},
+		incoming:   make(chan amqp.Frame),
+		system:     true,
+	}
+	_, hasKey = server.exchanges[directEx.name]
+	if hasKey {
+		panic("amq.direct system exchange already exists!")
+	}
+	server.exchanges[directEx.name] = directEx
+
+	// amqp.fanout
+	var fanoutEx = &Exchange{
+		name:       "amq.fanout",
+		extype:     EX_TYPE_FANOUT,
+		durable:    false,
+		autodelete: false,
+		internal:   false,
+		arguments:  amqp.Table{},
+		incoming:   make(chan amqp.Frame),
+		system:     true,
+	}
+	_, hasKey = server.exchanges[fanoutEx.name]
+	if hasKey {
+		panic("amq.fanout system exchange already exists!")
+	}
+	server.exchanges[fanoutEx.name] = fanoutEx
 }
 
 func (server *Server) declareExchange(method *amqp.ExchangeDeclare) error {
+	// TODO: Handle Passive
+	var tp, err = exchangeNameToType(method.Type)
+	if err != nil {
+		// TODO: handle invalid exchange types
+		panic(err.Error())
+		return nil
+	}
 	var exchange = Exchange{
-		method.Exchange,
-		method.Type,
-		method.Passive,
-		method.Durable,
-		method.AutoDelete,
-		method.Internal,
-		method.NoWait,
-		method.Arguments,
-		make(chan amqp.Frame),
+		name:       method.Exchange,
+		extype:     tp,
+		durable:    method.Durable,
+		autodelete: method.AutoDelete,
+		internal:   method.Internal,
+		arguments:  method.Arguments,
+		incoming:   make(chan amqp.Frame),
+		system:     false,
 	}
 	_, hasKey := server.exchanges[exchange.name]
 	if hasKey {
@@ -43,6 +106,33 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare) error {
 	}
 	server.exchanges[exchange.name] = &exchange
 	exchange.start()
+	return nil
+}
+
+func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
+	var queue = &Queue{
+		name:       method.Queue,
+		durable:    method.Durable,
+		exclusive:  method.Exclusive,
+		autoDelete: method.AutoDelete,
+		arguments:  method.Arguments,
+		queue:      make(chan *Message),
+	}
+	_, hasKey := server.queues[queue.name]
+	if hasKey {
+		// TODO(MUST): channel exception if there is a queue with the same name
+		// and different properties
+		return nil
+	}
+	server.queues[queue.name] = queue
+	var defaultExchange = server.exchanges[""]
+	var defaultBinding = &Binding{
+		queue:     queue,
+		exchange:  defaultExchange,
+		key:       queue.name,
+		arguments: make(amqp.Table),
+	}
+	defaultExchange.bindings = append(defaultExchange.bindings, defaultBinding)
 	return nil
 }
 

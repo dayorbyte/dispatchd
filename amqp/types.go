@@ -18,6 +18,7 @@ type Frame interface {
 }
 
 type MethodFrame interface {
+	MethodName() string
 	MethodIdentifier() (uint16, uint16)
 	Read(reader io.Reader) (err error)
 	Write(writer io.Writer) (err error)

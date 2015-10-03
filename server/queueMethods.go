@@ -1,8 +1,7 @@
-
 package main
 
 import (
-"fmt"
+	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 )
 
@@ -26,8 +25,17 @@ func (channel *Channel) queueRoute(methodFrame amqp.MethodFrame) error {
 
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 	fmt.Println("Got queueDeclare")
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	if method.Passive {
+		_, found := channel.conn.server.queues[method.Queue]
+		if found {
+			channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, 0, 0})
+			return nil
+		}
+		var classId, methodId = method.MethodIdentifier()
+		channel.conn.connectionErrorWithMethod(404, "Not found", classId, methodId)
+	}
+	channel.conn.server.declareQueue(method)
+	channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, uint32(0), uint32(0)})
 	return nil
 }
 
