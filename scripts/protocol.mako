@@ -163,6 +163,10 @@ func (f* ${struct_name}) MethodIdentifier() (uint16, uint16) {
   return ${cls_index}, ${method_index}
 }
 
+func (f* ${struct_name}) MethodName() string {
+  return "${struct_name}"
+}
+
 func (f* ${struct_name}) FrameType() byte {
   return 1
 }

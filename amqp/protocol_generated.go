@@ -34,6 +34,10 @@ func (f *ConnectionStart) MethodIdentifier() (uint16, uint16) {
 	return 10, 10
 }
 
+func (f *ConnectionStart) MethodName() string {
+	return "ConnectionStart"
+}
+
 func (f *ConnectionStart) FrameType() byte {
 	return 1
 }
@@ -115,6 +119,10 @@ func (f *ConnectionStartOk) MethodIdentifier() (uint16, uint16) {
 	return 10, 11
 }
 
+func (f *ConnectionStartOk) MethodName() string {
+	return "ConnectionStartOk"
+}
+
 func (f *ConnectionStartOk) FrameType() byte {
 	return 1
 }
@@ -184,6 +192,10 @@ func (f *ConnectionSecure) MethodIdentifier() (uint16, uint16) {
 	return 10, 20
 }
 
+func (f *ConnectionSecure) MethodName() string {
+	return "ConnectionSecure"
+}
+
 func (f *ConnectionSecure) FrameType() byte {
 	return 1
 }
@@ -224,6 +236,10 @@ type ConnectionSecureOk struct {
 
 func (f *ConnectionSecureOk) MethodIdentifier() (uint16, uint16) {
 	return 10, 21
+}
+
+func (f *ConnectionSecureOk) MethodName() string {
+	return "ConnectionSecureOk"
 }
 
 func (f *ConnectionSecureOk) FrameType() byte {
@@ -268,6 +284,10 @@ type ConnectionTune struct {
 
 func (f *ConnectionTune) MethodIdentifier() (uint16, uint16) {
 	return 10, 30
+}
+
+func (f *ConnectionTune) MethodName() string {
+	return "ConnectionTune"
 }
 
 func (f *ConnectionTune) FrameType() byte {
@@ -332,6 +352,10 @@ func (f *ConnectionTuneOk) MethodIdentifier() (uint16, uint16) {
 	return 10, 31
 }
 
+func (f *ConnectionTuneOk) MethodName() string {
+	return "ConnectionTuneOk"
+}
+
 func (f *ConnectionTuneOk) FrameType() byte {
 	return 1
 }
@@ -392,6 +416,10 @@ type ConnectionOpen struct {
 
 func (f *ConnectionOpen) MethodIdentifier() (uint16, uint16) {
 	return 10, 40
+}
+
+func (f *ConnectionOpen) MethodName() string {
+	return "ConnectionOpen"
 }
 
 func (f *ConnectionOpen) FrameType() byte {
@@ -465,6 +493,10 @@ func (f *ConnectionOpenOk) MethodIdentifier() (uint16, uint16) {
 	return 10, 41
 }
 
+func (f *ConnectionOpenOk) MethodName() string {
+	return "ConnectionOpenOk"
+}
+
 func (f *ConnectionOpenOk) FrameType() byte {
 	return 1
 }
@@ -508,6 +540,10 @@ type ConnectionClose struct {
 
 func (f *ConnectionClose) MethodIdentifier() (uint16, uint16) {
 	return 10, 50
+}
+
+func (f *ConnectionClose) MethodName() string {
+	return "ConnectionClose"
 }
 
 func (f *ConnectionClose) FrameType() byte {
@@ -578,6 +614,10 @@ func (f *ConnectionCloseOk) MethodIdentifier() (uint16, uint16) {
 	return 10, 51
 }
 
+func (f *ConnectionCloseOk) MethodName() string {
+	return "ConnectionCloseOk"
+}
+
 func (f *ConnectionCloseOk) FrameType() byte {
 	return 1
 }
@@ -609,6 +649,10 @@ type ConnectionBlocked struct {
 
 func (f *ConnectionBlocked) MethodIdentifier() (uint16, uint16) {
 	return 10, 60
+}
+
+func (f *ConnectionBlocked) MethodName() string {
+	return "ConnectionBlocked"
 }
 
 func (f *ConnectionBlocked) FrameType() byte {
@@ -650,6 +694,10 @@ type ConnectionUnblocked struct {
 
 func (f *ConnectionUnblocked) MethodIdentifier() (uint16, uint16) {
 	return 10, 61
+}
+
+func (f *ConnectionUnblocked) MethodName() string {
+	return "ConnectionUnblocked"
 }
 
 func (f *ConnectionUnblocked) FrameType() byte {
@@ -695,6 +743,10 @@ func (f *ChannelOpen) MethodIdentifier() (uint16, uint16) {
 	return 20, 10
 }
 
+func (f *ChannelOpen) MethodName() string {
+	return "ChannelOpen"
+}
+
 func (f *ChannelOpen) FrameType() byte {
 	return 1
 }
@@ -737,6 +789,10 @@ func (f *ChannelOpenOk) MethodIdentifier() (uint16, uint16) {
 	return 20, 11
 }
 
+func (f *ChannelOpenOk) MethodName() string {
+	return "ChannelOpenOk"
+}
+
 func (f *ChannelOpenOk) FrameType() byte {
 	return 1
 }
@@ -777,6 +833,10 @@ type ChannelFlow struct {
 
 func (f *ChannelFlow) MethodIdentifier() (uint16, uint16) {
 	return 20, 20
+}
+
+func (f *ChannelFlow) MethodName() string {
+	return "ChannelFlow"
 }
 
 func (f *ChannelFlow) FrameType() byte {
@@ -830,6 +890,10 @@ type ChannelFlowOk struct {
 
 func (f *ChannelFlowOk) MethodIdentifier() (uint16, uint16) {
 	return 20, 21
+}
+
+func (f *ChannelFlowOk) MethodName() string {
+	return "ChannelFlowOk"
 }
 
 func (f *ChannelFlowOk) FrameType() byte {
@@ -886,6 +950,10 @@ type ChannelClose struct {
 
 func (f *ChannelClose) MethodIdentifier() (uint16, uint16) {
 	return 20, 40
+}
+
+func (f *ChannelClose) MethodName() string {
+	return "ChannelClose"
 }
 
 func (f *ChannelClose) FrameType() byte {
@@ -956,6 +1024,10 @@ func (f *ChannelCloseOk) MethodIdentifier() (uint16, uint16) {
 	return 20, 41
 }
 
+func (f *ChannelCloseOk) MethodName() string {
+	return "ChannelCloseOk"
+}
+
 func (f *ChannelCloseOk) FrameType() byte {
 	return 1
 }
@@ -1005,6 +1077,10 @@ type ExchangeDeclare struct {
 
 func (f *ExchangeDeclare) MethodIdentifier() (uint16, uint16) {
 	return 40, 10
+}
+
+func (f *ExchangeDeclare) MethodName() string {
+	return "ExchangeDeclare"
 }
 
 func (f *ExchangeDeclare) FrameType() byte {
@@ -1135,6 +1211,10 @@ func (f *ExchangeDeclareOk) MethodIdentifier() (uint16, uint16) {
 	return 40, 11
 }
 
+func (f *ExchangeDeclareOk) MethodName() string {
+	return "ExchangeDeclareOk"
+}
+
 func (f *ExchangeDeclareOk) FrameType() byte {
 	return 1
 }
@@ -1169,6 +1249,10 @@ type ExchangeDelete struct {
 
 func (f *ExchangeDelete) MethodIdentifier() (uint16, uint16) {
 	return 40, 20
+}
+
+func (f *ExchangeDelete) MethodName() string {
+	return "ExchangeDelete"
 }
 
 func (f *ExchangeDelete) FrameType() byte {
@@ -1251,6 +1335,10 @@ func (f *ExchangeDeleteOk) MethodIdentifier() (uint16, uint16) {
 	return 40, 21
 }
 
+func (f *ExchangeDeleteOk) MethodName() string {
+	return "ExchangeDeleteOk"
+}
+
 func (f *ExchangeDeleteOk) FrameType() byte {
 	return 1
 }
@@ -1287,6 +1375,10 @@ type ExchangeBind struct {
 
 func (f *ExchangeBind) MethodIdentifier() (uint16, uint16) {
 	return 40, 30
+}
+
+func (f *ExchangeBind) MethodName() string {
+	return "ExchangeBind"
 }
 
 func (f *ExchangeBind) FrameType() byte {
@@ -1386,6 +1478,10 @@ func (f *ExchangeBindOk) MethodIdentifier() (uint16, uint16) {
 	return 40, 31
 }
 
+func (f *ExchangeBindOk) MethodName() string {
+	return "ExchangeBindOk"
+}
+
 func (f *ExchangeBindOk) FrameType() byte {
 	return 1
 }
@@ -1422,6 +1518,10 @@ type ExchangeUnbind struct {
 
 func (f *ExchangeUnbind) MethodIdentifier() (uint16, uint16) {
 	return 40, 40
+}
+
+func (f *ExchangeUnbind) MethodName() string {
+	return "ExchangeUnbind"
 }
 
 func (f *ExchangeUnbind) FrameType() byte {
@@ -1521,6 +1621,10 @@ func (f *ExchangeUnbindOk) MethodIdentifier() (uint16, uint16) {
 	return 40, 51
 }
 
+func (f *ExchangeUnbindOk) MethodName() string {
+	return "ExchangeUnbindOk"
+}
+
 func (f *ExchangeUnbindOk) FrameType() byte {
 	return 1
 }
@@ -1569,6 +1673,10 @@ type QueueDeclare struct {
 
 func (f *QueueDeclare) MethodIdentifier() (uint16, uint16) {
 	return 50, 10
+}
+
+func (f *QueueDeclare) MethodName() string {
+	return "QueueDeclare"
 }
 
 func (f *QueueDeclare) FrameType() byte {
@@ -1693,6 +1801,10 @@ func (f *QueueDeclareOk) MethodIdentifier() (uint16, uint16) {
 	return 50, 11
 }
 
+func (f *QueueDeclareOk) MethodName() string {
+	return "QueueDeclareOk"
+}
+
 func (f *QueueDeclareOk) FrameType() byte {
 	return 1
 }
@@ -1756,6 +1868,10 @@ type QueueBind struct {
 
 func (f *QueueBind) MethodIdentifier() (uint16, uint16) {
 	return 50, 20
+}
+
+func (f *QueueBind) MethodName() string {
+	return "QueueBind"
 }
 
 func (f *QueueBind) FrameType() byte {
@@ -1855,6 +1971,10 @@ func (f *QueueBindOk) MethodIdentifier() (uint16, uint16) {
 	return 50, 21
 }
 
+func (f *QueueBindOk) MethodName() string {
+	return "QueueBindOk"
+}
+
 func (f *QueueBindOk) FrameType() byte {
 	return 1
 }
@@ -1890,6 +2010,10 @@ type QueueUnbind struct {
 
 func (f *QueueUnbind) MethodIdentifier() (uint16, uint16) {
 	return 50, 50
+}
+
+func (f *QueueUnbind) MethodName() string {
+	return "QueueUnbind"
 }
 
 func (f *QueueUnbind) FrameType() byte {
@@ -1969,6 +2093,10 @@ func (f *QueueUnbindOk) MethodIdentifier() (uint16, uint16) {
 	return 50, 51
 }
 
+func (f *QueueUnbindOk) MethodName() string {
+	return "QueueUnbindOk"
+}
+
 func (f *QueueUnbindOk) FrameType() byte {
 	return 1
 }
@@ -2002,6 +2130,10 @@ type QueuePurge struct {
 
 func (f *QueuePurge) MethodIdentifier() (uint16, uint16) {
 	return 50, 30
+}
+
+func (f *QueuePurge) MethodName() string {
+	return "QueuePurge"
 }
 
 func (f *QueuePurge) FrameType() byte {
@@ -2075,6 +2207,10 @@ func (f *QueuePurgeOk) MethodIdentifier() (uint16, uint16) {
 	return 50, 31
 }
 
+func (f *QueuePurgeOk) MethodName() string {
+	return "QueuePurgeOk"
+}
+
 func (f *QueuePurgeOk) FrameType() byte {
 	return 1
 }
@@ -2119,6 +2255,10 @@ type QueueDelete struct {
 
 func (f *QueueDelete) MethodIdentifier() (uint16, uint16) {
 	return 50, 40
+}
+
+func (f *QueueDelete) MethodName() string {
+	return "QueueDelete"
 }
 
 func (f *QueueDelete) FrameType() byte {
@@ -2210,6 +2350,10 @@ type QueueDeleteOk struct {
 
 func (f *QueueDeleteOk) MethodIdentifier() (uint16, uint16) {
 	return 50, 41
+}
+
+func (f *QueueDeleteOk) MethodName() string {
+	return "QueueDeleteOk"
 }
 
 func (f *QueueDeleteOk) FrameType() byte {
@@ -2311,6 +2455,10 @@ func (f *BasicQos) MethodIdentifier() (uint16, uint16) {
 	return 60, 10
 }
 
+func (f *BasicQos) MethodName() string {
+	return "BasicQos"
+}
+
 func (f *BasicQos) FrameType() byte {
 	return 1
 }
@@ -2381,6 +2529,10 @@ func (f *BasicQosOk) MethodIdentifier() (uint16, uint16) {
 	return 60, 11
 }
 
+func (f *BasicQosOk) MethodName() string {
+	return "BasicQosOk"
+}
+
 func (f *BasicQosOk) FrameType() byte {
 	return 1
 }
@@ -2419,6 +2571,10 @@ type BasicConsume struct {
 
 func (f *BasicConsume) MethodIdentifier() (uint16, uint16) {
 	return 60, 20
+}
+
+func (f *BasicConsume) MethodName() string {
+	return "BasicConsume"
 }
 
 func (f *BasicConsume) FrameType() byte {
@@ -2540,6 +2696,10 @@ func (f *BasicConsumeOk) MethodIdentifier() (uint16, uint16) {
 	return 60, 21
 }
 
+func (f *BasicConsumeOk) MethodName() string {
+	return "BasicConsumeOk"
+}
+
 func (f *BasicConsumeOk) FrameType() byte {
 	return 1
 }
@@ -2581,6 +2741,10 @@ type BasicCancel struct {
 
 func (f *BasicCancel) MethodIdentifier() (uint16, uint16) {
 	return 60, 30
+}
+
+func (f *BasicCancel) MethodName() string {
+	return "BasicCancel"
 }
 
 func (f *BasicCancel) FrameType() byte {
@@ -2645,6 +2809,10 @@ func (f *BasicCancelOk) MethodIdentifier() (uint16, uint16) {
 	return 60, 31
 }
 
+func (f *BasicCancelOk) MethodName() string {
+	return "BasicCancelOk"
+}
+
 func (f *BasicCancelOk) FrameType() byte {
 	return 1
 }
@@ -2689,6 +2857,10 @@ type BasicPublish struct {
 
 func (f *BasicPublish) MethodIdentifier() (uint16, uint16) {
 	return 60, 40
+}
+
+func (f *BasicPublish) MethodName() string {
+	return "BasicPublish"
 }
 
 func (f *BasicPublish) FrameType() byte {
@@ -2784,6 +2956,10 @@ func (f *BasicReturn) MethodIdentifier() (uint16, uint16) {
 	return 60, 50
 }
 
+func (f *BasicReturn) MethodName() string {
+	return "BasicReturn"
+}
+
 func (f *BasicReturn) FrameType() byte {
 	return 1
 }
@@ -2855,6 +3031,10 @@ type BasicDeliver struct {
 
 func (f *BasicDeliver) MethodIdentifier() (uint16, uint16) {
 	return 60, 60
+}
+
+func (f *BasicDeliver) MethodName() string {
+	return "BasicDeliver"
 }
 
 func (f *BasicDeliver) FrameType() byte {
@@ -2948,6 +3128,10 @@ func (f *BasicGet) MethodIdentifier() (uint16, uint16) {
 	return 60, 70
 }
 
+func (f *BasicGet) MethodName() string {
+	return "BasicGet"
+}
+
 func (f *BasicGet) FrameType() byte {
 	return 1
 }
@@ -3021,6 +3205,10 @@ type BasicGetOk struct {
 
 func (f *BasicGetOk) MethodIdentifier() (uint16, uint16) {
 	return 60, 71
+}
+
+func (f *BasicGetOk) MethodName() string {
+	return "BasicGetOk"
 }
 
 func (f *BasicGetOk) FrameType() byte {
@@ -3112,6 +3300,10 @@ func (f *BasicGetEmpty) MethodIdentifier() (uint16, uint16) {
 	return 60, 72
 }
 
+func (f *BasicGetEmpty) MethodName() string {
+	return "BasicGetEmpty"
+}
+
 func (f *BasicGetEmpty) FrameType() byte {
 	return 1
 }
@@ -3153,6 +3345,10 @@ type BasicAck struct {
 
 func (f *BasicAck) MethodIdentifier() (uint16, uint16) {
 	return 60, 80
+}
+
+func (f *BasicAck) MethodName() string {
+	return "BasicAck"
 }
 
 func (f *BasicAck) FrameType() byte {
@@ -3218,6 +3414,10 @@ func (f *BasicReject) MethodIdentifier() (uint16, uint16) {
 	return 60, 90
 }
 
+func (f *BasicReject) MethodName() string {
+	return "BasicReject"
+}
+
 func (f *BasicReject) FrameType() byte {
 	return 1
 }
@@ -3280,6 +3480,10 @@ func (f *BasicRecoverAsync) MethodIdentifier() (uint16, uint16) {
 	return 60, 100
 }
 
+func (f *BasicRecoverAsync) MethodName() string {
+	return "BasicRecoverAsync"
+}
+
 func (f *BasicRecoverAsync) FrameType() byte {
 	return 1
 }
@@ -3331,6 +3535,10 @@ type BasicRecover struct {
 
 func (f *BasicRecover) MethodIdentifier() (uint16, uint16) {
 	return 60, 110
+}
+
+func (f *BasicRecover) MethodName() string {
+	return "BasicRecover"
 }
 
 func (f *BasicRecover) FrameType() byte {
@@ -3385,6 +3593,10 @@ func (f *BasicRecoverOk) MethodIdentifier() (uint16, uint16) {
 	return 60, 111
 }
 
+func (f *BasicRecoverOk) MethodName() string {
+	return "BasicRecoverOk"
+}
+
 func (f *BasicRecoverOk) FrameType() byte {
 	return 1
 }
@@ -3418,6 +3630,10 @@ type BasicNack struct {
 
 func (f *BasicNack) MethodIdentifier() (uint16, uint16) {
 	return 60, 120
+}
+
+func (f *BasicNack) MethodName() string {
+	return "BasicNack"
 }
 
 func (f *BasicNack) FrameType() byte {
@@ -3501,6 +3717,10 @@ func (f *TxSelect) MethodIdentifier() (uint16, uint16) {
 	return 90, 10
 }
 
+func (f *TxSelect) MethodName() string {
+	return "TxSelect"
+}
+
 func (f *TxSelect) FrameType() byte {
 	return 1
 }
@@ -3531,6 +3751,10 @@ type TxSelectOk struct {
 
 func (f *TxSelectOk) MethodIdentifier() (uint16, uint16) {
 	return 90, 11
+}
+
+func (f *TxSelectOk) MethodName() string {
+	return "TxSelectOk"
 }
 
 func (f *TxSelectOk) FrameType() byte {
@@ -3565,6 +3789,10 @@ func (f *TxCommit) MethodIdentifier() (uint16, uint16) {
 	return 90, 20
 }
 
+func (f *TxCommit) MethodName() string {
+	return "TxCommit"
+}
+
 func (f *TxCommit) FrameType() byte {
 	return 1
 }
@@ -3595,6 +3823,10 @@ type TxCommitOk struct {
 
 func (f *TxCommitOk) MethodIdentifier() (uint16, uint16) {
 	return 90, 21
+}
+
+func (f *TxCommitOk) MethodName() string {
+	return "TxCommitOk"
 }
 
 func (f *TxCommitOk) FrameType() byte {
@@ -3629,6 +3861,10 @@ func (f *TxRollback) MethodIdentifier() (uint16, uint16) {
 	return 90, 30
 }
 
+func (f *TxRollback) MethodName() string {
+	return "TxRollback"
+}
+
 func (f *TxRollback) FrameType() byte {
 	return 1
 }
@@ -3659,6 +3895,10 @@ type TxRollbackOk struct {
 
 func (f *TxRollbackOk) MethodIdentifier() (uint16, uint16) {
 	return 90, 31
+}
+
+func (f *TxRollbackOk) MethodName() string {
+	return "TxRollbackOk"
 }
 
 func (f *TxRollbackOk) FrameType() byte {
@@ -3702,6 +3942,10 @@ type ConfirmSelect struct {
 
 func (f *ConfirmSelect) MethodIdentifier() (uint16, uint16) {
 	return 85, 10
+}
+
+func (f *ConfirmSelect) MethodName() string {
+	return "ConfirmSelect"
 }
 
 func (f *ConfirmSelect) FrameType() byte {
@@ -3754,6 +3998,10 @@ type ConfirmSelectOk struct {
 
 func (f *ConfirmSelectOk) MethodIdentifier() (uint16, uint16) {
 	return 85, 11
+}
+
+func (f *ConfirmSelectOk) MethodName() string {
+	return "ConfirmSelectOk"
 }
 
 func (f *ConfirmSelectOk) FrameType() byte {
