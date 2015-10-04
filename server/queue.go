@@ -1,6 +1,7 @@
 package main
 
 import (
+  "container/list"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 )
@@ -16,10 +17,10 @@ type Queue struct {
 	exclusive  bool
 	autoDelete bool
 	arguments  amqp.Table
-	queue      chan *Message
+	queue      *list.List
 }
 
 func (q *Queue) add(message *Message) {
 	fmt.Printf("Queue \"%s\" got message!\n", q.name)
-	q.queue <- message
+	q.queue.PushBack(message)
 }

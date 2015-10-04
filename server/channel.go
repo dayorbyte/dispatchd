@@ -131,7 +131,6 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
 		channel.msgIndex += 1
 		channel.sendMethod(&amqp.BasicAck{channel.msgIndex, false})
 	}
-
 }
 
 func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {

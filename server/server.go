@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	 "container/list"
 	"github.com/jeffjenkins/mq/amqp"
 	"net"
 	"sync"
@@ -116,7 +117,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
 		exclusive:  method.Exclusive,
 		autoDelete: method.AutoDelete,
 		arguments:  method.Arguments,
-		queue:      make(chan *Message),
+		queue:      list.New(),
 	}
 	_, hasKey := server.queues[queue.name]
 	if hasKey {
