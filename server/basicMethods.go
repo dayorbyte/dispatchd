@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	// "bytes"
+	"time"
 	"github.com/jeffjenkins/mq/amqp"
 )
 
@@ -23,8 +23,8 @@ func (channel *Channel) basicRoute(methodFrame amqp.MethodFrame) error {
 		return channel.basicNack(method)
 	case *amqp.BasicConsume:
 		return channel.basicConsume(method)
-	case *amqp.BasicConsumeOk:
-		return channel.basicConsumeOk(method)
+	// case *amqp.BasicConsumeOk:
+	// 	return channel.basicConsumeOk(method)
 	case *amqp.BasicCancel:
 		return channel.basicCancel(method)
 	case *amqp.BasicCancelOk:
@@ -94,10 +94,18 @@ func (channel *Channel) basicNack(method *amqp.BasicNack) error {
 }
 
 func (channel *Channel) basicConsume(method *amqp.BasicConsume) error {
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-
 	fmt.Println("Handling BasicConsume")
+	var queue, found = channel.conn.server.queues[method.Queue]
+	if !found {
+		// TODO(MUST): not found error? spec xml doesn't say
+		return errors.New("Queue not found")
+	}
+	if len(method.ConsumerTag) == 0 {
+		method.ConsumerTag = fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+	queue.addConsumer(channel, method)
+	fmt.Println("Sending consume-ok")
+	channel.sendMethod(&amqp.BasicConsumeOk{method.ConsumerTag})
 	return nil
 }
 

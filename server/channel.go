@@ -25,6 +25,8 @@ type Channel struct {
 	lastHeaderFrame *amqp.ContentHeaderFrame
 	bodyFrames      []*amqp.WireFrame
 	msgIndex        uint64
+	// TODO(MUST): track consumers so they can be cleanly shut down when
+	// the channel/connection closes
 }
 
 func NewChannel(id uint16, conn *AMQPConnection) *Channel {
@@ -95,6 +97,20 @@ func (channel *Channel) sendMethod(method amqp.MethodFrame) {
 	channel.outgoing <- &amqp.WireFrame{uint8(amqp.FrameMethod), channel.id, buf.Bytes()}
 }
 
+// Send a method frame out to the client
+func (channel *Channel) sendContent(method *amqp.BasicDeliver, message *Message) {
+	fmt.Println("Sending content\n")
+	// deliver
+	channel.sendMethod(method)
+	// header
+	channel.outgoing <- &amqp.WireFrame{uint8(amqp.FrameHeader), channel.id, message.header.AsBytes}
+	// body
+	for _, b := range message.payload {
+		b.Channel = channel.id
+		channel.outgoing <- b
+	}
+}
+
 func (channel *Channel) handleContentHeader(frame *amqp.WireFrame) {
 	if channel.lastMethodFrame == nil {
 		fmt.Println("Unexpected content header frame!")
@@ -102,6 +118,7 @@ func (channel *Channel) handleContentHeader(frame *amqp.WireFrame) {
 	}
 	var headerFrame = &amqp.ContentHeaderFrame{}
 	var err = headerFrame.Read(bytes.NewReader(frame.Payload))
+	headerFrame.AsBytes = frame.Payload
 	if err != nil {
 		fmt.Println("Error parsing header frame: " + err.Error())
 	}

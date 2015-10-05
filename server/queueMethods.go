@@ -34,7 +34,9 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 		var classId, methodId = method.MethodIdentifier()
 		channel.conn.connectionErrorWithMethod(404, "Not found", classId, methodId)
 	}
+	fmt.Println("calling declareQueue")
 	channel.conn.server.declareQueue(method)
+	fmt.Println("Sending QueueDeclareOk")
 	channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, uint32(0), uint32(0)})
 	return nil
 }

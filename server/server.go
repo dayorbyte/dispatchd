@@ -118,6 +118,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
 		autoDelete: method.AutoDelete,
 		arguments:  method.Arguments,
 		queue:      list.New(),
+		consumers:  list.New(),
 	}
 	_, hasKey := server.queues[queue.name]
 	if hasKey {
@@ -134,6 +135,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
 		arguments: make(amqp.Table),
 	}
 	defaultExchange.bindings = append(defaultExchange.bindings, defaultBinding)
+	queue.start()
 	return nil
 }
 

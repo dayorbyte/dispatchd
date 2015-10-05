@@ -37,6 +37,7 @@ type ContentHeaderFrame struct {
 	ContentBodySize uint64
 	PropertyFlags   uint16
 	Properties      *BasicContentHeaderProperties
+	AsBytes					[]byte
 }
 
 func (frame *ContentHeaderFrame) FrameType() byte {
