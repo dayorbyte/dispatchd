@@ -25,8 +25,7 @@ type Channel struct {
 	lastHeaderFrame *amqp.ContentHeaderFrame
 	bodyFrames      []*amqp.WireFrame
 	msgIndex        uint64
-	// TODO(MUST): track consumers so they can be cleanly shut down when
-	// the channel/connection closes
+	consumers				map[string]*Consumer
 }
 
 func NewChannel(id uint16, conn *AMQPConnection) *Channel {
@@ -38,6 +37,7 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 		conn:       conn,
 		state:      CH_STATE_INIT,
 		bodyFrames: make([]*amqp.WireFrame, 0, 1),
+		consumers:  make(map[string]*Consumer),
 	}
 }
 
@@ -86,7 +86,12 @@ func (channel *Channel) close(code uint16, reason string, classId uint16, method
 }
 
 func (channel *Channel) destructor() {
+	// unregister this channel
 	channel.conn.deregisterChannel(channel.id)
+	// remove any consumers associated with this channel
+	for _, consumer := range channel.consumers {
+		close(consumer.incoming)
+	}
 }
 
 // Send a method frame out to the client

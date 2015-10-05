@@ -104,7 +104,6 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) error {
 		method.ConsumerTag = fmt.Sprintf("%d", time.Now().UnixNano())
 	}
 	queue.addConsumer(channel, method)
-	fmt.Println("Sending consume-ok")
 	channel.sendMethod(&amqp.BasicConsumeOk{method.ConsumerTag})
 	return nil
 }

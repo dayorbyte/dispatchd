@@ -23,6 +23,7 @@ type Queue struct {
 	queue      *list.List // *Message
 	queueLock  sync.Mutex
 	consumers  *list.List // *Consumer
+	currentConsumer   *list.Element
 }
 
 func (q *Queue) add(message *Message) {
@@ -44,9 +45,10 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) {
 		qos: 1,
 		queue: q,
 	}
+	channel.consumers[method.ConsumerTag] = consumer
 	q.consumers.PushBack(consumer)
 	consumer.start()
-
+	return
 
 }
 
@@ -60,11 +62,23 @@ func (q *Queue) start() {
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
-			// TODO(MUST): send messages to all consumers
-			for e := q.consumers.Front(); e != nil; e = e.Next() {
-				var consumer = e.Value.(*Consumer)
+			if q.currentConsumer == nil {
+				q.currentConsumer = q.consumers.Front()
+			}
+			var next = q.currentConsumer.Next()
+
+			// Select the next round-robin consumer
+			for {
+				if next == q.currentConsumer { // full loop
+					break
+				}
+				if next == nil { // go back to start
+					next = q.consumers.Front()
+				}
+				var consumer = next.Value.(*Consumer)
 				var msg = q.queue.Remove(q.queue.Front()).(*Message)
 				consumer.incoming <- msg
+				q.currentConsumer = next
 			}
 		}
 	}()
@@ -82,6 +96,10 @@ type Consumer struct {
 	queue *Queue
 }
 
+func (consumer *Consumer) stop() {
+	close(consumer.incoming)
+}
+
 func (consumer *Consumer) start() {
 	for i := uint16(0); i < consumer.qos; i++ {
 		go consumer.consume(i)
@@ -91,14 +109,13 @@ func (consumer *Consumer) start() {
 func (consumer *Consumer) consume(id uint16) {
 	var tag = uint64(0)
 	fmt.Printf("Starting consumer %s#%d\n", consumer.consumerTag, id)
-	for {
+	for msg := range consumer.incoming {
 		// TODO(MUST): stop if channel is closed
 		if consumer.qos < id {
 			break
 		}
-		var msg = <- consumer.incoming
 		tag++
-		fmt.Printf("Consumer %d got message\n", id)
+		fmt.Printf("Consumer %s#%d got a message\n", consumer.consumerTag, id)
 		consumer.channel.sendContent(&amqp.BasicDeliver{
 			ConsumerTag: consumer.consumerTag,
 			DeliveryTag: tag,
