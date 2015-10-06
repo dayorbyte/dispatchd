@@ -40,6 +40,14 @@ type ContentHeaderFrame struct {
 	AsBytes					[]byte
 }
 
+func NewTruncatedBodyFrame(channel uint16) WireFrame {
+	return WireFrame{
+		FrameType: byte(FrameBody),
+		Channel: channel,
+		Payload: make([]byte, 0, 0),
+	}
+}
+
 func (frame *ContentHeaderFrame) FrameType() byte {
 	return 2
 }
