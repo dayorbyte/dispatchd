@@ -84,7 +84,19 @@ func (channel *Channel) connectionStartOk(method *amqp.ConnectionStartOk) error 
 
 func (channel *Channel) startConnection() error {
 	// TODO(SHOULD): add fields: host, product, version, platform, copyright, information
-	channel.sendMethod(&amqp.ConnectionStart{0, 9, amqp.Table{}, []byte("PLAIN"), []byte("en_US")})
+	var capabilities = make(amqp.Table)
+	capabilities["publisher_confirms"] = true
+	capabilities["basic.nack"] = true
+	var serverProps = make(amqp.Table)
+	serverProps["capabilities"] = capabilities
+	serverProps["product"] = "mq"
+	serverProps["version"] = "0.1"
+	serverProps["copyright"] = "Jeffrey Jenkins, 2015"
+	serverProps["platform"] = "TODO"
+	serverProps["host"] = "TODO"
+	serverProps["information"] = "https://github.com/jeffjenkins/mq"
+
+	channel.sendMethod(&amqp.ConnectionStart{0, 9, serverProps, []byte("PLAIN"), []byte("en_US")})
 	return nil
 }
 

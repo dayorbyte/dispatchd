@@ -59,9 +59,9 @@ func WriteMethodPayloadHeader(buf io.Writer, classId uint16, methodId uint16) (e
 func WriteBit(buf io.Writer, b bool) error {
 	// TODO: pack these properly
 	if b {
-		return binary.Write(buf, binary.BigEndian, 1)
+		return binary.Write(buf, binary.BigEndian, byte(1))
 	}
-	return binary.Write(buf, binary.BigEndian, 0)
+	return binary.Write(buf, binary.BigEndian, byte(0))
 
 }
 
@@ -201,6 +201,8 @@ func writeValue(writer io.Writer, value interface{}) (err error) {
 		}
 	case nil:
 		err = binary.Write(writer, binary.BigEndian, byte('V'))
+	default:
+		panic("unsupported type!")
 	}
 	return
 }

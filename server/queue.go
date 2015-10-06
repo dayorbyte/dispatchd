@@ -11,6 +11,8 @@ import (
 type Message struct {
 	header  *amqp.ContentHeaderFrame
 	payload []*amqp.WireFrame
+	exchange string
+	key string
 }
 
 type Queue struct {

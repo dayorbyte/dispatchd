@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"time"
-	// "strconv"
 )
 
 func ReadFrame(reader io.Reader) (*WireFrame, error) {
@@ -154,7 +153,7 @@ func ReadTable(reader io.Reader) (Table, error) {
 		}
 		value, err := readValue(data)
 		if err != nil {
-			return nil, errors.New("Error reading value for " + key + ": " + err.Error())
+			return nil, errors.New("Error reading value for '" + key + "': " + err.Error())
 		}
 		table[key] = value
 	}

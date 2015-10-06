@@ -41,6 +41,11 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 	}
 }
 
+func (channel *Channel) nextDeliveryTag() uint64 {
+	channel.msgIndex++
+	return channel.msgIndex
+}
+
 func (channel *Channel) start() {
 	if channel.id == 0 {
 		channel.state = CH_STATE_OPEN
