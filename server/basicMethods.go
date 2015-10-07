@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"time"
 	"github.com/jeffjenkins/mq/amqp"
+	"time"
 )
 
 func (channel *Channel) basicRoute(methodFrame amqp.MethodFrame) error {
@@ -66,7 +66,10 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) error {
 		method.ConsumerTag = fmt.Sprintf("%d", time.Now().UnixNano())
 	}
 	queue.addConsumer(channel, method)
-	channel.sendMethod(&amqp.BasicConsumeOk{method.ConsumerTag})
+	if !method.NoWait {
+		channel.sendMethod(&amqp.BasicConsumeOk{method.ConsumerTag})
+	}
+
 	return nil
 }
 
@@ -75,6 +78,9 @@ func (channel *Channel) basicCancel(method *amqp.BasicCancel) error {
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
 
 	fmt.Println("Handling BasicCancel")
+	// if !method.NoWait {
+	// 	channel.sendMethod(&amqp.BasicCancelOk{method.ConsumerTag})
+	// }
 	return nil
 }
 

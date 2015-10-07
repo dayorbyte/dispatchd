@@ -1,31 +1,31 @@
 package main
 
 import (
-  "container/list"
+	"container/list"
 	"fmt"
+	"github.com/jeffjenkins/mq/amqp"
 	"sync"
 	"time"
-	"github.com/jeffjenkins/mq/amqp"
 )
 
 type Message struct {
-	header  *amqp.ContentHeaderFrame
-	payload []*amqp.WireFrame
+	header   *amqp.ContentHeaderFrame
+	payload  []*amqp.WireFrame
 	exchange string
-	key string
+	key      string
 }
 
 type Queue struct {
-	name       string
-	durable    bool
-	exclusive  bool
-	autoDelete bool
-	closed     bool
-	arguments  amqp.Table
-	queue      *list.List // *Message
-	queueLock  sync.Mutex
-	consumers  *list.List // *Consumer
-	currentConsumer   *list.Element
+	name            string
+	durable         bool
+	exclusive       bool
+	autoDelete      bool
+	closed          bool
+	arguments       amqp.Table
+	queue           *list.List // *Message
+	queueLock       sync.Mutex
+	consumers       *list.List // *Consumer
+	currentConsumer *list.Element
 }
 
 func (q *Queue) add(message *Message) {
@@ -37,15 +37,15 @@ func (q *Queue) add(message *Message) {
 func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) {
 	fmt.Printf("Adding consumer\n")
 	var consumer = &Consumer{
-		arguments: method.Arguments,
-		channel: channel,
+		arguments:   method.Arguments,
+		channel:     channel,
 		consumerTag: method.ConsumerTag,
-		exclusive: method.Exclusive,
-		incoming: make(chan *Message),
-		noAck: method.NoAck,
-		noLocal: method.NoLocal,
-		qos: 1,
-		queue: q,
+		exclusive:   method.Exclusive,
+		incoming:    make(chan *Message),
+		noAck:       method.NoAck,
+		noLocal:     method.NoLocal,
+		qos:         1,
+		queue:       q,
 	}
 	channel.consumers[method.ConsumerTag] = consumer
 	q.consumers.PushBack(consumer)
@@ -87,15 +87,15 @@ func (q *Queue) start() {
 }
 
 type Consumer struct {
-	arguments amqp.Table
-	channel *Channel
+	arguments   amqp.Table
+	channel     *Channel
 	consumerTag string
-	exclusive bool
-	incoming chan *Message
-	noAck bool
-	noLocal bool
-	qos uint16
-	queue *Queue
+	exclusive   bool
+	incoming    chan *Message
+	noAck       bool
+	noLocal     bool
+	qos         uint16
+	queue       *Queue
 }
 
 func (consumer *Consumer) stop() {
@@ -122,8 +122,8 @@ func (consumer *Consumer) consume(id uint16) {
 			ConsumerTag: consumer.consumerTag,
 			DeliveryTag: tag,
 			Redelivered: false,
-			Exchange: "", // TODO(MUST): the real exchange name
-			RoutingKey: consumer.queue.name, // TODO(must): real queue name
+			Exchange:    "",                  // TODO(MUST): the real exchange name
+			RoutingKey:  consumer.queue.name, // TODO(must): real queue name
 		}, msg)
 	}
 }

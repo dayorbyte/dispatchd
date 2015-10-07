@@ -37,7 +37,9 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 	fmt.Println("calling declareQueue")
 	channel.conn.server.declareQueue(method)
 	fmt.Println("Sending QueueDeclareOk")
-	channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, uint32(0), uint32(0)})
+	if !method.NoWait {
+		channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, uint32(0), uint32(0)})
+	}
 	return nil
 }
 
@@ -45,6 +47,9 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 	fmt.Println("Got queueBind")
 	var classId, methodId = method.MethodIdentifier()
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	// if !method.NoWait {
+	// 	channel.sendMethod(&amqp.QeueBindOk{})
+	// }
 	return nil
 }
 
@@ -52,6 +57,9 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) error {
 	fmt.Println("Got queuePurge")
 	var classId, methodId = method.MethodIdentifier()
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	// if !method.NoWait {
+	// 	channel.sendMethod(&amqp.QeuePurgeOk{0}) // TODO(MUST): num purged
+	// }
 	return nil
 }
 
@@ -59,6 +67,9 @@ func (channel *Channel) queueDelete(method *amqp.QueueDelete) error {
 	fmt.Println("Got queueDelete")
 	var classId, methodId = method.MethodIdentifier()
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	// if !method.NoWait {
+	// 	channel.sendMethod(&amqp.QeueDeleteOk{0}) // TODO(MUST): num messages deleted
+	// }
 	return nil
 }
 

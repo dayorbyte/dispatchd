@@ -30,7 +30,9 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
 		return err
 	}
 	fmt.Println("Declaring exchange: Send Response")
-	channel.sendMethod(&amqp.ExchangeDeclareOk{})
+	if !method.NoWait {
+		channel.sendMethod(&amqp.ExchangeDeclareOk{})
+	}
 	return nil
 }
 
@@ -39,17 +41,25 @@ func (channel *Channel) exchangeDelete(method *amqp.ExchangeDelete) error {
 	if err != nil {
 		return err
 	}
-	channel.sendMethod(&amqp.ExchangeDeleteOk{})
+	if !method.NoWait {
+		channel.sendMethod(&amqp.ExchangeDeleteOk{})
+	}
 	return nil
 }
 
 func (channel *Channel) exchangeBind(method *amqp.ExchangeBind) error {
 	var classId, methodId = method.MethodIdentifier()
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	// if !method.NoWait {
+	// 	channel.sendMethod(&amqp.ExchangeBindOk{})
+	// }
 	return nil
 }
 func (channel *Channel) exchangeUnbind(method *amqp.ExchangeUnbind) error {
 	var classId, methodId = method.MethodIdentifier()
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	// if !method.NoWait {
+	// 	channel.sendMethod(&amqp.ExchangeUnbindOk{})
+	// }
 	return nil
 }

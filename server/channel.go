@@ -25,7 +25,7 @@ type Channel struct {
 	lastHeaderFrame *amqp.ContentHeaderFrame
 	bodyFrames      []*amqp.WireFrame
 	msgIndex        uint64
-	consumers				map[string]*Consumer
+	consumers       map[string]*Consumer
 }
 
 func NewChannel(id uint16, conn *AMQPConnection) *Channel {

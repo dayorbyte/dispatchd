@@ -54,10 +54,10 @@ func (exchange *Exchange) publish(method *amqp.BasicPublish, header *amqp.Conten
 		for _, binding := range exchange.bindings {
 			if binding.matchDirect(method) {
 				binding.queue.add(&Message{
-					header: header,
-					payload: bodyFrames,
+					header:   header,
+					payload:  bodyFrames,
 					exchange: method.Exchange,
-					key: method.RoutingKey,
+					key:      method.RoutingKey,
 				})
 			}
 		}

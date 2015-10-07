@@ -37,14 +37,14 @@ type ContentHeaderFrame struct {
 	ContentBodySize uint64
 	PropertyFlags   uint16
 	Properties      *BasicContentHeaderProperties
-	AsBytes					[]byte
+	AsBytes         []byte
 }
 
 func NewTruncatedBodyFrame(channel uint16) WireFrame {
 	return WireFrame{
 		FrameType: byte(FrameBody),
-		Channel: channel,
-		Payload: make([]byte, 0, 0),
+		Channel:   channel,
+		Payload:   make([]byte, 0, 0),
 	}
 }
 

@@ -1,8 +1,8 @@
 package main
 
 import (
+	"container/list"
 	"errors"
-	 "container/list"
 	"github.com/jeffjenkins/mq/amqp"
 	"net"
 	"sync"
