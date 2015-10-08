@@ -15,6 +15,15 @@ type Message struct {
 	key      string
 }
 
+func (message *Message) size() uint32 {
+	// TODO: include header size
+	var size uint32 = 0
+	for _, frame := range message.payload {
+		size += uint32(len(frame.Payload))
+	}
+	return size
+}
+
 type Queue struct {
 	name            string
 	durable         bool
@@ -37,15 +46,17 @@ func (q *Queue) add(message *Message) {
 func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) {
 	fmt.Printf("Adding consumer\n")
 	var consumer = &Consumer{
-		arguments:   method.Arguments,
-		channel:     channel,
-		consumerTag: method.ConsumerTag,
-		exclusive:   method.Exclusive,
-		incoming:    make(chan *Message),
-		noAck:       method.NoAck,
-		noLocal:     method.NoLocal,
-		qos:         1,
-		queue:       q,
+		arguments:     method.Arguments,
+		channel:       channel,
+		consumerTag:   method.ConsumerTag,
+		exclusive:     method.Exclusive,
+		incoming:      make(chan *Message),
+		noAck:         method.NoAck,
+		noLocal:       method.NoLocal,
+		qos:           1,
+		queue:         q,
+		prefetchSize:  channel.defaultPrefetchSize,
+		prefetchCount: channel.defaultPrefetchCount,
 	}
 	channel.consumers[method.ConsumerTag] = consumer
 	q.consumers.PushBack(consumer)
@@ -77,29 +88,70 @@ func (q *Queue) start() {
 				if next == nil { // go back to start
 					next = q.consumers.Front()
 				}
-				var consumer = next.Value.(*Consumer)
-				var msg = q.queue.Remove(q.queue.Front()).(*Message)
-				consumer.incoming <- msg
 				q.currentConsumer = next
+				var consumer = next.Value.(*Consumer)
+				if !consumer.ready() {
+					continue
+				}
+				var msg = q.queue.Remove(q.queue.Front()).(*Message)
+
+				if !consumer.noAck {
+					// TODO(MUST): decr when we get acks
+					consumer.incrActive(1, msg.size())
+				}
+				consumer.incoming <- msg
 			}
 		}
 	}()
 }
 
 type Consumer struct {
-	arguments   amqp.Table
-	channel     *Channel
-	consumerTag string
-	exclusive   bool
-	incoming    chan *Message
-	noAck       bool
-	noLocal     bool
-	qos         uint16
-	queue       *Queue
+	arguments     amqp.Table
+	channel       *Channel
+	consumerTag   string
+	exclusive     bool
+	incoming      chan *Message
+	noAck         bool
+	noLocal       bool
+	qos           uint16
+	queue         *Queue
+	limitLock     sync.Mutex
+	prefetchSize  uint32
+	prefetchCount uint16
+	activeSize    uint32
+	activeCount   uint16
 }
 
 func (consumer *Consumer) stop() {
 	close(consumer.incoming)
+}
+
+func (consumer *Consumer) ready() bool {
+	if consumer.noAck {
+		return true
+	}
+	if !consumer.channel.consumeLimitsOk() {
+		return false
+	}
+	var sizeOk = consumer.prefetchSize == 0 || consumer.activeSize <= consumer.prefetchSize
+	var bytesOk = consumer.prefetchCount == 0 || consumer.activeCount <= consumer.prefetchCount
+	return sizeOk && bytesOk
+}
+
+func (consumer *Consumer) incrActive(size uint16, bytes uint32) {
+	consumer.channel.incrActive(size, bytes)
+	consumer.limitLock.Lock()
+	consumer.activeCount += size
+	consumer.activeSize += bytes
+	consumer.limitLock.Unlock()
+}
+
+func (consumer *Consumer) decrActive(size uint16, bytes uint32) {
+	consumer.channel.incrActive(size, bytes)
+	consumer.limitLock.Lock()
+	consumer.activeCount -= size
+	consumer.activeSize -= bytes
+	consumer.limitLock.Unlock()
 }
 
 func (consumer *Consumer) start() {

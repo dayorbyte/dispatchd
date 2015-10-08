@@ -34,8 +34,14 @@ func (channel *Channel) basicRoute(methodFrame amqp.MethodFrame) error {
 }
 
 func (channel *Channel) basicQos(method *amqp.BasicQos) error {
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	if method.Global {
+		channel.prefetchSize = method.PrefetchSize
+		channel.prefetchCount = method.PrefetchCount
+	} else {
+		channel.defaultPrefetchSize = method.PrefetchSize
+		channel.defaultPrefetchCount = method.PrefetchCount
+	}
+	channel.sendMethod(&amqp.BasicQosOk{})
 	return nil
 }
 

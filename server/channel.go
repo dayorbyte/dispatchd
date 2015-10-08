@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"sync"
 )
 
 const (
@@ -26,6 +27,35 @@ type Channel struct {
 	bodyFrames      []*amqp.WireFrame
 	msgIndex        uint64
 	consumers       map[string]*Consumer
+	// Channel QOS Limits
+	limitLock     sync.Mutex
+	prefetchSize  uint32
+	prefetchCount uint16
+	activeSize    uint32
+	activeCount   uint16
+	// Consumer default QOS limits
+	defaultPrefetchSize  uint32
+	defaultPrefetchCount uint16
+}
+
+func (channel *Channel) consumeLimitsOk() bool {
+	var sizeOk = channel.prefetchSize == 0 || channel.activeSize <= channel.prefetchSize
+	var bytesOk = channel.prefetchCount == 0 || channel.activeCount <= channel.prefetchCount
+	return sizeOk && bytesOk
+}
+
+func (channel *Channel) incrActive(size uint16, bytes uint32) {
+	channel.limitLock.Lock()
+	channel.activeCount += size
+	channel.activeSize += bytes
+	channel.limitLock.Unlock()
+}
+
+func (channel *Channel) decrActive(size uint16, bytes uint32) {
+	channel.limitLock.Lock()
+	channel.activeCount -= size
+	channel.activeSize -= bytes
+	channel.limitLock.Unlock()
 }
 
 func NewChannel(id uint16, conn *AMQPConnection) *Channel {
