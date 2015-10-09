@@ -25,8 +25,13 @@ type Channel struct {
 	lastMethodFrame amqp.MethodFrame
 	lastHeaderFrame *amqp.ContentHeaderFrame
 	bodyFrames      []*amqp.WireFrame
-	msgIndex        uint64
 	consumers       map[string]*Consumer
+	// Consumers
+	msgIndex uint64
+	// Delivery Tracking
+	deliveryTag  uint64
+	deliveryLock sync.Mutex
+	awaitingAcks map[uint64]UnackedMessage
 	// Channel QOS Limits
 	limitLock     sync.Mutex
 	prefetchSize  uint32
@@ -36,6 +41,54 @@ type Channel struct {
 	// Consumer default QOS limits
 	defaultPrefetchSize  uint32
 	defaultPrefetchCount uint16
+}
+
+func (channel *Channel) channelError(code uint16, message string) {
+	channel.channelErrorWithMethod(code, message, 0, 0)
+}
+
+func (channel *Channel) channelErrorWithMethod(code uint16, message string, classId uint16, methodId uint16) {
+	fmt.Println("Sending channel error:", message)
+	channel.state = CH_STATE_CLOSING
+	channel.sendMethod(&amqp.ChannelClose{code, message, classId, methodId})
+}
+
+func (channel *Channel) ackBelow(tag uint64) bool {
+	fmt.Println("Ack below")
+	var count = 0
+	for k, _ := range channel.awaitingAcks {
+		fmt.Printf("%d(%d), ", k, tag)
+		if k < tag || tag == 0 {
+			delete(channel.awaitingAcks, k)
+			count += 1
+		}
+	}
+	fmt.Println()
+	fmt.Printf("Acked %d messages", count)
+	// TODO: should this be false if nothing was actually deleted and tag != 0?
+	return true
+}
+
+func (channel *Channel) ackOne(tag uint64) bool {
+	fmt.Println("Ack one")
+	var _, found = channel.awaitingAcks[tag]
+	if !found {
+		return false
+	}
+	delete(channel.awaitingAcks, tag)
+	return true
+}
+
+func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint64 {
+	// fmt.Println("Adding unacked message")
+	var tag = channel.nextDeliveryTag()
+	var unacked = UnackedMessage{
+		consumer: consumer,
+		msg:      msg,
+	}
+	channel.awaitingAcks[tag] = unacked
+	fmt.Printf("Adding unacked message with tag: %d\n", tag)
+	return tag
 }
 
 func (channel *Channel) consumeLimitsOk() bool {
@@ -60,20 +113,28 @@ func (channel *Channel) decrActive(size uint16, bytes uint32) {
 
 func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 	return &Channel{
-		id:         id,
-		server:     conn.server,
-		incoming:   make(chan *amqp.WireFrame),
-		outgoing:   conn.outgoing,
-		conn:       conn,
-		state:      CH_STATE_INIT,
-		bodyFrames: make([]*amqp.WireFrame, 0, 1),
-		consumers:  make(map[string]*Consumer),
+		id:           id,
+		server:       conn.server,
+		incoming:     make(chan *amqp.WireFrame),
+		outgoing:     conn.outgoing,
+		conn:         conn,
+		state:        CH_STATE_INIT,
+		bodyFrames:   make([]*amqp.WireFrame, 0, 1),
+		consumers:    make(map[string]*Consumer),
+		awaitingAcks: make(map[uint64]UnackedMessage),
 	}
 }
 
-func (channel *Channel) nextDeliveryTag() uint64 {
+func (channel *Channel) nextConfirmId() uint64 {
 	channel.msgIndex++
 	return channel.msgIndex
+}
+
+func (channel *Channel) nextDeliveryTag() uint64 {
+	channel.deliveryLock.Lock()
+	channel.deliveryTag++
+	channel.deliveryLock.Unlock()
+	return channel.deliveryTag
 }
 
 func (channel *Channel) start() {
@@ -125,13 +186,17 @@ func (channel *Channel) destructor() {
 	channel.conn.deregisterChannel(channel.id)
 	// remove any consumers associated with this channel
 	for _, consumer := range channel.consumers {
-		close(consumer.incoming)
+		consumer.stop()
+	}
+	// Any unacked messages should be re-added
+	for _, unacked := range channel.awaitingAcks {
+		unacked.consumer.queue.readd(unacked.msg)
 	}
 }
 
 // Send a method frame out to the client
 func (channel *Channel) sendMethod(method amqp.MethodFrame) {
-	fmt.Printf("Sending method: %s\n", method.MethodName())
+	// fmt.Printf("Sending method: %s\n", method.MethodName())
 	var buf = bytes.NewBuffer([]byte{})
 	method.Write(buf)
 	channel.outgoing <- &amqp.WireFrame{uint8(amqp.FrameMethod), channel.id, buf.Bytes()}
@@ -139,7 +204,7 @@ func (channel *Channel) sendMethod(method amqp.MethodFrame) {
 
 // Send a method frame out to the client
 func (channel *Channel) sendContent(method *amqp.BasicDeliver, message *Message) {
-	fmt.Println("Sending content\n")
+	// fmt.Println("Sending content\n")
 	// deliver
 	channel.sendMethod(method)
 	// header

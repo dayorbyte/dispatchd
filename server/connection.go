@@ -139,7 +139,7 @@ func (conn *AMQPConnection) handleOutgoing() {
 				break
 			}
 			var frame = <-conn.outgoing
-			fmt.Printf("Sending outgoing message. type: %d\n", frame.FrameType)
+			// fmt.Printf("Sending outgoing message. type: %d\n", frame.FrameType)
 			// TODO(MUST): Hard close on irrecoverable errors, retry on recoverable
 			// ones some number of times.
 

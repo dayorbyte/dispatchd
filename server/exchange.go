@@ -48,7 +48,7 @@ func (exchange *Exchange) start() {
 }
 
 func (exchange *Exchange) publish(method *amqp.BasicPublish, header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
-	fmt.Printf("Got message in exchange %s\n", exchange.name)
+	// fmt.Printf("Got message in exchange %s\n", exchange.name)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {

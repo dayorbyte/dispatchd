@@ -113,9 +113,17 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) error {
 }
 
 func (channel *Channel) basicAck(method *amqp.BasicAck) error {
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-
+	var ok = false
+	if method.Multiple {
+		ok = channel.ackBelow(method.DeliveryTag)
+	} else {
+		ok = channel.ackOne(method.DeliveryTag)
+	}
+	if !ok {
+		var classId, methodId = method.MethodIdentifier()
+		var msg = "Precondition Failed: Delivery Tag not found"
+		channel.channelErrorWithMethod(406, msg, classId, methodId)
+	}
 	fmt.Println("Handling BasicAck")
 	return nil
 }
