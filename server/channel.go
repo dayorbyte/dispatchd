@@ -58,7 +58,7 @@ func (channel *Channel) ackBelow(tag uint64) bool {
 	fmt.Println("Ack below")
 	var count = 0
 	for k, unacked := range channel.awaitingAcks {
-		fmt.Printf("%d(%d), ", k, tag)
+		// fmt.Printf("%d(%d), ", k, tag)
 		if k < tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
 			unacked.consumer.decrActive(1, unacked.msg.size())
@@ -340,6 +340,6 @@ func (channel *Channel) routeBodyMethod(methodFrame amqp.MethodFrame,
 	header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
 	switch method := methodFrame.(type) {
 	case *amqp.BasicPublish:
-		channel.server.exchanges[method.Exchange].publish(method, header, bodyFrames)
+		channel.server.exchanges[method.Exchange].publish(channel.server, method, header, bodyFrames)
 	}
 }

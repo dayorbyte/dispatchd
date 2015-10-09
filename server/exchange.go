@@ -47,13 +47,17 @@ func (exchange *Exchange) start() {
 	}()
 }
 
-func (exchange *Exchange) publish(method *amqp.BasicPublish, header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
+func (exchange *Exchange) publish(server *Server, method *amqp.BasicPublish, header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
 	// fmt.Printf("Got message in exchange %s\n", exchange.name)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
 			if binding.matchDirect(method) {
-				binding.queue.add(&Message{
+				var queue, foundQueue = server.queues[binding.queueName]
+				if !foundQueue {
+					panic("queue not found!")
+				}
+				queue.add(&Message{
 					header:   header,
 					payload:  bodyFrames,
 					exchange: method.Exchange,
@@ -62,4 +66,14 @@ func (exchange *Exchange) publish(method *amqp.BasicPublish, header *amqp.Conten
 			}
 		}
 	}
+}
+
+func (exchange *Exchange) addBinding(queue *Queue, binding *Binding) bool {
+	for _, b := range exchange.bindings {
+		if binding == b {
+			return false
+		}
+	}
+	exchange.bindings = append(exchange.bindings, binding)
+	return true
 }

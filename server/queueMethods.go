@@ -32,7 +32,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 			return nil
 		}
 		var classId, methodId = method.MethodIdentifier()
-		channel.conn.connectionErrorWithMethod(404, "Not found", classId, methodId)
+		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
 	fmt.Println("calling declareQueue")
 	channel.conn.server.declareQueue(method)
@@ -46,10 +46,32 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 	fmt.Println("Got queueBind")
 	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-	// if !method.NoWait {
-	// 	channel.sendMethod(&amqp.QeueBindOk{})
-	// }
+
+	// Check queue
+	var queue, foundQueue = channel.server.queues[method.Queue]
+	if !foundQueue {
+		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
+		return nil
+	}
+	// Check exchange
+	var exchange, foundExchange = channel.server.exchanges[method.Exchange]
+	if !foundExchange {
+		channel.channelErrorWithMethod(404, "Exchange not found", classId, methodId)
+		return nil
+	}
+
+	var binding = &Binding{
+		queueName:    method.Queue,
+		exchangeName: method.Exchange,
+		key:          method.RoutingKey,
+		arguments:    method.Arguments,
+	}
+
+	exchange.addBinding(queue, binding)
+
+	if !method.NoWait {
+		channel.sendMethod(&amqp.QueueBindOk{})
+	}
 	return nil
 }
 

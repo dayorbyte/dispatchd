@@ -5,14 +5,14 @@ import (
 )
 
 type Binding struct {
-	queue     *Queue
-	exchange  *Exchange
-	key       string
-	arguments amqp.Table
+	queueName    string
+	exchangeName string
+	key          string
+	arguments    amqp.Table
 }
 
 func (b *Binding) matchDirect(message *amqp.BasicPublish) bool {
-	return message.Exchange == b.exchange.name && b.key == message.RoutingKey
+	return message.Exchange == b.exchangeName && b.key == message.RoutingKey
 }
 
 func (b *Binding) matchFanout(message *amqp.BasicPublish) bool {
@@ -21,8 +21,4 @@ func (b *Binding) matchFanout(message *amqp.BasicPublish) bool {
 
 func (b *Binding) matchTopic(message *amqp.BasicPublish) bool {
 	panic("topic exchange not implemented")
-}
-
-func (b *Binding) queueName(message *amqp.BasicPublish) string {
-	return b.queue.name
 }
