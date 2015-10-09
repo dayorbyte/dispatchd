@@ -54,10 +54,18 @@ func (channel *Channel) basicRecover(method *amqp.BasicRecover) error {
 }
 
 func (channel *Channel) basicNack(method *amqp.BasicNack) error {
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-
 	fmt.Println("Handling BasicNack")
+	var ok = false
+	if method.Multiple {
+		ok = channel.nackBelow(method.DeliveryTag)
+	} else {
+		ok = channel.nackOne(method.DeliveryTag)
+	}
+	if !ok {
+		var classId, methodId = method.MethodIdentifier()
+		var msg = "Precondition Failed: Delivery Tag not found"
+		channel.channelErrorWithMethod(406, msg, classId, methodId)
+	}
 	return nil
 }
 
@@ -133,10 +141,10 @@ func (channel *Channel) basicAck(method *amqp.BasicAck) error {
 
 func (channel *Channel) basicReject(method *amqp.BasicReject) error {
 	fmt.Printf("Handling BasicReject: %d\n", method.DeliveryTag)
-	if err := channel.rejectMessage(method.DeliveryTag); err != nil {
+	if !channel.nackOne(method.DeliveryTag) {
 		var classId, methodId = method.MethodIdentifier()
-		channel.channelErrorWithMethod(404, "Consumer not found", classId, methodId)
-		return nil
+		var msg = "Precondition Failed: Delivery Tag not found"
+		channel.channelErrorWithMethod(406, msg, classId, methodId)
 	}
 	return nil
 }

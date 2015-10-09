@@ -82,6 +82,35 @@ func (channel *Channel) ackOne(tag uint64) bool {
 	return true
 }
 
+func (channel *Channel) nackBelow(tag uint64) bool {
+	fmt.Println("Nack below")
+	var count = 0
+	for k, unacked := range channel.awaitingAcks {
+		fmt.Printf("%d(%d), ", k, tag)
+		if k < tag || tag == 0 {
+			delete(channel.awaitingAcks, k)
+			unacked.consumer.queue.readd(unacked.msg)
+			unacked.consumer.decrActive(1, unacked.msg.size())
+			count += 1
+		}
+	}
+	fmt.Println()
+	fmt.Printf("Nacked %d messages\n", count)
+	// TODO: should this be false if nothing was actually deleted and tag != 0?
+	return true
+}
+
+func (channel *Channel) nackOne(tag uint64) bool {
+	var unacked, found = channel.awaitingAcks[tag]
+	if !found {
+		return false
+	}
+	unacked.consumer.queue.readd(unacked.msg)
+	unacked.consumer.decrActive(1, unacked.msg.size())
+	delete(channel.awaitingAcks, tag)
+	return true
+}
+
 func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint64 {
 	// fmt.Println("Adding unacked message")
 	var tag = channel.nextDeliveryTag()
@@ -92,17 +121,6 @@ func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint
 	channel.awaitingAcks[tag] = unacked
 	fmt.Printf("Adding unacked message with tag: %d\n", tag)
 	return tag
-}
-
-func (channel *Channel) rejectMessage(deliveryTag uint64) error {
-	var unacked, found = channel.awaitingAcks[deliveryTag]
-	if !found {
-		return errors.New("Message not found")
-	}
-	unacked.consumer.queue.readd(unacked.msg)
-	unacked.consumer.decrActive(1, unacked.msg.size())
-	delete(channel.awaitingAcks, deliveryTag)
-	return nil
 }
 
 func (channel *Channel) consumeLimitsOk() bool {
