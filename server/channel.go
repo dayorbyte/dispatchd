@@ -92,6 +92,16 @@ func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint
 	return tag
 }
 
+func (channel *Channel) rejectMessage(deliveryTag uint64) error {
+	var unacked, found = channel.awaitingAcks[deliveryTag]
+	if !found {
+		return errors.New("Message not found")
+	}
+	unacked.consumer.queue.readd(unacked.msg)
+	delete(channel.awaitingAcks, deliveryTag)
+	return nil
+}
+
 func (channel *Channel) consumeLimitsOk() bool {
 	var sizeOk = channel.prefetchSize == 0 || channel.activeSize <= channel.prefetchSize
 	var bytesOk = channel.prefetchCount == 0 || channel.activeCount <= channel.prefetchCount

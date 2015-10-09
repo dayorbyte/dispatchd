@@ -109,14 +109,14 @@ func (channel *Channel) basicPublish(method *amqp.BasicPublish) error {
 }
 
 func (channel *Channel) basicGet(method *amqp.BasicGet) error {
+	fmt.Println("Handling BasicGet")
 	var classId, methodId = method.MethodIdentifier()
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-
-	fmt.Println("Handling BasicGet")
 	return nil
 }
 
 func (channel *Channel) basicAck(method *amqp.BasicAck) error {
+	fmt.Println("Handling BasicAck")
 	var ok = false
 	if method.Multiple {
 		ok = channel.ackBelow(method.DeliveryTag)
@@ -128,14 +128,15 @@ func (channel *Channel) basicAck(method *amqp.BasicAck) error {
 		var msg = "Precondition Failed: Delivery Tag not found"
 		channel.channelErrorWithMethod(406, msg, classId, methodId)
 	}
-	fmt.Println("Handling BasicAck")
 	return nil
 }
 
 func (channel *Channel) basicReject(method *amqp.BasicReject) error {
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-
 	fmt.Println("Handling BasicReject")
+	if err := channel.rejectMessage(method.DeliveryTag); err != nil {
+		var classId, methodId = method.MethodIdentifier()
+		channel.channelErrorWithMethod(404, "Consumer not found", classId, methodId)
+		return nil
+	}
 	return nil
 }
