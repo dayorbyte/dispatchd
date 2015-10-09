@@ -80,13 +80,17 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) error {
 }
 
 func (channel *Channel) basicCancel(method *amqp.BasicCancel) error {
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+
+	if err := channel.removeConsumer(method.ConsumerTag); err != nil {
+		var classId, methodId = method.MethodIdentifier()
+		channel.channelErrorWithMethod(404, "Consumer not found", classId, methodId)
+		return nil
+	}
 
 	fmt.Println("Handling BasicCancel")
-	// if !method.NoWait {
-	// 	channel.sendMethod(&amqp.BasicCancelOk{method.ConsumerTag})
-	// }
+	if !method.NoWait {
+		channel.sendMethod(&amqp.BasicCancelOk{method.ConsumerTag})
+	}
 	return nil
 }
 

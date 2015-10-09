@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
@@ -192,6 +193,16 @@ func (channel *Channel) destructor() {
 	for _, unacked := range channel.awaitingAcks {
 		unacked.consumer.queue.readd(unacked.msg)
 	}
+}
+
+func (channel *Channel) removeConsumer(consumerTag string) error {
+	var consumer, found = channel.consumers[consumerTag]
+	if !found {
+		return errors.New("Consumer not found")
+	}
+	consumer.stop()
+	delete(channel.consumers, consumerTag)
+	return nil
 }
 
 // Send a method frame out to the client
