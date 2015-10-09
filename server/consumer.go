@@ -45,19 +45,23 @@ func (consumer *Consumer) ready() bool {
 }
 
 func (consumer *Consumer) incrActive(size uint16, bytes uint32) {
+	// fmt.Printf("+Active => %d\n", consumer.activeCount)
 	consumer.channel.incrActive(size, bytes)
 	consumer.limitLock.Lock()
 	consumer.activeCount += size
 	consumer.activeSize += bytes
 	consumer.limitLock.Unlock()
+	// fmt.Printf("+Active => %d\n", consumer.activeCount)
 }
 
 func (consumer *Consumer) decrActive(size uint16, bytes uint32) {
-	consumer.channel.incrActive(size, bytes)
+	// fmt.Printf("-Active => %d\n", consumer.activeCount)
+	consumer.channel.decrActive(size, bytes)
 	consumer.limitLock.Lock()
 	consumer.activeCount -= size
 	consumer.activeSize -= bytes
 	consumer.limitLock.Unlock()
+	// fmt.Printf("-Active => %d\n", consumer.activeCount)
 }
 
 func (consumer *Consumer) start() {

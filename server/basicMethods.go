@@ -132,7 +132,7 @@ func (channel *Channel) basicAck(method *amqp.BasicAck) error {
 }
 
 func (channel *Channel) basicReject(method *amqp.BasicReject) error {
-	fmt.Println("Handling BasicReject")
+	fmt.Printf("Handling BasicReject: %d\n", method.DeliveryTag)
 	if err := channel.rejectMessage(method.DeliveryTag); err != nil {
 		var classId, methodId = method.MethodIdentifier()
 		channel.channelErrorWithMethod(404, "Consumer not found", classId, methodId)

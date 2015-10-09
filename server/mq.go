@@ -15,7 +15,7 @@ func main() {
 	var server = NewServer()
 	ln, err := net.Listen("tcp", ":1111")
 	if err != nil {
-		fmt.Printf("Error!")
+		fmt.Printf("Error!\n")
 		os.Exit(1)
 	}
 	for {

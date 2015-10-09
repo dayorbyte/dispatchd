@@ -1,8 +1,8 @@
 package main
 
 import (
-	// "fmt"
 	"errors"
+	"fmt"
 	// "bytes"
 	"github.com/jeffjenkins/mq/amqp"
 )
@@ -26,6 +26,7 @@ func (channel *Channel) channelRoute(methodFrame amqp.MethodFrame) error {
 }
 
 func (channel *Channel) channelOpen(method *amqp.ChannelOpen) error {
+	fmt.Println("Handling " + method.MethodName())
 	// TODO(MUST): if channel is open, send 504 ChannelError
 	channel.sendMethod(&amqp.ChannelOpenOk{})
 	channel.state = CH_STATE_OPEN
@@ -33,12 +34,14 @@ func (channel *Channel) channelOpen(method *amqp.ChannelOpen) error {
 }
 
 func (channel *Channel) channelFlow(method *amqp.ChannelFlow) error {
+	fmt.Println("Handling " + method.MethodName())
 	var classId, methodId = method.MethodIdentifier()
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
 	return nil
 }
 
 func (channel *Channel) channelFlowOk(method *amqp.ChannelFlowOk) error {
+	fmt.Println("Handling " + method.MethodName())
 	var classId, methodId = method.MethodIdentifier()
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
 	return nil
@@ -46,6 +49,7 @@ func (channel *Channel) channelFlowOk(method *amqp.ChannelFlowOk) error {
 
 func (channel *Channel) channelClose(method *amqp.ChannelClose) error {
 	// TODO(MAY): Report the class and method that are the reason for the close
+	fmt.Println("Handling " + method.MethodName())
 	channel.sendMethod(&amqp.ChannelCloseOk{})
 	channel.state = CH_STATE_CLOSED
 	channel.destructor()
@@ -53,6 +57,7 @@ func (channel *Channel) channelClose(method *amqp.ChannelClose) error {
 }
 
 func (channel *Channel) channelCloseOk(method *amqp.ChannelCloseOk) error {
+	fmt.Println("Handling " + method.MethodName())
 	channel.state = CH_STATE_CLOSED
 	channel.destructor()
 	return nil

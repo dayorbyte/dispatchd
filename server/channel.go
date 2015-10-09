@@ -57,26 +57,28 @@ func (channel *Channel) channelErrorWithMethod(code uint16, message string, clas
 func (channel *Channel) ackBelow(tag uint64) bool {
 	fmt.Println("Ack below")
 	var count = 0
-	for k, _ := range channel.awaitingAcks {
+	for k, unacked := range channel.awaitingAcks {
 		fmt.Printf("%d(%d), ", k, tag)
 		if k < tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
+			unacked.consumer.decrActive(1, unacked.msg.size())
 			count += 1
 		}
 	}
 	fmt.Println()
-	fmt.Printf("Acked %d messages", count)
+	fmt.Printf("Acked %d messages\n", count)
 	// TODO: should this be false if nothing was actually deleted and tag != 0?
 	return true
 }
 
 func (channel *Channel) ackOne(tag uint64) bool {
 	fmt.Println("Ack one")
-	var _, found = channel.awaitingAcks[tag]
+	var unacked, found = channel.awaitingAcks[tag]
 	if !found {
 		return false
 	}
 	delete(channel.awaitingAcks, tag)
+	unacked.consumer.decrActive(1, unacked.msg.size())
 	return true
 }
 
@@ -98,6 +100,7 @@ func (channel *Channel) rejectMessage(deliveryTag uint64) error {
 		return errors.New("Message not found")
 	}
 	unacked.consumer.queue.readd(unacked.msg)
+	unacked.consumer.decrActive(1, unacked.msg.size())
 	delete(channel.awaitingAcks, deliveryTag)
 	return nil
 }
@@ -202,6 +205,9 @@ func (channel *Channel) destructor() {
 	// Any unacked messages should be re-added
 	for _, unacked := range channel.awaitingAcks {
 		unacked.consumer.queue.readd(unacked.msg)
+		// this probably isn't needed, but for debugging purposes it's nice to
+		// ensure that all the active counts/sizes get back to 0
+		unacked.consumer.decrActive(1, unacked.msg.size())
 	}
 }
 

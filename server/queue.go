@@ -61,7 +61,7 @@ func (q *Queue) readd(message *Message) {
 
 func (q *Queue) removeConsumer(consumerTag string) {
 	q.queueLock.Lock()
-	fmt.Printf("Removing consumer %s", consumerTag)
+	fmt.Printf("Removing consumer %s\n", consumerTag)
 	// reset current if needed
 	if q.currentConsumer.Value.(*Consumer).consumerTag == consumerTag {
 		q.currentConsumer = nil
@@ -69,7 +69,7 @@ func (q *Queue) removeConsumer(consumerTag string) {
 	// remove from list
 	for e := q.consumers.Front(); e != nil; e = e.Next() {
 		if e.Value.(*Consumer).consumerTag == consumerTag {
-			fmt.Printf("Found consumer %s", consumerTag)
+			fmt.Printf("Found consumer %s\n", consumerTag)
 			q.consumers.Remove(e)
 		}
 	}
@@ -103,7 +103,7 @@ func (q *Queue) start() {
 	go func() {
 		for {
 			if q.closed {
-				fmt.Printf("Queue closed!")
+				fmt.Printf("Queue closed!\n")
 				break
 			}
 			if q.queue.Len() == 0 || q.consumers.Len() == 0 {
