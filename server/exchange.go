@@ -77,3 +77,13 @@ func (exchange *Exchange) addBinding(queue *Queue, binding *Binding) bool {
 	exchange.bindings = append(exchange.bindings, binding)
 	return true
 }
+
+func (exchange *Exchange) removeBinding(queue *Queue, binding *Binding) bool {
+	for i, b := range exchange.bindings {
+		if binding == b {
+			exchange.bindings = append(exchange.bindings[:i], exchange.bindings[i+1:]...)
+			return true
+		}
+	}
+	return false
+}

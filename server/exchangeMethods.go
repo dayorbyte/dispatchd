@@ -24,7 +24,7 @@ func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) error {
 func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
 	var err = channel.server.declareExchange(method)
 	if err != nil {
-		fmt.Println("Declaring exchange: Error")
+		fmt.Println("Declaring exchange: Error: " + err.Error())
 		// TODO(send error to client)
 
 		return err

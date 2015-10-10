@@ -98,6 +98,27 @@ func (channel *Channel) queueDelete(method *amqp.QueueDelete) error {
 func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) error {
 	fmt.Println("Got queueUnbind")
 	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+
+	// Check queue
+	var queue, foundQueue = channel.server.queues[method.Queue]
+	if !foundQueue {
+		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
+		return nil
+	}
+	// Check exchange
+	var exchange, foundExchange = channel.server.exchanges[method.Exchange]
+	if !foundExchange {
+		channel.channelErrorWithMethod(404, "Exchange not found", classId, methodId)
+		return nil
+	}
+
+	var binding = &Binding{
+		queueName:    method.Queue,
+		exchangeName: method.Exchange,
+		key:          method.RoutingKey,
+		arguments:    method.Arguments,
+	}
+
+	exchange.removeBinding(queue, binding)
 	return nil
 }
