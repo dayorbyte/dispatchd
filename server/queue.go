@@ -43,6 +43,12 @@ type Queue struct {
 	currentConsumer *list.Element
 }
 
+func (q *Queue) purge() uint32 {
+	var length = q.queue.Len()
+	q.queue.Init()
+	return uint32(length)
+}
+
 func (q *Queue) add(message *Message) {
 	// fmt.Printf("Queue \"%s\" got message! %d messages in the queue\n", q.name, q.queue.Len())
 	// TODO: if there is a consumer available, dispatch

@@ -78,10 +78,16 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 func (channel *Channel) queuePurge(method *amqp.QueuePurge) error {
 	fmt.Println("Got queuePurge")
 	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-	// if !method.NoWait {
-	// 	channel.sendMethod(&amqp.QeuePurgeOk{0}) // TODO(MUST): num purged
-	// }
+
+	var queue, foundQueue = channel.server.queues[method.Queue]
+	if !foundQueue {
+		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
+		return nil
+	}
+	numPurged := queue.purge()
+	if !method.NoWait {
+		channel.sendMethod(&amqp.QueuePurgeOk{numPurged})
+	}
 	return nil
 }
 
