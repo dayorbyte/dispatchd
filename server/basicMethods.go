@@ -79,7 +79,11 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) error {
 	if len(method.ConsumerTag) == 0 {
 		method.ConsumerTag = fmt.Sprintf("%d", time.Now().UnixNano())
 	}
-	queue.addConsumer(channel, method)
+	success := queue.addConsumer(channel, method)
+	if !success {
+		var classId, methodId = method.MethodIdentifier()
+		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
+	}
 	if !method.NoWait {
 		channel.sendMethod(&amqp.BasicConsumeOk{method.ConsumerTag})
 	}

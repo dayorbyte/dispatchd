@@ -94,10 +94,19 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) error {
 func (channel *Channel) queueDelete(method *amqp.QueueDelete) error {
 	fmt.Println("Got queueDelete")
 	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-	// if !method.NoWait {
-	// 	channel.sendMethod(&amqp.QeueDeleteOk{0}) // TODO(MUST): num messages deleted
-	// }
+
+	var queue, foundQueue = channel.server.queues[method.Queue]
+	if !foundQueue {
+		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
+		return nil
+	}
+
+	numPurged := queue.purge()
+	queue.cancelConsumers()
+
+	if !method.NoWait {
+		channel.sendMethod(&amqp.QueueDeleteOk{numPurged})
+	}
 	return nil
 }
 

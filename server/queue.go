@@ -43,6 +43,12 @@ type Queue struct {
 	currentConsumer *list.Element
 }
 
+func (q *Queue) close() {
+	// This discards any messages which would be added. It does not
+	// do cleanup
+	q.closed = true
+}
+
 func (q *Queue) purge() uint32 {
 	var length = q.queue.Len()
 	q.queue.Init()
@@ -52,9 +58,11 @@ func (q *Queue) purge() uint32 {
 func (q *Queue) add(message *Message) {
 	// fmt.Printf("Queue \"%s\" got message! %d messages in the queue\n", q.name, q.queue.Len())
 	// TODO: if there is a consumer available, dispatch
-	q.queueLock.Lock()
-	defer q.queueLock.Unlock()
-	q.queue.PushBack(message)
+	if !q.closed {
+		q.queueLock.Lock()
+		defer q.queueLock.Unlock()
+		q.queue.PushBack(message)
+	}
 }
 
 func (q *Queue) readd(message *Message) {
@@ -67,6 +75,7 @@ func (q *Queue) readd(message *Message) {
 
 func (q *Queue) removeConsumer(consumerTag string) {
 	q.queueLock.Lock()
+	defer q.queueLock.Unlock()
 	fmt.Printf("Removing consumer %s\n", consumerTag)
 	// reset current if needed
 	if q.currentConsumer.Value.(*Consumer).consumerTag == consumerTag {
@@ -79,11 +88,33 @@ func (q *Queue) removeConsumer(consumerTag string) {
 			q.consumers.Remove(e)
 		}
 	}
-	q.queueLock.Unlock()
 }
 
-func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) {
+func (q *Queue) cancelConsumers() {
+	q.queueLock.Lock()
+	defer q.queueLock.Unlock()
+	// Send cancel to each consumer
+	for c := q.consumers.Front(); c != nil; c = c.Next() {
+		var consumer = c.Value.(*Consumer)
+		consumer.channel.sendMethod(&amqp.BasicCancel{consumer.consumerTag, true})
+	}
+	// TODO: is it safe to delete while iterating over a list in go?
+	toCancel := list.New()
+	toCancel.PushBackList(q.consumers)
+	for c := toCancel.Front(); c != nil; c = c.Next() {
+		c.Value.(*Consumer).stop()
+	}
+
+	q.consumers.Init()
+
+}
+
+
+func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) bool {
 	fmt.Printf("Adding consumer\n")
+	if q.closed {
+		return false
+	}
 	var consumer = &Consumer{
 		arguments:     method.Arguments,
 		channel:       channel,
@@ -100,8 +131,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) {
 	channel.consumers[method.ConsumerTag] = consumer
 	q.consumers.PushBack(consumer)
 	consumer.start()
-	return
-
+	return true
 }
 
 func (q *Queue) start() {
