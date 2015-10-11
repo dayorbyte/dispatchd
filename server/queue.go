@@ -106,6 +106,8 @@ func (q *Queue) start() {
 				fmt.Printf("Queue closed!\n")
 				break
 			}
+			// TODO: replace this check with a channel which notifies the queue
+			// dispatch loop that someone is ready to accept more work.
 			if q.queue.Len() == 0 || q.consumers.Len() == 0 {
 				time.Sleep(5 * time.Millisecond)
 				continue
@@ -122,7 +124,7 @@ func (q *Queue) processOne() {
 		q.currentConsumer = q.consumers.Front()
 	}
 	var next = q.currentConsumer.Next()
-	fmt.Printf("Process 1\n")
+	// fmt.Printf("Process 1\n")
 	// Select the next round-robin consumer
 	for {
 		if next == q.currentConsumer { // full loop. nothing available
@@ -134,6 +136,7 @@ func (q *Queue) processOne() {
 		q.currentConsumer = next
 		var consumer = next.Value.(*Consumer)
 		if !consumer.ready() {
+			// fmt.Printf("Consumer not ready!\n")
 			continue
 		}
 		var msg = q.queue.Remove(q.queue.Front()).(*Message)

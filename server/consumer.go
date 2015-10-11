@@ -37,10 +37,15 @@ func (consumer *Consumer) ready() bool {
 		return true
 	}
 	if !consumer.channel.consumeLimitsOk() {
+		// fmt.Println("channel limit full")
 		return false
 	}
 	var sizeOk = consumer.prefetchSize == 0 || consumer.activeSize <= consumer.prefetchSize
 	var bytesOk = consumer.prefetchCount == 0 || consumer.activeCount <= consumer.prefetchCount
+	// if !(sizeOk && bytesOk) {
+	// 	fmt.Println("consumer limit full")
+	// }
+
 	return sizeOk && bytesOk
 }
 

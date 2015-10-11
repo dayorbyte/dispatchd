@@ -59,7 +59,7 @@ func (channel *Channel) ackBelow(tag uint64) bool {
 	var count = 0
 	for k, unacked := range channel.awaitingAcks {
 		// fmt.Printf("%d(%d), ", k, tag)
-		if k < tag || tag == 0 {
+		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
 			unacked.consumer.decrActive(1, unacked.msg.size())
 			count += 1
@@ -87,7 +87,7 @@ func (channel *Channel) nackBelow(tag uint64) bool {
 	var count = 0
 	for k, unacked := range channel.awaitingAcks {
 		fmt.Printf("%d(%d), ", k, tag)
-		if k < tag || tag == 0 {
+		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
 			unacked.consumer.queue.readd(unacked.msg)
 			unacked.consumer.decrActive(1, unacked.msg.size())
@@ -126,6 +126,7 @@ func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint
 func (channel *Channel) consumeLimitsOk() bool {
 	var sizeOk = channel.prefetchSize == 0 || channel.activeSize <= channel.prefetchSize
 	var bytesOk = channel.prefetchCount == 0 || channel.activeCount <= channel.prefetchCount
+	// fmt.Printf("%d|%d || %d|%d\n", channel.prefetchSize, channel.activeSize, channel.prefetchCount, channel.activeCount)
 	return sizeOk && bytesOk
 }
 
