@@ -129,12 +129,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
 	}
 	server.queues[queue.name] = queue
 	var defaultExchange = server.exchanges[""]
-	var defaultBinding = &Binding{
-		queueName:    queue.name,
-		exchangeName: "",
-		key:          queue.name,
-		arguments:    make(amqp.Table),
-	}
+	var defaultBinding = NewBinding(queue.name, "", queue.name, make(amqp.Table))
 	defaultExchange.addBinding(queue, defaultBinding)
 	// TODO: queue should store bindings too?
 	queue.start()

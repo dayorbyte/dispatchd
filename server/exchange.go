@@ -32,6 +32,8 @@ func exchangeNameToType(et string) (extype, error) {
 		return EX_TYPE_DIRECT, nil
 	case et == "fanout":
 		return EX_TYPE_FANOUT, nil
+	case et == "topic":
+		return EX_TYPE_TOPIC, nil
 	default:
 		panic("bad exchange type! " + et)
 		return 0, errors.New("Unknown exchang type " + et)
@@ -68,6 +70,21 @@ func (exchange *Exchange) publish(server *Server, method *amqp.BasicPublish, hea
 	case exchange.extype == EX_TYPE_FANOUT:
 		for _, binding := range exchange.bindings {
 			if binding.matchFanout(method) {
+				var queue, foundQueue = server.queues[binding.queueName]
+				if !foundQueue {
+					panic("queue not found!")
+				}
+				queue.add(&Message{
+					header:   header,
+					payload:  bodyFrames,
+					exchange: method.Exchange,
+					key:      method.RoutingKey,
+				})
+			}
+		}
+	case exchange.extype == EX_TYPE_TOPIC:
+		for _, binding := range exchange.bindings {
+			if binding.matchTopic(method) {
 				var queue, foundQueue = server.queues[binding.queueName]
 				if !foundQueue {
 					panic("queue not found!")

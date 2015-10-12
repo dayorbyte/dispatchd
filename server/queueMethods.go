@@ -60,12 +60,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 		return nil
 	}
 
-	var binding = &Binding{
-		queueName:    method.Queue,
-		exchangeName: method.Exchange,
-		key:          method.RoutingKey,
-		arguments:    method.Arguments,
-	}
+	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
 
 	exchange.addBinding(queue, binding)
 
@@ -127,12 +122,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) error {
 		return nil
 	}
 
-	var binding = &Binding{
-		queueName:    method.Queue,
-		exchangeName: method.Exchange,
-		key:          method.RoutingKey,
-		arguments:    method.Arguments,
-	}
+	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
 
 	exchange.removeBinding(queue, binding)
 	return nil
