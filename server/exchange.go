@@ -48,7 +48,7 @@ func (exchange *Exchange) start() {
 }
 
 func (exchange *Exchange) publish(server *Server, method *amqp.BasicPublish, header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
-	// fmt.Printf("Got message in exchange %s\n", exchange.name)
+	fmt.Printf("Got message in exchange %s\n", exchange.name)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
@@ -65,7 +65,25 @@ func (exchange *Exchange) publish(server *Server, method *amqp.BasicPublish, hea
 				})
 			}
 		}
+	case exchange.extype == EX_TYPE_FANOUT:
+		for _, binding := range exchange.bindings {
+			if binding.matchFanout(method) {
+				var queue, foundQueue = server.queues[binding.queueName]
+				if !foundQueue {
+					panic("queue not found!")
+				}
+				queue.add(&Message{
+					header:   header,
+					payload:  bodyFrames,
+					exchange: method.Exchange,
+					key:      method.RoutingKey,
+				})
+			}
+		}
+	default:
+		panic("unknown exchange type!")
 	}
+
 }
 
 func (exchange *Exchange) addBinding(queue *Queue, binding *Binding) bool {

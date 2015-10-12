@@ -78,7 +78,7 @@ func (q *Queue) removeConsumer(consumerTag string) {
 	defer q.queueLock.Unlock()
 	fmt.Printf("Removing consumer %s\n", consumerTag)
 	// reset current if needed
-	if q.currentConsumer.Value.(*Consumer).consumerTag == consumerTag {
+	if q.currentConsumer != nil && q.currentConsumer.Value.(*Consumer).consumerTag == consumerTag {
 		q.currentConsumer = nil
 	}
 	// remove from list
@@ -108,7 +108,6 @@ func (q *Queue) cancelConsumers() {
 	q.consumers.Init()
 
 }
-
 
 func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) bool {
 	fmt.Printf("Adding consumer\n")
