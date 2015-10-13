@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
+	"time"
 )
 
 const (
@@ -123,25 +124,65 @@ func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint
 	return tag
 }
 
+func (channel *Channel) addConsumer(consumer *Consumer) {
+	// TODO: error handling
+	channel.consumers[consumer.consumerTag] = consumer
+}
+
 func (channel *Channel) consumeLimitsOk() bool {
 	var sizeOk = channel.prefetchSize == 0 || channel.activeSize <= channel.prefetchSize
-	var bytesOk = channel.prefetchCount == 0 || channel.activeCount <= channel.prefetchCount
+	var countOk = channel.prefetchCount == 0 || channel.activeCount <= channel.prefetchCount
 	// fmt.Printf("%d|%d || %d|%d\n", channel.prefetchSize, channel.activeSize, channel.prefetchCount, channel.activeCount)
-	return sizeOk && bytesOk
+	return sizeOk && countOk
 }
 
-func (channel *Channel) incrActive(size uint16, bytes uint32) {
+func (channel *Channel) incrActive(count uint16, size uint32) {
 	channel.limitLock.Lock()
-	channel.activeCount += size
-	channel.activeSize += bytes
+	channel.activeCount += count
+	channel.activeSize += size
 	channel.limitLock.Unlock()
 }
 
-func (channel *Channel) decrActive(size uint16, bytes uint32) {
+func (channel *Channel) decrActive(count uint16, size uint32) {
 	channel.limitLock.Lock()
-	channel.activeCount -= size
-	channel.activeSize -= bytes
+	channel.activeCount -= count
+	channel.activeSize -= size
 	channel.limitLock.Unlock()
+}
+
+func (channel *Channel) setPrefetch(count uint16, size uint32, global bool) {
+	if global {
+		channel.prefetchSize = size
+		channel.prefetchCount = count
+	} else {
+		channel.defaultPrefetchSize = size
+		channel.defaultPrefetchCount = count
+	}
+}
+
+func (channel *Channel) setStateOpen() {
+	channel.state = CH_STATE_OPEN
+}
+
+func (channel *Channel) activateConfirmMode() {
+	channel.confirmMode = true
+}
+
+func (channel *Channel) setMaxChannels(max uint16) {
+	channel.conn.setMaxChannels(max)
+}
+
+func (channel *Channel) setMaxFrameSize(max uint32) {
+	channel.conn.setMaxFrameSize(max)
+}
+
+func (channel *Channel) startSendHeartbeat(interval time.Duration) {
+	channel.conn.startSendHeartbeat(interval)
+}
+
+func (channel *Channel) setLastMethodFrame(method *amqp.BasicPublish) error {
+	channel.lastMethodFrame = method
+	return nil
 }
 
 func NewChannel(id uint16, conn *AMQPConnection) *Channel {
@@ -180,7 +221,6 @@ func (channel *Channel) start() {
 
 	// Receive method frames from the client and route them
 	go func() {
-		defer channel.destructor()
 		for {
 			if channel.state == CH_STATE_CLOSED {
 				break
@@ -214,7 +254,11 @@ func (channel *Channel) close(code uint16, reason string, classId uint16, method
 	channel.state = CH_STATE_CLOSING
 }
 
-func (channel *Channel) destructor() {
+func (channel *Channel) shutdown() {
+	if channel.state != CH_STATE_CLOSED {
+		return
+	}
+	channel.state = CH_STATE_CLOSED
 	// unregister this channel
 	channel.conn.deregisterChannel(channel.id)
 	// remove any consumers associated with this channel

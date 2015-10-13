@@ -44,13 +44,9 @@ func (channel *Channel) connectionTuneOk(method *amqp.ConnectionTuneOk) error {
 		return nil
 	}
 
-	channel.conn.maxChannels = method.ChannelMax
-	channel.conn.maxFrameSize = method.FrameMax
-
 	if method.Heartbeat > 0 {
 		// Start sending heartbeats to the client
-		channel.conn.sendHeartbeatInterval = time.Duration(method.Heartbeat) * time.Second
-		channel.conn.handleSendHeartbeat()
+		channel.startSendHeartbeat(time.Duration(method.Heartbeat) * time.Second)
 	}
 	// Start listening for heartbeats from the client.
 	// We always ask for them since we want to shut down

@@ -8,7 +8,7 @@ import (
 func (channel *Channel) confirmRoute(methodFrame amqp.MethodFrame) error {
 	switch method := methodFrame.(type) {
 	case *amqp.ConfirmSelect:
-		channel.confirmMode = true
+		channel.activateConfirmMode()
 		return channel.confirmSelect(method)
 		// case *amqp.ConfirmSelectOk:
 		//   return channel.confirmSelectOk(method)

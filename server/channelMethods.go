@@ -29,7 +29,7 @@ func (channel *Channel) channelOpen(method *amqp.ChannelOpen) error {
 	fmt.Println("Handling " + method.MethodName())
 	// TODO(MUST): if channel is open, send 504 ChannelError
 	channel.sendMethod(&amqp.ChannelOpenOk{})
-	channel.state = CH_STATE_OPEN
+	channel.setStateOpen()
 	return nil
 }
 
@@ -51,14 +51,12 @@ func (channel *Channel) channelClose(method *amqp.ChannelClose) error {
 	// TODO(MAY): Report the class and method that are the reason for the close
 	fmt.Println("Handling " + method.MethodName())
 	channel.sendMethod(&amqp.ChannelCloseOk{})
-	channel.state = CH_STATE_CLOSED
-	channel.destructor()
+	channel.shutdown()
 	return nil
 }
 
 func (channel *Channel) channelCloseOk(method *amqp.ChannelCloseOk) error {
 	fmt.Println("Handling " + method.MethodName())
-	channel.state = CH_STATE_CLOSED
-	channel.destructor()
+	channel.shutdown()
 	return nil
 }

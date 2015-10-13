@@ -127,7 +127,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) bool {
 		prefetchSize:  channel.defaultPrefetchSize,
 		prefetchCount: channel.defaultPrefetchCount,
 	}
-	channel.consumers[method.ConsumerTag] = consumer
+	channel.addConsumer(consumer)
 	q.consumers.PushBack(consumer)
 	consumer.start()
 	return true

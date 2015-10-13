@@ -92,10 +92,21 @@ func (conn *AMQPConnection) hardClose() {
 	conn.connectStatus.closed = true
 	conn.server.deregisterConnection(conn.id)
 	for _, channel := range conn.channels {
-		if channel.state != CH_STATE_CLOSED {
-			channel.destructor()
-		}
+		channel.shutdown()
 	}
+}
+
+func (conn *AMQPConnection) setMaxChannels(max uint16) {
+	conn.maxChannels = max
+}
+
+func (conn *AMQPConnection) setMaxFrameSize(max uint32) {
+	conn.maxFrameSize = max
+}
+
+func (conn *AMQPConnection) startSendHeartbeat(interval time.Duration) {
+	conn.sendHeartbeatInterval = interval
+	conn.handleSendHeartbeat()
 }
 
 func (conn *AMQPConnection) handleSendHeartbeat() {

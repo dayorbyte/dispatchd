@@ -34,13 +34,7 @@ func (channel *Channel) basicRoute(methodFrame amqp.MethodFrame) error {
 }
 
 func (channel *Channel) basicQos(method *amqp.BasicQos) error {
-	if method.Global {
-		channel.prefetchSize = method.PrefetchSize
-		channel.prefetchCount = method.PrefetchCount
-	} else {
-		channel.defaultPrefetchSize = method.PrefetchSize
-		channel.defaultPrefetchCount = method.PrefetchCount
-	}
+	channel.setPrefetch(method.PrefetchCount, method.PrefetchSize, method.Global)
 	channel.sendMethod(&amqp.BasicQosOk{})
 	return nil
 }
@@ -71,6 +65,7 @@ func (channel *Channel) basicNack(method *amqp.BasicNack) error {
 
 func (channel *Channel) basicConsume(method *amqp.BasicConsume) error {
 	fmt.Println("Handling BasicConsume")
+	// TODO: do not directly access channel.conn.server.queues
 	var queue, found = channel.conn.server.queues[method.Queue]
 	if !found {
 		// TODO(MUST): not found error? spec xml doesn't say
@@ -116,7 +111,7 @@ func (channel *Channel) basicCancelOk(method *amqp.BasicCancelOk) error {
 }
 
 func (channel *Channel) basicPublish(method *amqp.BasicPublish) error {
-	channel.lastMethodFrame = method
+	channel.setLastMethodFrame(method)
 	return nil
 }
 
