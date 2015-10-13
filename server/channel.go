@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
-	"time"
 )
 
 const (
@@ -166,18 +165,6 @@ func (channel *Channel) setStateOpen() {
 
 func (channel *Channel) activateConfirmMode() {
 	channel.confirmMode = true
-}
-
-func (channel *Channel) setMaxChannels(max uint16) {
-	channel.conn.setMaxChannels(max)
-}
-
-func (channel *Channel) setMaxFrameSize(max uint32) {
-	channel.conn.setMaxFrameSize(max)
-}
-
-func (channel *Channel) startSendHeartbeat(interval time.Duration) {
-	channel.conn.startSendHeartbeat(interval)
 }
 
 func (channel *Channel) setLastMethodFrame(method *amqp.BasicPublish) error {
@@ -364,7 +351,7 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
 	fmt.Println("Routing method: " + methodFrame.MethodName())
 	switch {
 	case classId == 10:
-		channel.connectionRoute(methodFrame)
+		channel.connectionRoute(channel.conn, methodFrame)
 	case classId == 20:
 		channel.channelRoute(methodFrame)
 	case classId == 40:
