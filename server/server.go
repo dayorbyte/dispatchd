@@ -105,6 +105,9 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare) error {
 	if hasKey && exchange.extype != existing.extype {
 		// TODO: do I need to check all fields on redeclaration?
 		return errors.New("Exchange with this name already exists")
+	} else if hasKey {
+		// exchange exists and is OK
+		return nil
 	}
 	server.exchanges[exchange.name] = &exchange
 	exchange.start()
