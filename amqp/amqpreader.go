@@ -9,25 +9,46 @@ import (
 )
 
 func ReadFrame(reader io.Reader) (*WireFrame, error) {
+	// Using little since other functions will assume big
+
+	// get fixed size portion
+	var incoming = make([]byte, 1 + 2 + 4)
+	var err = binary.Read(reader, binary.LittleEndian, incoming)
+	if err != nil {
+		return nil, err
+	}
+	var memReader = bytes.NewBuffer(incoming)
+
 	var f = &WireFrame{}
-	frameType, err := ReadOctet(reader)
+
+	// frame type
+	frameType, err := ReadOctet(memReader)
 	if err != nil {
 		return nil, err
 	}
-	channel, err := ReadShort(reader)
-	if err != nil {
-		return nil, err
-	}
-	payload, err := ReadLongstr(reader)
-	if err != nil {
-		return nil, err
-	}
-	ReadOctet(reader) // Frame end, TODO: assert that this is the right byte.
 	f.FrameType = frameType
+
+	// channel
+	channel, err := ReadShort(memReader)
+	if err != nil {
+		return nil, err
+	}
 	f.Channel = channel
-	f.Payload = payload
+
+	// Variable length part
+	var length uint32
+	err = binary.Read(memReader, binary.BigEndian, &length)
+
+	var slice = make([]byte, length + 1)
+	err = binary.Read(reader, binary.BigEndian, slice)
+	if err != nil {
+		return nil, errors.New("Bad frame payload: " + err.Error())
+	}
+	f.Payload = slice[0:length]
 	return f, nil
 }
+
+
 
 // Constants
 
