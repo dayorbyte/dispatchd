@@ -9,11 +9,16 @@ import (
 )
 
 func WriteFrame(buf io.Writer, frame *WireFrame) {
-	WriteOctet(buf, frame.FrameType)
-	WriteShort(buf, frame.Channel)
-	WriteLongstr(buf, frame.Payload)
+	bb := make([]byte, 0, 1 + 2 + 4 + len(frame.Payload) + 2)
+	buf2 := bytes.NewBuffer(bb)
+	WriteOctet(buf2, frame.FrameType)
+	WriteShort(buf2, frame.Channel)
+	WriteLongstr(buf2, frame.Payload)
 	// buf.Write(frame.Payload.Bytes())
-	WriteFrameEnd(buf)
+	WriteFrameEnd(buf2)
+	// binary.LittleEndian since we want to stick to the system
+	// byte order and the other write functions are writing BigEndian
+	binary.Write(buf, binary.LittleEndian, buf2.Bytes())
 }
 
 // Constants
@@ -31,18 +36,6 @@ func WriteFrameEnd(buf io.Writer) error {
 }
 
 // Composite Types
-
-// func WriteMethodFrameHeader(buf io.Writer, channel uint16, payloadSize uint32) (err error) {
-//   if err = binary.Write(buf, binary.BigEndian, FrameTypeMethod); err != nil {
-//     return
-//   }
-//   if err = binary.Write(buf, binary.BigEndian, channel); err != nil {
-//     return
-//   }
-//   if err = binary.Write(buf, binary.BigEndian, payloadSize); err != nil {
-//     return
-//   }
-// }
 
 func WriteMethodPayloadHeader(buf io.Writer, classId uint16, methodId uint16) (err error) {
 	if err = binary.Write(buf, binary.BigEndian, classId); err != nil {
