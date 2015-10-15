@@ -78,7 +78,7 @@ func (consumer *Consumer) start() {
 func (consumer *Consumer) consume(id uint16) {
 	fmt.Printf("Starting consumer %s#%d\n", consumer.consumerTag, id)
 	for msg := range consumer.incoming {
-		fmt.Printf("Consumer %s#%d got a message\n", consumer.consumerTag, id)
+		// fmt.Printf("Consumer %s#%d got a message\n", consumer.consumerTag, id)
 		var tag uint64 = 0
 		if !consumer.noAck {
 			tag = consumer.channel.addUnackedMessage(consumer, msg)

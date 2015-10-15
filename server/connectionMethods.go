@@ -88,12 +88,15 @@ func (channel *Channel) startConnection() error {
 	capabilities["basic.nack"] = true
 	var serverProps = make(amqp.Table)
 	serverProps["capabilities"] = capabilities
-	serverProps["product"] = "mq"
-	serverProps["version"] = "0.1"
-	serverProps["copyright"] = "Jeffrey Jenkins, 2015"
-	serverProps["platform"] = "TODO"
-	serverProps["host"] = "TODO"
-	serverProps["information"] = "https://github.com/jeffjenkins/mq"
+	// TODO: the java rabbitmq client I'm using for load testing doesn't like these string
+	//       fields even though the go/python clients do. commenting out until I can
+	//       compile and get some debugging info out of that client
+	// serverProps["product"] = "mq"
+	// serverProps["version"] = "0.1"
+	// serverProps["copyright"] = "Jeffrey Jenkins, 2015"
+	// serverProps["platform"] = "TODO"
+	// serverProps["host"] = "TODO"
+	// serverProps["information"] = "https://github.com/jeffjenkins/mq"
 
 	channel.sendMethod(&amqp.ConnectionStart{0, 9, serverProps, []byte("PLAIN"), []byte("en_US")})
 	return nil

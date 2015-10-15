@@ -348,7 +348,7 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
 	}
 
 	// Route
-	fmt.Println("Routing method: " + methodFrame.MethodName())
+	// fmt.Println("Routing method: " + methodFrame.MethodName())
 	switch {
 	case classId == 10:
 		channel.connectionRoute(channel.conn, methodFrame)
