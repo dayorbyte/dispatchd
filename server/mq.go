@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"net/http"
+	"log"
+  _ "net/http/pprof"
 )
 
 func handleConnection(server *Server, conn net.Conn) {
@@ -18,6 +21,9 @@ func main() {
 		fmt.Printf("Error!\n")
 		os.Exit(1)
 	}
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
