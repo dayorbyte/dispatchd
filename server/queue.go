@@ -39,6 +39,7 @@ type Queue struct {
 	arguments       amqp.Table
 	queue           *list.List // *Message
 	queueLock       sync.Mutex
+	consumerLock    sync.Mutex
 	consumers       *list.List // *Consumer
 	currentConsumer *list.Element
 }
@@ -74,8 +75,8 @@ func (q *Queue) readd(message *Message) {
 }
 
 func (q *Queue) removeConsumer(consumerTag string) {
-	q.queueLock.Lock()
-	defer q.queueLock.Unlock()
+	q.consumerLock.Lock()
+	defer q.consumerLock.Unlock()
 	fmt.Printf("Removing consumer %s\n", consumerTag)
 	// reset current if needed
 	if q.currentConsumer != nil && q.currentConsumer.Value.(*Consumer).consumerTag == consumerTag {
@@ -91,8 +92,8 @@ func (q *Queue) removeConsumer(consumerTag string) {
 }
 
 func (q *Queue) cancelConsumers() {
-	q.queueLock.Lock()
-	defer q.queueLock.Unlock()
+	q.consumerLock.Lock()
+	defer q.consumerLock.Unlock()
 	// Send cancel to each consumer
 	for c := q.consumers.Front(); c != nil; c = c.Next() {
 		var consumer = c.Value.(*Consumer)
@@ -153,8 +154,8 @@ func (q *Queue) start() {
 }
 
 func (q *Queue) processOne() {
-	q.queueLock.Lock()
-	defer q.queueLock.Unlock()
+	q.consumerLock.Lock()
+	defer q.consumerLock.Unlock()
 	if q.currentConsumer == nil {
 		q.currentConsumer = q.consumers.Front()
 	}
@@ -174,7 +175,9 @@ func (q *Queue) processOne() {
 			// fmt.Printf("Consumer not ready!\n")
 			continue
 		}
+		q.queueLock.Lock()
 		var msg = q.queue.Remove(q.queue.Front()).(*Message)
+		q.queueLock.Unlock()
 
 		if !consumer.noAck {
 			// TODO(MUST): decr when we get acks
