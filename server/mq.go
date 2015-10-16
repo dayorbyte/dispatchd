@@ -24,6 +24,9 @@ func main() {
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
+	go func() {
+		startAdminServer(server)
+	}()
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
