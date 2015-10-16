@@ -22,6 +22,7 @@ type Consumer struct {
 	activeSize    uint32
 	activeCount   uint16
 	stopped       bool
+	statCount     uint64
 }
 
 func (consumer *Consumer) stop() {
@@ -90,5 +91,6 @@ func (consumer *Consumer) consume(id uint16) {
 			Exchange:    "",                  // TODO(MUST): the real exchange name
 			RoutingKey:  consumer.queue.name, // TODO(must): real queue name
 		}, msg)
+		consumer.statCount += 1
 	}
 }

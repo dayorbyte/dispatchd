@@ -20,7 +20,7 @@ func startAdminServer(server *Server) {
 		sort.Strings(keys)
 		for _, name := range keys {
 			exchange := server.exchanges[name]
-			fmt.Fprintf(w, "'%s': %d\n", name, exchange.extype)
+			fmt.Fprintf(w, "'%s': type: %d, bindings: %d\n", name, exchange.extype, len(exchange.bindings))
 		}
 		fmt.Fprintf(w, "</pre>")
 
@@ -28,11 +28,18 @@ func startAdminServer(server *Server) {
 		fmt.Fprintf(w, "<h1>Queues</h1>")
 		fmt.Fprintf(w, "<pre>")
 		for name, queue := range server.queues {
-			fmt.Fprintf(w, "'%s': %d\n", name, queue.queue.Len())
+			fmt.Fprintf(
+				w,
+				"'%s': consumers: %d, queue length: %d, total received messages: %d\n",
+				name,
+				queue.consumers.Len(),
+				queue.queue.Len(),
+				queue.statCount,
+			)
 			fmt.Fprintf(w, "<h3>Consumers</h3>")
 			for e := queue.consumers.Front(); e != nil; e = e.Next() {
 				var consumer = e.Value.(*Consumer)
-				fmt.Fprintf(w, "'%s': %d\n", consumer.consumerTag, consumer.activeCount)
+				fmt.Fprintf(w, "'%s': %d\n", consumer.consumerTag, consumer.statCount)
 			}
 		}
 		fmt.Fprintf(w, "</pre>")

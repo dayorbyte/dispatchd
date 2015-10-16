@@ -42,6 +42,7 @@ type Queue struct {
 	consumerLock    sync.Mutex
 	consumers       *list.List // *Consumer
 	currentConsumer *list.Element
+	statCount       uint64
 }
 
 func (q *Queue) close() {
@@ -62,6 +63,7 @@ func (q *Queue) add(message *Message) {
 	if !q.closed {
 		q.queueLock.Lock()
 		defer q.queueLock.Unlock()
+		q.statCount += 1
 		q.queue.PushBack(message)
 	}
 }
