@@ -32,6 +32,7 @@ type Channel struct {
 	// Delivery Tracking
 	deliveryTag  uint64
 	deliveryLock sync.Mutex
+	ackLock			 sync.Mutex
 	awaitingAcks map[uint64]UnackedMessage
 	// Channel QOS Limits
 	limitLock     sync.Mutex
@@ -55,6 +56,8 @@ func (channel *Channel) channelErrorWithMethod(code uint16, message string, clas
 }
 
 func (channel *Channel) ackBelow(tag uint64) bool {
+	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
 	fmt.Println("Ack below")
 	var count = 0
 	for k, unacked := range channel.awaitingAcks {
@@ -65,14 +68,16 @@ func (channel *Channel) ackBelow(tag uint64) bool {
 			count += 1
 		}
 	}
-	fmt.Println()
-	fmt.Printf("Acked %d messages\n", count)
+	// fmt.Println()
+	// fmt.Printf("Acked %d messages\n", count)
 	// TODO: should this be false if nothing was actually deleted and tag != 0?
 	return true
 }
 
 func (channel *Channel) ackOne(tag uint64) bool {
-	fmt.Println("Ack one")
+	// fmt.Println("Ack one")
+	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
 	var unacked, found = channel.awaitingAcks[tag]
 	if !found {
 		return false
@@ -83,7 +88,9 @@ func (channel *Channel) ackOne(tag uint64) bool {
 }
 
 func (channel *Channel) nackBelow(tag uint64) bool {
-	fmt.Println("Nack below")
+	// fmt.Println("Nack below")
+	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
 	var count = 0
 	for k, unacked := range channel.awaitingAcks {
 		fmt.Printf("%d(%d), ", k, tag)
@@ -94,13 +101,15 @@ func (channel *Channel) nackBelow(tag uint64) bool {
 			count += 1
 		}
 	}
-	fmt.Println()
-	fmt.Printf("Nacked %d messages\n", count)
+	// fmt.Println()
+	// fmt.Printf("Nacked %d messages\n", count)
 	// TODO: should this be false if nothing was actually deleted and tag != 0?
 	return true
 }
 
 func (channel *Channel) nackOne(tag uint64) bool {
+	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
 	var unacked, found = channel.awaitingAcks[tag]
 	if !found {
 		return false
@@ -118,8 +127,14 @@ func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint
 		consumer: consumer,
 		msg:      msg,
 	}
+	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
+	_, found := channel.awaitingAcks[tag]
+	if found {
+		panic(fmt.Sprintf("Already found tag: %s", tag))
+	}
 	channel.awaitingAcks[tag] = unacked
-	fmt.Printf("Adding unacked message with tag: %d\n", tag)
+	// fmt.Printf("Adding tag: %d\n", tag)
 	return tag
 }
 
