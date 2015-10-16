@@ -12,7 +12,7 @@ func ReadFrame(reader io.Reader) (*WireFrame, error) {
 	// Using little since other functions will assume big
 
 	// get fixed size portion
-	var incoming = make([]byte, 1 + 2 + 4)
+	var incoming = make([]byte, 1+2+4)
 	var err = binary.Read(reader, binary.LittleEndian, incoming)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func ReadFrame(reader io.Reader) (*WireFrame, error) {
 	var length uint32
 	err = binary.Read(memReader, binary.BigEndian, &length)
 
-	var slice = make([]byte, length + 1)
+	var slice = make([]byte, length+1)
 	err = binary.Read(reader, binary.BigEndian, slice)
 	if err != nil {
 		return nil, errors.New("Bad frame payload: " + err.Error())
@@ -47,8 +47,6 @@ func ReadFrame(reader io.Reader) (*WireFrame, error) {
 	f.Payload = slice[0:length]
 	return f, nil
 }
-
-
 
 // Constants
 

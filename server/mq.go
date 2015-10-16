@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"net"
-	"os"
-	"net/http"
 	"log"
-  _ "net/http/pprof"
+	"net"
+	"net/http"
+	_ "net/http/pprof"
+	"os"
 )
 
 func handleConnection(server *Server, conn net.Conn) {

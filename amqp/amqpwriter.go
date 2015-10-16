@@ -9,7 +9,7 @@ import (
 )
 
 func WriteFrame(buf io.Writer, frame *WireFrame) {
-	bb := make([]byte, 0, 1 + 2 + 4 + len(frame.Payload) + 2)
+	bb := make([]byte, 0, 1+2+4+len(frame.Payload)+2)
 	buf2 := bytes.NewBuffer(bb)
 	WriteOctet(buf2, frame.FrameType)
 	WriteShort(buf2, frame.Channel)

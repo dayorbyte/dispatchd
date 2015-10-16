@@ -177,14 +177,14 @@ func (q *Queue) processOne() {
 	// Recover if we can't send the queue message by re-adding it
 	// to the queue
 	defer func() {
-    if r := recover(); r != nil {
-      q.readd(msg)
-    }
-  }()
-  // TODO: we're blocking here until this consumer is ready to
-  //       accept the next message. If we have multiple consumers
-  //       we should just move on. However, if this is in a select{} then
-  //       we spin hard while we wait for the next available send time.
+		if r := recover(); r != nil {
+			q.readd(msg)
+		}
+	}()
+	// TODO: we're blocking here until this consumer is ready to
+	//       accept the next message. If we have multiple consumers
+	//       we should just move on. However, if this is in a select{} then
+	//       we spin hard while we wait for the next available send time.
 	consumer.incoming <- msg
 
 }

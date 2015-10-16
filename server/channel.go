@@ -32,7 +32,7 @@ type Channel struct {
 	// Delivery Tracking
 	deliveryTag  uint64
 	deliveryLock sync.Mutex
-	ackLock			 sync.Mutex
+	ackLock      sync.Mutex
 	awaitingAcks map[uint64]UnackedMessage
 	// Channel QOS Limits
 	limitLock     sync.Mutex
