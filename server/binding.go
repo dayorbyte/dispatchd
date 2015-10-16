@@ -14,6 +14,15 @@ type Binding struct {
 	topicMatcher *regexp.Regexp
 }
 
+func (binding *Binding) Equals(other *Binding) bool {
+	if other == nil {
+		return false
+	}
+	return binding.queueName == other.queueName &&
+		binding.exchangeName == other.exchangeName &&
+		binding.key == other.key
+}
+
 func NewBinding(queueName string, exchangeName string, key string, arguments amqp.Table) *Binding {
 	var parts = strings.Split(key, ".")
 	for i, part := range parts {

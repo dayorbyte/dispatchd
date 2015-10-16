@@ -105,7 +105,7 @@ func (exchange *Exchange) publish(server *Server, method *amqp.BasicPublish, hea
 
 func (exchange *Exchange) addBinding(queue *Queue, binding *Binding) bool {
 	for _, b := range exchange.bindings {
-		if binding == b {
+		if binding.Equals(b) {
 			return false
 		}
 	}
