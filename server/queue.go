@@ -159,7 +159,7 @@ func (q *Queue) processOne() {
 	if q.currentConsumer == nil {
 		q.currentConsumer = q.consumers.Front()
 	}
-	if q.currentConsumer == nil {
+	if q.currentConsumer == nil || q.currentConsumer.Value == nil {
 		q.consumerLock.Unlock()
 		return
 	}
