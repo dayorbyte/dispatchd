@@ -77,7 +77,6 @@ func (q *Queue) readd(message *Message) {
 func (q *Queue) removeConsumer(consumerTag string) {
 	q.consumerLock.Lock()
 	defer q.consumerLock.Unlock()
-	fmt.Printf("Removing consumer %s\n", consumerTag)
 	// reset current if needed
 	if q.currentConsumer != nil && q.currentConsumer.Value.(*Consumer).consumerTag == consumerTag {
 		q.currentConsumer = nil
@@ -155,34 +154,37 @@ func (q *Queue) start() {
 
 func (q *Queue) processOne() {
 	q.consumerLock.Lock()
-	defer q.consumerLock.Unlock()
 	if q.currentConsumer == nil {
 		q.currentConsumer = q.consumers.Front()
 	}
-	var next = q.currentConsumer.Next()
-	// fmt.Printf("Process 1\n")
-	// Select the next round-robin consumer
-	for {
-		if next == q.currentConsumer { // full loop. nothing available
-			break
-		}
-		if next == nil { // go back to start
-			next = q.consumers.Front()
-		}
-		q.currentConsumer = next
-		var consumer = next.Value.(*Consumer)
-		if !consumer.ready() {
-			// fmt.Printf("Consumer not ready!\n")
-			continue
-		}
-		q.queueLock.Lock()
-		var msg = q.queue.Remove(q.queue.Front()).(*Message)
-		q.queueLock.Unlock()
-
-		if !consumer.noAck {
-			// TODO(MUST): decr when we get acks
-			consumer.incrActive(1, msg.size())
-		}
-		consumer.incoming <- msg
+	if q.currentConsumer == nil {
+		q.consumerLock.Unlock()
+		return
 	}
+	var consumer = q.currentConsumer.Value.(*Consumer)
+	q.currentConsumer = q.currentConsumer.Next()
+	q.consumerLock.Unlock()
+	if !consumer.ready() {
+		return
+	}
+	q.queueLock.Lock()
+	var msg = q.queue.Remove(q.queue.Front()).(*Message)
+	q.queueLock.Unlock()
+	if !consumer.noAck {
+		// TODO(MUST): decr when we get acks
+		consumer.incrActive(1, msg.size())
+	}
+	// Recover if we can't send the queue message by re-adding it
+	// to the queue
+	defer func() {
+    if r := recover(); r != nil {
+      q.readd(msg)
+    }
+  }()
+  // TODO: we're blocking here until this consumer is ready to
+  //       accept the next message. If we have multiple consumers
+  //       we should just move on. However, if this is in a select{} then
+  //       we spin hard while we wait for the next available send time.
+	consumer.incoming <- msg
+
 }
