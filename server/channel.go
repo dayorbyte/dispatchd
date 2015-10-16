@@ -242,13 +242,16 @@ func (channel *Channel) close(code uint16, reason string, classId uint16, method
 }
 
 func (channel *Channel) shutdown() {
-	if channel.state != CH_STATE_CLOSED {
+	fmt.Printf("Shutdown called on channel %d\n", channel.id)
+	if channel.state == CH_STATE_CLOSED {
+		fmt.Printf("Shutdown already finished on %d\n", channel.id)
 		return
 	}
 	channel.state = CH_STATE_CLOSED
 	// unregister this channel
 	channel.conn.deregisterChannel(channel.id)
 	// remove any consumers associated with this channel
+	fmt.Printf("Stop channel consumers %d\n", channel.id)
 	for _, consumer := range channel.consumers {
 		consumer.stop()
 	}
