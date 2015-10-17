@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"fmt"
 	"net/http"
 	"sort"
@@ -51,9 +52,20 @@ func home(w http.ResponseWriter, r *http.Request, server *Server) {
 }
 
 func startAdminServer(server *Server) {
+	// Static files
+	var path = os.Getenv("STATIC_PATH")
+	if len(path) == 0 {
+		panic("No static file path in $STATIC_PATH!")
+	}
+	var fileServer = http.FileServer(http.Dir(path))
+	http.Handle("/static/", http.StripPrefix("/static", fileServer))
+
+	// Home
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		home(w, r, server)
 	})
-	fmt.Println("Admin server on port 8080")
+
+	// Boot admin server
+	fmt.Printf("Admin server on port 8080, static files from: %s\n", path)
 	http.ListenAndServe(":8080", nil)
 }
