@@ -2,11 +2,11 @@ package main
 
 import (
 	"container/list"
+	"encoding/json"
 	"errors"
 	"github.com/jeffjenkins/mq/amqp"
 	"net"
 	"sync"
-	"encoding/json"
 )
 
 type Server struct {
@@ -19,9 +19,10 @@ type Server struct {
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
-    return json.Marshal(map[string]interface{}{
-    	"exchanges": server.exchanges,
-    })
+	return json.Marshal(map[string]interface{}{
+		"exchanges": server.exchanges,
+		"queues":    server.queues,
+	})
 }
 
 func NewServer() *Server {

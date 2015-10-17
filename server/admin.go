@@ -1,11 +1,11 @@
 package main
 
 import (
-	"os"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"sort"
-	"encoding/json"
 )
 
 func homeJSON(w http.ResponseWriter, r *http.Request, server *Server) {
@@ -68,10 +68,13 @@ func startAdminServer(server *Server) {
 
 	// Home
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		home(w, r, server)
+		var p = path + "/admin.html"
+		fmt.Println(p)
+		http.ServeFile(w, r, p)
 	})
 
-	http.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
+	// API
+	http.HandleFunc("/api/server", func(w http.ResponseWriter, r *http.Request) {
 		homeJSON(w, r, server)
 	})
 

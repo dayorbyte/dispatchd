@@ -2,6 +2,7 @@ package main
 
 import (
 	"container/list"
+	"encoding/json"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
@@ -43,6 +44,22 @@ type Queue struct {
 	consumers       *list.List // *Consumer
 	currentConsumer *list.Element
 	statCount       uint64
+}
+
+func (q *Queue) MarshalJSON() ([]byte, error) {
+	var consumers = make([]*Consumer, 0, q.consumers.Len())
+
+	for e := q.consumers.Front(); e != nil; e = e.Next() {
+		consumers = append(consumers, e.Value.(*Consumer))
+	}
+	return json.Marshal(map[string]interface{}{
+		"name":       q.name,
+		"durable":    q.durable,
+		"exclusive":  q.exclusive,
+		"autoDelete": q.autoDelete,
+		"size":       q.queue.Len(),
+		"consumers":  consumers,
+	})
 }
 
 func (q *Queue) close() {

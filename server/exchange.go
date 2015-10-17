@@ -1,10 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
-	"encoding/json"
 )
 
 type extype uint8
@@ -28,9 +28,9 @@ type Exchange struct {
 }
 
 func (exchange *Exchange) MarshalJSON() ([]byte, error) {
-    return json.Marshal(map[string]interface{}{
-    	"type": exchangeTypeToName(exchange.extype),
-    })
+	return json.Marshal(map[string]interface{}{
+		"type": exchangeTypeToName(exchange.extype),
+	})
 }
 
 func exchangeNameToType(et string) (extype, error) {

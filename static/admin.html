@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Admin</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.css">
+    <script src="https://code.jquery.com/jquery-2.1.4.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.7/angular.js"></script>
+    <script src="/static/admin.js"></script>
+  </head>
+  <body ng-app="adminApp">
+    <div ng-controller="ServerController as sc" class="container-fluid">
+      <h2>Exchanges</h2>
+      <table class="table table-striped">
+        <tr>
+        <th>Name</th>
+        <th>Exchange Type</th>
+        </tr>
+        <tr ng-repeat="(name, exchange) in server.exchanges">
+          <td>{{name}}</td>
+          <td>{{exchange.type}}</td>
+        </tr>
+      </table>
+      <h2>Queues</h2>
+      <div ng-repeat="(name, queue) in server.queues">
+        <h4>{{name}}</h4>
+        <div>consumers: {{queue.consumers.length}}</div>
+        <div>queue length: {{queue.size}}</div>
+        <table class="table table-striped">
+          <tr>
+            <th>Tag</th>
+            <th>Ack?</th>
+            <th>QoS</th>
+            <th>Active</th>
+            <th>Lifetime</th>
+          </tr>
+          <tr ng-repeat="consumer in queue.consumers">
+            <td>{{consumer.tag}}</td>
+            <td>{{consumer.ack}}</td>
+            <td>{{consumer.stats.qos}}</td>
+            <td ng-if="consumer.ack">{{consumer.active_count}}</td>
+            <td ng-if="!consumer.ack">N/A</td>
+            <td>{{consumer.stats.total}}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

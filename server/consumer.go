@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
@@ -23,6 +24,19 @@ type Consumer struct {
 	activeCount   uint16
 	stopped       bool
 	statCount     uint64
+}
+
+func (consumer *Consumer) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"tag": consumer.consumerTag,
+		"stats": map[string]interface{}{
+			"total":             consumer.statCount,
+			"qos":               consumer.qos,
+			"active_size_bytes": consumer.activeSize,
+			"active_count":      consumer.activeCount,
+		},
+		"ack": !consumer.noAck,
+	})
 }
 
 func (consumer *Consumer) stop() {
