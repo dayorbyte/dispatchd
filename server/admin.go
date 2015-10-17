@@ -5,7 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"encoding/json"
 )
+
+func homeJSON(w http.ResponseWriter, r *http.Request, server *Server) {
+	var b, _ = json.MarshalIndent(server, "", "    ")
+	w.Write(b)
+}
 
 func home(w http.ResponseWriter, r *http.Request, server *Server) {
 	// Exchange info
@@ -63,6 +69,10 @@ func startAdminServer(server *Server) {
 	// Home
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		home(w, r, server)
+	})
+
+	http.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
+		homeJSON(w, r, server)
 	})
 
 	// Boot admin server
