@@ -20,7 +20,13 @@ func startAdminServer(server *Server) {
 		sort.Strings(keys)
 		for _, name := range keys {
 			exchange := server.exchanges[name]
-			fmt.Fprintf(w, "'%s': type: %d, bindings: %d\n", name, exchange.extype, len(exchange.bindings))
+			fmt.Fprintf(
+				w,
+				"'%s': type: %s, bindings: %d\n",
+				name,
+				exchangeTypeToName(exchange.extype),
+				len(exchange.bindings),
+			)
 		}
 		fmt.Fprintf(w, "</pre>")
 

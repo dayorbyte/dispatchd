@@ -35,8 +35,20 @@ func exchangeNameToType(et string) (extype, error) {
 	case et == "topic":
 		return EX_TYPE_TOPIC, nil
 	default:
-		panic("bad exchange type! " + et)
 		return 0, errors.New("Unknown exchang type " + et)
+	}
+}
+
+func exchangeTypeToName(et extype) string {
+	switch {
+	case et == EX_TYPE_DIRECT:
+		return "direct"
+	case et == EX_TYPE_FANOUT:
+		return "fanout"
+	case et == EX_TYPE_TOPIC:
+		return "topic"
+	default:
+		panic(fmt.Sprintf("bad exchange type: %d", et))
 	}
 }
 
