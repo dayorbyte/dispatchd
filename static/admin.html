@@ -40,7 +40,7 @@
             <td>{{consumer.tag}}</td>
             <td>{{consumer.ack}}</td>
             <td>{{consumer.stats.qos}}</td>
-            <td ng-if="consumer.ack">{{consumer.active_count}}</td>
+            <td ng-if="consumer.ack">{{consumer.stats.active_count}}</td>
             <td ng-if="!consumer.ack">N/A</td>
             <td>{{consumer.stats.total}}</td>
           </tr>
