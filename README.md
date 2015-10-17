@@ -9,14 +9,22 @@
 
 ### Server
 
-* Largely feature complete, spec-wise. A few functions aren't implemented:
+* Basic functionality to publish and consume messages, create
+  queues/exchanges exists.
+* A few functions aren't implemented:
   * flow control
   * synchronous get from a queue
+  * return
   * recover
   * cancel consumer
   * connection blocked
   * exchange to exchange binding (protocol extension)
-* Lots of assertions are missing
+* None of the life cycle parts of the spec are implemented:
+  * durability of anything
+  * immediate and mandatory
+* No security or auth mechanisms exist (you must use PLAIN auth with
+  guest/guest)
+* Lots of assertions are missing (key format, message sizes)
 * The publisher confirmation extension is largely unimplemented
 * A performance test using rabbitmq's performance testing program showed
   slower throughput for small message sizes and faster throughput for larger
@@ -27,7 +35,8 @@
 
 ### Next Steps
 
+* Durability of server configuration (but not messages, yet)
 * Implement the remaining methods from the spec listed above
-* Add the rest of the assertions (e.g. routing key format) from the spec
+* Add the rest of the assertions from the spec
 * Add flow control so an overactive producer can't swamp the server
 * Come up with a real project name
