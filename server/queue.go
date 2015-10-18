@@ -84,9 +84,17 @@ func (q *Queue) purge() uint32 {
 	return uint32(length)
 }
 
-func (q *Queue) add(message *Message) {
-	// fmt.Printf("Queue \"%s\" got message! %d messages in the queue\n", q.name, q.queue.Len())
+func (q *Queue) add(channel *Channel, message *Message) {
 	// TODO: if there is a consumer available, dispatch
+	if msg.method.Immediate {
+		panic("Immediate not implemented!")
+		// TODO: deliver this message somewhere if possible, otherwise:
+		channel.sendContent(&amqp.BasicReturn{
+			ReplyCode: 313, // TODO: what code?
+			ReplyText: "No consumers available",
+		}, msg)
+	}
+
 	if !q.closed {
 		q.queueLock.Lock()
 		defer q.queueLock.Unlock()

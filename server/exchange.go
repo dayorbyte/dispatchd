@@ -69,6 +69,7 @@ func (exchange *Exchange) start() {
 }
 
 func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message) {
+	var matched = false
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
@@ -77,7 +78,8 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 				if !foundQueue {
 					panic("queue not found!")
 				}
-				queue.add(msg)
+				queue.add(channel, msg)
+				matched = true
 			}
 		}
 	case exchange.extype == EX_TYPE_FANOUT:
@@ -87,7 +89,8 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 				if !foundQueue {
 					panic("queue not found!")
 				}
-				queue.add(msg)
+				queue.add(channel, msg)
+				matched = true
 			}
 		}
 	case exchange.extype == EX_TYPE_TOPIC:
@@ -97,11 +100,22 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 				if !foundQueue {
 					panic("queue not found!")
 				}
-				queue.add(msg)
+				queue.add(channel, msg)
+				matched = true
 			}
 		}
 	default:
 		panic("unknown exchange type!")
+	}
+	if matched == true {
+		return
+	}
+	// If we got here the message was unroutable.
+	if msg.method.Mandatory || msg.method.Immediate {
+		channel.sendContent(&amqp.BasicReturn{
+			ReplyCode: 200, // TODO: what code?
+			ReplyText: "Message unroutable",
+		}, msg)
 	}
 
 }

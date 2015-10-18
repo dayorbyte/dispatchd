@@ -287,6 +287,7 @@ func (channel *Channel) removeConsumer(consumerTag string) error {
 }
 
 // Send a method frame out to the client
+// TODO: why isn't this taking a pointer?
 func (channel *Channel) sendMethod(method amqp.MethodFrame) {
 	// fmt.Printf("Sending method: %s\n", method.MethodName())
 	var buf = bytes.NewBuffer([]byte{})
@@ -295,7 +296,7 @@ func (channel *Channel) sendMethod(method amqp.MethodFrame) {
 }
 
 // Send a method frame out to the client
-func (channel *Channel) sendContent(method *amqp.BasicDeliver, message *Message) {
+func (channel *Channel) sendContent(method amqp.MethodFrame, message *Message) {
 	// fmt.Println("Sending content\n")
 	// deliver
 	channel.sendMethod(method)
