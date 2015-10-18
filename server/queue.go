@@ -14,6 +14,16 @@ type Message struct {
 	payload  []*amqp.WireFrame
 	exchange string
 	key      string
+	method   *amqp.BasicPublish
+}
+
+func NewMessage(method *amqp.BasicPublish) *Message {
+	return &Message{
+		method:   method,
+		exchange: method.Exchange,
+		key:      method.RoutingKey,
+		payload:  make([]*amqp.WireFrame, 0, 1),
+	}
 }
 
 type UnackedMessage struct {

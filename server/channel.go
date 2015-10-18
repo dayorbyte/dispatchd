@@ -16,17 +16,15 @@ const (
 )
 
 type Channel struct {
-	id              uint16
-	server          *Server
-	incoming        chan *amqp.WireFrame
-	outgoing        chan *amqp.WireFrame
-	conn            *AMQPConnection
-	state           uint8
-	confirmMode     bool
-	lastMethodFrame amqp.MethodFrame
-	lastHeaderFrame *amqp.ContentHeaderFrame
-	bodyFrames      []*amqp.WireFrame
-	consumers       map[string]*Consumer
+	id             uint16
+	server         *Server
+	incoming       chan *amqp.WireFrame
+	outgoing       chan *amqp.WireFrame
+	conn           *AMQPConnection
+	state          uint8
+	confirmMode    bool
+	currentMessage *Message
+	consumers      map[string]*Consumer
 	// Consumers
 	msgIndex uint64
 	// Delivery Tracking
@@ -182,8 +180,8 @@ func (channel *Channel) activateConfirmMode() {
 	channel.confirmMode = true
 }
 
-func (channel *Channel) setLastMethodFrame(method *amqp.BasicPublish) error {
-	channel.lastMethodFrame = method
+func (channel *Channel) startPublish(method *amqp.BasicPublish) error {
+	channel.currentMessage = NewMessage(method)
 	return nil
 }
 
@@ -195,7 +193,6 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 		outgoing:     conn.outgoing,
 		conn:         conn,
 		state:        CH_STATE_INIT,
-		bodyFrames:   make([]*amqp.WireFrame, 0, 1),
 		consumers:    make(map[string]*Consumer),
 		awaitingAcks: make(map[uint64]UnackedMessage),
 	}
@@ -312,38 +309,48 @@ func (channel *Channel) sendContent(method *amqp.BasicDeliver, message *Message)
 }
 
 func (channel *Channel) handleContentHeader(frame *amqp.WireFrame) {
-	if channel.lastMethodFrame == nil {
+	if channel.currentMessage == nil {
+		// TODO: error
 		fmt.Println("Unexpected content header frame!")
 		return
+	}
+	if channel.currentMessage.header != nil {
+		// TODO: error
+		fmt.Println("Unexpected content header frame! Already saw header")
 	}
 	var headerFrame = &amqp.ContentHeaderFrame{}
 	var err = headerFrame.Read(bytes.NewReader(frame.Payload))
 	headerFrame.AsBytes = frame.Payload
 	if err != nil {
+		// TODO: error
 		fmt.Println("Error parsing header frame: " + err.Error())
 	}
-	channel.lastHeaderFrame = headerFrame
+
+	channel.currentMessage.header = headerFrame
 }
 
 func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
-	if channel.lastMethodFrame == nil {
+	if channel.currentMessage == nil {
+		// TODO: error
 		fmt.Println("Unexpected content body frame. No method content-having method called yet!")
 	}
-	if channel.lastHeaderFrame == nil {
+	if channel.currentMessage.header == nil {
+		// TODO: error
 		fmt.Println("Unexpected content body frame! No header yet")
 	}
-	channel.bodyFrames = append(channel.bodyFrames, frame)
+	channel.currentMessage.payload = append(channel.currentMessage.payload, frame)
+	// TODO: store this on message
 	var size = uint64(0)
-	for _, body := range channel.bodyFrames {
+	for _, body := range channel.currentMessage.payload {
 		size += uint64(len(body.Payload))
 	}
-	if size < channel.lastHeaderFrame.ContentBodySize {
+	if size < channel.currentMessage.header.ContentBodySize {
 		return
 	}
-	channel.routeBodyMethod(channel.lastMethodFrame, channel.lastHeaderFrame, channel.bodyFrames)
-	channel.lastMethodFrame = nil
-	channel.lastHeaderFrame = nil
-	channel.bodyFrames = make([]*amqp.WireFrame, 0, 1)
+	var server = channel.server
+	var message = channel.currentMessage
+	server.exchanges[message.method.Exchange].publish(server, channel, channel.currentMessage)
+	channel.currentMessage = nil
 	if channel.confirmMode {
 		channel.msgIndex += 1
 		channel.sendMethod(&amqp.BasicAck{channel.msgIndex, false})
@@ -384,12 +391,4 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
 		channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
 	}
 	return nil
-}
-
-func (channel *Channel) routeBodyMethod(methodFrame amqp.MethodFrame,
-	header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
-	switch method := methodFrame.(type) {
-	case *amqp.BasicPublish:
-		channel.server.exchanges[method.Exchange].publish(channel.server, method, header, bodyFrames)
-	}
 }

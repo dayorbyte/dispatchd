@@ -111,7 +111,7 @@ func (channel *Channel) basicCancelOk(method *amqp.BasicCancelOk) error {
 }
 
 func (channel *Channel) basicPublish(method *amqp.BasicPublish) error {
-	channel.setLastMethodFrame(method)
+	channel.startPublish(method)
 	return nil
 }
 

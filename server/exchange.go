@@ -68,52 +68,36 @@ func (exchange *Exchange) start() {
 	}()
 }
 
-func (exchange *Exchange) publish(server *Server, method *amqp.BasicPublish, header *amqp.ContentHeaderFrame, bodyFrames []*amqp.WireFrame) {
-	// fmt.Printf("Got message in exchange %s\n", exchange.name)
+func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message) {
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
-			if binding.matchDirect(method) {
+			if binding.matchDirect(msg.method) {
 				var queue, foundQueue = server.queues[binding.queueName]
 				if !foundQueue {
 					panic("queue not found!")
 				}
-				queue.add(&Message{
-					header:   header,
-					payload:  bodyFrames,
-					exchange: method.Exchange,
-					key:      method.RoutingKey,
-				})
+				queue.add(msg)
 			}
 		}
 	case exchange.extype == EX_TYPE_FANOUT:
 		for _, binding := range exchange.bindings {
-			if binding.matchFanout(method) {
+			if binding.matchFanout(msg.method) {
 				var queue, foundQueue = server.queues[binding.queueName]
 				if !foundQueue {
 					panic("queue not found!")
 				}
-				queue.add(&Message{
-					header:   header,
-					payload:  bodyFrames,
-					exchange: method.Exchange,
-					key:      method.RoutingKey,
-				})
+				queue.add(msg)
 			}
 		}
 	case exchange.extype == EX_TYPE_TOPIC:
 		for _, binding := range exchange.bindings {
-			if binding.matchTopic(method) {
+			if binding.matchTopic(msg.method) {
 				var queue, foundQueue = server.queues[binding.queueName]
 				if !foundQueue {
 					panic("queue not found!")
 				}
-				queue.add(&Message{
-					header:   header,
-					payload:  bodyFrames,
-					exchange: method.Exchange,
-					key:      method.RoutingKey,
-				})
+				queue.add(msg)
 			}
 		}
 	default:
