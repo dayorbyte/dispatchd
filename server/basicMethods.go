@@ -111,6 +111,9 @@ func (channel *Channel) basicCancelOk(method *amqp.BasicCancelOk) error {
 }
 
 func (channel *Channel) basicPublish(method *amqp.BasicPublish) error {
+	if method.Immediate {
+		channel.conn.connectionErrorWithMethod(540, "Immediate flag not yet supported", classId, methodId)
+	}
 	channel.startPublish(method)
 	return nil
 }
