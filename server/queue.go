@@ -50,25 +50,32 @@ type Queue struct {
 	arguments       amqp.Table
 	queue           *list.List // *Message
 	queueLock       sync.Mutex
-	consumerLock    sync.Mutex
-	consumers       *list.List // *Consumer
-	currentConsumer *list.Element
+	consumerLock    sync.RWMutex
+	consumers       []*Consumer // *Consumer
+	currentConsumer int
 	statCount       uint64
 }
 
-func (q *Queue) MarshalJSON() ([]byte, error) {
-	var consumers = make([]*Consumer, 0, q.consumers.Len())
-
-	for e := q.consumers.Front(); e != nil; e = e.Next() {
-		consumers = append(consumers, e.Value.(*Consumer))
+func (q *Queue) nextConsumer() *Consumer {
+	// TODO: also check availability
+	q.consumerLock.RLock()
+	defer q.consumerLock.RUnlock()
+	var num = len(q.consumers)
+	if num == 0 {
+		return nil
 	}
+	q.currentConsumer = (q.currentConsumer + 1) % len(q.consumers)
+	return q.consumers[q.currentConsumer]
+}
+
+func (q *Queue) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"name":       q.name,
 		"durable":    q.durable,
 		"exclusive":  q.exclusive,
 		"autoDelete": q.autoDelete,
 		"size":       q.queue.Len(),
-		"consumers":  consumers,
+		"consumers":  q.consumers,
 	})
 }
 
@@ -86,13 +93,13 @@ func (q *Queue) purge() uint32 {
 
 func (q *Queue) add(channel *Channel, message *Message) {
 	// TODO: if there is a consumer available, dispatch
-	if msg.method.Immediate {
+	if message.method.Immediate {
 		panic("Immediate not implemented!")
 		// TODO: deliver this message somewhere if possible, otherwise:
 		channel.sendContent(&amqp.BasicReturn{
 			ReplyCode: 313, // TODO: what code?
 			ReplyText: "No consumers available",
-		}, msg)
+		}, message)
 	}
 
 	if !q.closed {
@@ -114,36 +121,32 @@ func (q *Queue) readd(message *Message) {
 func (q *Queue) removeConsumer(consumerTag string) {
 	q.consumerLock.Lock()
 	defer q.consumerLock.Unlock()
-	// reset current if needed
-	if q.currentConsumer != nil && q.currentConsumer.Value.(*Consumer).consumerTag == consumerTag {
-		q.currentConsumer = nil
-	}
+
 	// remove from list
-	for e := q.consumers.Front(); e != nil; e = e.Next() {
-		if e.Value.(*Consumer).consumerTag == consumerTag {
+	for i, c := range q.consumers {
+		if c.consumerTag == consumerTag {
 			fmt.Printf("Found consumer %s\n", consumerTag)
-			q.consumers.Remove(e)
+			q.consumers = append(q.consumers[:i], q.consumers[i+1:]...)
 		}
 	}
+	var size = len(q.consumers)
+	if size == 0 {
+		q.currentConsumer = 0
+	} else {
+		q.currentConsumer = q.currentConsumer % size
+	}
+
 }
 
 func (q *Queue) cancelConsumers() {
 	q.consumerLock.Lock()
 	defer q.consumerLock.Unlock()
 	// Send cancel to each consumer
-	for c := q.consumers.Front(); c != nil; c = c.Next() {
-		var consumer = c.Value.(*Consumer)
-		consumer.channel.sendMethod(&amqp.BasicCancel{consumer.consumerTag, true})
+	for _, c := range q.consumers {
+		c.channel.sendMethod(&amqp.BasicCancel{c.consumerTag, true})
+		c.stop()
 	}
-	// TODO: is it safe to delete while iterating over a list in go?
-	toCancel := list.New()
-	toCancel.PushBackList(q.consumers)
-	for c := toCancel.Front(); c != nil; c = c.Next() {
-		c.Value.(*Consumer).stop()
-	}
-
-	q.consumers.Init()
-
+	q.consumers = make([]*Consumer, 0, 1)
 }
 
 func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) bool {
@@ -164,8 +167,10 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) bool {
 		prefetchSize:  channel.defaultPrefetchSize,
 		prefetchCount: channel.defaultPrefetchCount,
 	}
+	q.consumerLock.Lock()
 	channel.addConsumer(consumer)
-	q.consumers.PushBack(consumer)
+	q.consumers = append(q.consumers, consumer)
+	q.consumerLock.Unlock()
 	consumer.start()
 	return true
 }
@@ -180,7 +185,7 @@ func (q *Queue) start() {
 			}
 			// TODO: replace this check with a channel which notifies the queue
 			// dispatch loop that someone is ready to accept more work.
-			if q.queue.Len() == 0 || q.consumers.Len() == 0 {
+			if q.queue.Len() == 0 || len(q.consumers) == 0 {
 				time.Sleep(5 * time.Millisecond)
 				continue
 			}
@@ -190,17 +195,14 @@ func (q *Queue) start() {
 }
 
 func (q *Queue) processOne() {
-	q.consumerLock.Lock()
-	if q.currentConsumer == nil {
-		q.currentConsumer = q.consumers.Front()
-	}
-	if q.currentConsumer == nil || q.currentConsumer.Value == nil {
-		q.consumerLock.Unlock()
+	q.consumerLock.RLock()
+	if len(q.consumers) == 0 {
+		q.consumerLock.RUnlock()
 		return
 	}
-	var consumer = q.currentConsumer.Value.(*Consumer)
-	q.currentConsumer = q.currentConsumer.Next()
-	q.consumerLock.Unlock()
+	var consumer = q.nextConsumer()
+	q.consumerLock.RUnlock()
+
 	if !consumer.ready() {
 		return
 	}
@@ -208,11 +210,10 @@ func (q *Queue) processOne() {
 	var msg = q.queue.Remove(q.queue.Front()).(*Message)
 	q.queueLock.Unlock()
 	if !consumer.noAck {
-		// TODO(MUST): decr when we get acks
 		consumer.incrActive(1, msg.size())
 	}
-	// Recover if we can't send the queue message by re-adding it
-	// to the queue
+	// Recover if we can't send the message because the channel is closed
+	// by re-adding it to the queue
 	defer func() {
 		if r := recover(); r != nil {
 			q.readd(msg)

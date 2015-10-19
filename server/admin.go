@@ -44,13 +44,12 @@ func home(w http.ResponseWriter, r *http.Request, server *Server) {
 			w,
 			"'%s': consumers: %d, queue length: %d, total received messages: %d\n",
 			name,
-			queue.consumers.Len(),
+			len(queue.consumers),
 			queue.queue.Len(),
 			queue.statCount,
 		)
 		fmt.Fprintf(w, "<h3>Consumers</h3>")
-		for e := queue.consumers.Front(); e != nil; e = e.Next() {
-			var consumer = e.Value.(*Consumer)
+		for _, consumer := range queue.consumers {
 			fmt.Fprintf(w, "'%s': %d\n", consumer.consumerTag, consumer.statCount)
 		}
 	}

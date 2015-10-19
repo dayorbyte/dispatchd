@@ -277,6 +277,7 @@ func (channel *Channel) shutdown() {
 }
 
 func (channel *Channel) removeConsumer(consumerTag string) error {
+	// TODO: how does this interact with the code in shutdown?
 	var consumer, found = channel.consumers[consumerTag]
 	if !found {
 		return errors.New("Consumer not found")

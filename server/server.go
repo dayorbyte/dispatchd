@@ -130,7 +130,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
 		autoDelete: method.AutoDelete,
 		arguments:  method.Arguments,
 		queue:      list.New(),
-		consumers:  list.New(),
+		consumers:  make([]*Consumer, 0, 1),
 	}
 	_, hasKey := server.queues[queue.name]
 	if hasKey {
