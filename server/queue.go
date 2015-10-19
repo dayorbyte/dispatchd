@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
-	"time"
+	// "time"
 )
 
 type Message struct {
@@ -54,6 +54,7 @@ type Queue struct {
 	consumers       []*Consumer // *Consumer
 	currentConsumer int
 	statCount       uint64
+	maybeReady      chan bool
 }
 
 func (q *Queue) nextConsumer() *Consumer {
@@ -104,9 +105,12 @@ func (q *Queue) add(channel *Channel, message *Message) {
 
 	if !q.closed {
 		q.queueLock.Lock()
-		defer q.queueLock.Unlock()
 		q.statCount += 1
 		q.queue.PushBack(message)
+		q.queueLock.Unlock()
+		select {
+		case q.maybeReady <- true:
+		}
 	}
 }
 
@@ -116,6 +120,7 @@ func (q *Queue) readd(message *Message) {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	q.queue.PushFront(message)
+	q.maybeReady <- true
 }
 
 func (q *Queue) removeConsumer(consumerTag string) {
@@ -155,14 +160,16 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) bool {
 		return false
 	}
 	var consumer = &Consumer{
-		arguments:     method.Arguments,
-		channel:       channel,
-		consumerTag:   method.ConsumerTag,
-		exclusive:     method.Exclusive,
-		incoming:      make(chan *Message),
-		noAck:         method.NoAck,
-		noLocal:       method.NoLocal,
-		qos:           1,
+		arguments:   method.Arguments,
+		channel:     channel,
+		consumerTag: method.ConsumerTag,
+		exclusive:   method.Exclusive,
+		incoming:    make(chan bool),
+		ackChan:     make(chan bool),
+		noAck:       method.NoAck,
+		noLocal:     method.NoLocal,
+		// TODO: size QOS
+		qos:           channel.defaultPrefetchCount,
 		queue:         q,
 		prefetchSize:  channel.defaultPrefetchSize,
 		prefetchCount: channel.defaultPrefetchCount,
@@ -178,16 +185,10 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) bool {
 func (q *Queue) start() {
 	fmt.Println("Queue started!")
 	go func() {
-		for {
+		for _ = range q.maybeReady {
 			if q.closed {
 				fmt.Printf("Queue closed!\n")
 				break
-			}
-			// TODO: replace this check with a channel which notifies the queue
-			// dispatch loop that someone is ready to accept more work.
-			if q.queue.Len() == 0 || len(q.consumers) == 0 {
-				time.Sleep(5 * time.Millisecond)
-				continue
 			}
 			q.processOne()
 		}
@@ -196,33 +197,28 @@ func (q *Queue) start() {
 
 func (q *Queue) processOne() {
 	q.consumerLock.RLock()
-	if len(q.consumers) == 0 {
-		q.consumerLock.RUnlock()
+	defer q.consumerLock.RUnlock()
+	var size = len(q.consumers)
+	if size == 0 {
 		return
 	}
-	var consumer = q.nextConsumer()
-	q.consumerLock.RUnlock()
-
-	if !consumer.ready() {
-		return
-	}
-	q.queueLock.Lock()
-	var msg = q.queue.Remove(q.queue.Front()).(*Message)
-	q.queueLock.Unlock()
-	if !consumer.noAck {
-		consumer.incrActive(1, msg.size())
-	}
-	// Recover if we can't send the message because the channel is closed
-	// by re-adding it to the queue
-	defer func() {
-		if r := recover(); r != nil {
-			q.readd(msg)
+	for count := 0; count < size; count++ {
+		q.currentConsumer = (q.currentConsumer + 1) % size
+		var c = q.consumers[q.currentConsumer]
+		select {
+		case c.incoming <- true:
+			break
+		default:
 		}
-	}()
-	// TODO: we're blocking here until this consumer is ready to
-	//       accept the next message. If we have multiple consumers
-	//       we should just move on. However, if this is in a select{} then
-	//       we spin hard while we wait for the next available send time.
-	consumer.incoming <- msg
 
+	}
+}
+
+func (q *Queue) getOne() *Message {
+	q.queueLock.Lock()
+	defer q.queueLock.Unlock()
+	if q.queue.Len() == 0 {
+		return nil
+	}
+	return q.queue.Remove(q.queue.Front()).(*Message)
 }

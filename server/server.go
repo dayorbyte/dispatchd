@@ -131,6 +131,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
 		arguments:  method.Arguments,
 		queue:      list.New(),
 		consumers:  make([]*Consumer, 0, 1),
+		maybeReady: make(chan bool, 1),
 	}
 	_, hasKey := server.queues[queue.name]
 	if hasKey {

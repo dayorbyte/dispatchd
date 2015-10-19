@@ -12,7 +12,8 @@ type Consumer struct {
 	channel       *Channel
 	consumerTag   string
 	exclusive     bool
-	incoming      chan *Message
+	incoming      chan bool
+	ackChan       chan bool
 	noAck         bool
 	noLocal       bool
 	qos           uint16
@@ -52,15 +53,10 @@ func (consumer *Consumer) ready() bool {
 		return true
 	}
 	if !consumer.channel.consumeLimitsOk() {
-		// fmt.Println("channel limit full")
 		return false
 	}
 	var sizeOk = consumer.prefetchSize == 0 || consumer.activeSize <= consumer.prefetchSize
 	var bytesOk = consumer.prefetchCount == 0 || consumer.activeCount <= consumer.prefetchCount
-	// if !(sizeOk && bytesOk) {
-	// 	fmt.Println("consumer limit full")
-	// }
-
 	return sizeOk && bytesOk
 }
 
@@ -85,26 +81,37 @@ func (consumer *Consumer) decrActive(size uint16, bytes uint32) {
 }
 
 func (consumer *Consumer) start() {
+	fmt.Printf("Starting %d consumers\n", consumer.qos)
 	for i := uint16(0); i < consumer.qos; i++ {
 		go consumer.consume(i)
 	}
 }
 
 func (consumer *Consumer) consume(id uint16) {
-	fmt.Printf("Starting consumer %s#%d\n", consumer.consumerTag, id)
-	for msg := range consumer.incoming {
-		// fmt.Printf("Consumer %s#%d got a message\n", consumer.consumerTag, id)
+	fmt.Printf("[C:%s#%d]Starting consumer\n", consumer.consumerTag, id)
+	consumer.queue.maybeReady <- false
+	for _ = range consumer.incoming {
+		var msg = consumer.queue.getOne()
+		if msg == nil {
+			continue
+		}
 		var tag uint64 = 0
 		if !consumer.noAck {
 			tag = consumer.channel.addUnackedMessage(consumer, msg)
+			consumer.incrActive(1, msg.size())
 		}
 		consumer.channel.sendContent(&amqp.BasicDeliver{
 			ConsumerTag: consumer.consumerTag,
 			DeliveryTag: tag,
 			Redelivered: false,
-			Exchange:    "",                  // TODO(MUST): the real exchange name
-			RoutingKey:  consumer.queue.name, // TODO(must): real queue name
+			Exchange:    msg.exchange,
+			RoutingKey:  msg.key,
 		}, msg)
 		consumer.statCount += 1
+		// Wait on ack if applicable
+		if !consumer.noAck {
+			// TODO: this currently only deals with count QoS
+			<-consumer.ackChan
+		}
 	}
 }

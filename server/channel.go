@@ -25,6 +25,7 @@ type Channel struct {
 	confirmMode    bool
 	currentMessage *Message
 	consumers      map[string]*Consumer
+	sendLock       sync.Mutex
 	// Consumers
 	msgIndex uint64
 	// Delivery Tracking
@@ -63,6 +64,8 @@ func (channel *Channel) ackBelow(tag uint64) bool {
 		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
 			unacked.consumer.decrActive(1, unacked.msg.size())
+			// TODO: select?
+			unacked.consumer.ackChan <- true
 			count += 1
 		}
 	}
@@ -82,6 +85,8 @@ func (channel *Channel) ackOne(tag uint64) bool {
 	}
 	delete(channel.awaitingAcks, tag)
 	unacked.consumer.decrActive(1, unacked.msg.size())
+	// TODO: select?
+	unacked.consumer.ackChan <- true
 	return true
 }
 
@@ -96,6 +101,8 @@ func (channel *Channel) nackBelow(tag uint64) bool {
 			delete(channel.awaitingAcks, k)
 			unacked.consumer.queue.readd(unacked.msg)
 			unacked.consumer.decrActive(1, unacked.msg.size())
+			// TODO: select?
+			unacked.consumer.ackChan <- true
 			count += 1
 		}
 	}
@@ -114,6 +121,8 @@ func (channel *Channel) nackOne(tag uint64) bool {
 	}
 	unacked.consumer.queue.readd(unacked.msg)
 	unacked.consumer.decrActive(1, unacked.msg.size())
+	// TODO: select?
+	unacked.consumer.ackChan <- true
 	delete(channel.awaitingAcks, tag)
 	return true
 }
@@ -206,8 +215,9 @@ func (channel *Channel) nextConfirmId() uint64 {
 func (channel *Channel) nextDeliveryTag() uint64 {
 	channel.deliveryLock.Lock()
 	channel.deliveryTag++
+	ret := channel.deliveryTag
 	channel.deliveryLock.Unlock()
-	return channel.deliveryTag
+	return ret
 }
 
 func (channel *Channel) start() {
@@ -298,6 +308,8 @@ func (channel *Channel) sendMethod(method amqp.MethodFrame) {
 
 // Send a method frame out to the client
 func (channel *Channel) sendContent(method amqp.MethodFrame, message *Message) {
+	channel.sendLock.Lock()
+	defer channel.sendLock.Unlock()
 	// fmt.Println("Sending content\n")
 	// deliver
 	channel.sendMethod(method)
