@@ -68,8 +68,9 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) error {
 	// TODO: do not directly access channel.conn.server.queues
 	var queue, found = channel.conn.server.queues[method.Queue]
 	if !found {
-		// TODO(MUST): not found error? spec xml doesn't say
-		return errors.New("Queue not found")
+		// Spec doesn't say, but seems like a 404?
+		var classId, methodId = method.MethodIdentifier()
+		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
 	if len(method.ConsumerTag) == 0 {
 		method.ConsumerTag = fmt.Sprintf("%d", time.Now().UnixNano())
@@ -120,9 +121,26 @@ func (channel *Channel) basicPublish(method *amqp.BasicPublish) error {
 }
 
 func (channel *Channel) basicGet(method *amqp.BasicGet) error {
-	fmt.Println("Handling BasicGet")
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	// var classId, methodId = method.MethodIdentifier()
+	// channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	var queue, found = channel.conn.server.queues[method.Queue]
+	if !found {
+		// Spec doesn't say, but seems like a 404?
+		var classId, methodId = method.MethodIdentifier()
+		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
+	}
+	var msg = queue.getOne()
+	if msg == nil {
+		channel.sendMethod(&amqp.BasicGetEmpty{})
+		return nil
+	}
+	channel.sendContent(&amqp.BasicGetOk{
+		DeliveryTag: uint64(0),
+		Redelivered: false,
+		Exchange:    msg.exchange,
+		RoutingKey:  msg.key,
+		MessageCount: 1,
+	}, msg)
 	return nil
 }
 

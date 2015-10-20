@@ -13,10 +13,7 @@
   queues/exchanges exists.
 * A few functions aren't implemented:
   * flow control
-  * synchronous get from a queue
-  * return
   * recover
-  * cancel consumer
   * connection blocked
   * exchange to exchange binding (protocol extension)
 * None of the life cycle parts of the spec are implemented:
