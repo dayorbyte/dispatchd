@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"net"
 	"sync"
@@ -91,15 +92,14 @@ func (server *Server) createSystemExchanges() {
 	server.exchanges[fanoutEx.name] = fanoutEx
 }
 
-func (server *Server) declareExchange(method *amqp.ExchangeDeclare) error {
-	// TODO: Handle Passive
+func (server *Server) declareExchange(method *amqp.ExchangeDeclare) (uint16, error) {
 	var tp, err = exchangeNameToType(method.Type)
 	if err != nil {
-		// TODO: handle invalid exchange types
-		panic(err.Error())
-		return nil
+		// TODO: I should really make ChannelException and ConnectionException
+		// types
+		return uint16(503), fmt.Errorf("Exchange type unknown: %s", method.Type)
 	}
-	var exchange = Exchange{
+	var exchange = &Exchange{
 		name:       method.Exchange,
 		extype:     tp,
 		durable:    method.Durable,
@@ -110,16 +110,28 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare) error {
 		system:     false,
 	}
 	existing, hasKey := server.exchanges[exchange.name]
-	if hasKey && exchange.extype != existing.extype {
-		// TODO: do I need to check all fields on redeclaration?
-		return errors.New("Exchange with this name already exists")
-	} else if hasKey {
-		// exchange exists and is OK
-		return nil
+	if !hasKey && method.Passive {
+		return 404, errors.New("Exchange does not exist")
 	}
-	server.exchanges[exchange.name] = &exchange
+	if hasKey {
+		if existing.extype != exchange.extype {
+			return 530, errors.New("Cannot redeclare an exchange with a different type")
+		}
+		if equivalentExchanges(existing, exchange) {
+			return 0, nil
+		}
+		// Not equivalent, error in passive mode
+		if method.Passive {
+			return 406, errors.New("Exchange with this name already exists")
+		}
+
+	}
+	if method.Passive {
+		return 0, nil
+	}
+	server.exchanges[exchange.name] = exchange
 	exchange.start()
-	return nil
+	return 0, nil
 }
 
 func (server *Server) declareQueue(method *amqp.QueueDeclare) error {

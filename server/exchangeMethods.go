@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
+	_ "fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"strings"
 )
 
 func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) error {
@@ -22,14 +23,41 @@ func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) error {
 }
 
 func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
-	var err = channel.server.declareExchange(method)
-	if err != nil {
-		fmt.Println("Declaring exchange: Error: " + err.Error())
-		// TODO(send error to client)
+	var classId, methodId = method.MethodIdentifier()
+	// The client I'm using for testing thought declaring the empty exchange
+	// was OK. Check later
+	// if len(method.Exchange) > 0 && !method.Passive {
+	// 	var msg = "The empty exchange name is reserved"
+	// 	channel.channelErrorWithMethod(406, msg, classId, methodId)
+	// 	return nil
+	// }
 
-		return err
+	if strings.HasPrefix(method.Exchange, "amq.") && !method.Passive {
+		var msg = "Exchange names starting with 'amq.' are reserved"
+		channel.channelErrorWithMethod(403, msg, classId, methodId)
+		return nil
 	}
-	fmt.Println("Declaring exchange: Send Response")
+
+	// Check the name format
+	var err = amqp.CheckExchangeName(method.Exchange)
+	if err != nil {
+		channel.channelErrorWithMethod(406, err.Error(), classId, methodId)
+		return nil
+	}
+
+	if method.Durable {
+		panic("Durable not implemented")
+	}
+	if method.AutoDelete {
+		panic("Autodelete not implemented")
+	}
+
+	// Declare!
+	errCode, err := channel.server.declareExchange(method)
+	if err != nil {
+		channel.channelErrorWithMethod(errCode, err.Error(), classId, methodId)
+		return nil
+	}
 	if !method.NoWait {
 		channel.sendMethod(&amqp.ExchangeDeclareOk{})
 	}

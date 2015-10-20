@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"reflect"
 )
 
 type extype uint8
@@ -31,6 +32,28 @@ func (exchange *Exchange) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"type": exchangeTypeToName(exchange.extype),
 	})
+}
+
+func equivalentExchanges(ex1 *Exchange, ex2 *Exchange) bool {
+	if ex1.name != ex2.name {
+		return false
+	}
+	if ex1.extype != ex2.extype {
+		return false
+	}
+	if ex1.durable != ex2.durable {
+		return false
+	}
+	if ex1.autodelete != ex2.autodelete {
+		return false
+	}
+	if ex1.internal != ex2.internal {
+		return false
+	}
+	if reflect.DeepEqual(ex1, ex2) {
+		return false
+	}
+	return true
 }
 
 func exchangeNameToType(et string) (extype, error) {

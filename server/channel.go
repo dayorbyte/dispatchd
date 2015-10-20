@@ -44,10 +44,6 @@ type Channel struct {
 	defaultPrefetchCount uint16
 }
 
-func (channel *Channel) channelError(code uint16, message string) {
-	channel.channelErrorWithMethod(code, message, 0, 0)
-}
-
 func (channel *Channel) channelErrorWithMethod(code uint16, message string, classId uint16, methodId uint16) {
 	fmt.Println("Sending channel error:", message)
 	channel.state = CH_STATE_CLOSING

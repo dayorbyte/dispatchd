@@ -2,8 +2,9 @@ package amqp
 
 import (
 	"errors"
-	_ "fmt"
+	"fmt"
 	"io"
+	"regexp"
 )
 
 type Decimal struct {
@@ -52,6 +53,18 @@ func (frame *ContentHeaderFrame) FrameType() byte {
 	return 2
 }
 
+var exchangeNameRegex = regexp.MustCompile(`^[a-zA-Z0-9-_.:]*$`)
+
+func CheckExchangeName(s string) error {
+	if len(s) > 127 {
+		return fmt.Errorf("Exchange name too long: %d", len(s))
+	}
+	if !exchangeNameRegex.MatchString(s) {
+		return fmt.Errorf("Exchange name invalid: %s", s)
+	}
+	return nil
+}
+
 func (frame *ContentHeaderFrame) Read(reader io.Reader) (err error) {
 	frame.ContentClass, err = ReadShort(reader)
 	if err != nil {
@@ -63,7 +76,7 @@ func (frame *ContentHeaderFrame) Read(reader io.Reader) (err error) {
 		return err
 	}
 	if frame.ContentWeight != 0 {
-		return errors.New("Bad content weight in header frame")
+		return errors.New("Bad content weight in header frame. Should be 0")
 	}
 
 	frame.ContentBodySize, err = ReadLonglong(reader)

@@ -135,10 +135,10 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) error {
 		return nil
 	}
 	channel.sendContent(&amqp.BasicGetOk{
-		DeliveryTag: uint64(0),
-		Redelivered: false,
-		Exchange:    msg.exchange,
-		RoutingKey:  msg.key,
+		DeliveryTag:  uint64(0),
+		Redelivered:  false,
+		Exchange:     msg.exchange,
+		RoutingKey:   msg.key,
 		MessageCount: 1,
 	}, msg)
 	return nil
