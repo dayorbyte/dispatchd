@@ -3,7 +3,6 @@ package main
 import (
 	_ "fmt"
 	"github.com/jeffjenkins/mq/amqp"
-	"strings"
 )
 
 func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) error {
@@ -31,12 +30,6 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
 	// 	channel.channelErrorWithMethod(406, msg, classId, methodId)
 	// 	return nil
 	// }
-
-	if strings.HasPrefix(method.Exchange, "amq.") && !method.Passive {
-		var msg = "Exchange names starting with 'amq.' are reserved"
-		channel.channelErrorWithMethod(403, msg, classId, methodId)
-		return nil
-	}
 
 	// Check the name format
 	var err = amqp.CheckExchangeOrQueueName(method.Exchange)

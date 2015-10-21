@@ -8,6 +8,7 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 	"net"
 	"sync"
+	"strings"
 )
 
 type Server struct {
@@ -111,10 +112,10 @@ func (server *Server) createSystemExchanges() {
 
 func (server *Server) declareExchange(method *amqp.ExchangeDeclare) (uint16, error) {
 	var tp, err = exchangeNameToType(method.Type)
-	if err != nil {
+	if err != nil || tp == EX_TYPE_HEADERS {
 		// TODO: I should really make ChannelException and ConnectionException
 		// types
-		return uint16(503), fmt.Errorf("Exchange type unknown: %s", method.Type)
+		return uint16(503), fmt.Errorf("Exchange type not supported: %s", method.Type)
 	}
 	var exchange = &Exchange{
 		name:       method.Exchange,
@@ -141,11 +142,18 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare) (uint16, err
 		if method.Passive {
 			return 406, errors.New("Exchange with this name already exists")
 		}
-
 	}
 	if method.Passive {
 		return 0, nil
 	}
+
+	// outside of passive mode you can't create an exchange starting with
+	// amq.
+	if strings.HasPrefix(method.Exchange, "amq.") {
+		return 0, errors.New("Exchange names starting with 'amq.' are reserved")
+	}
+
+
 	server.exchanges[exchange.name] = exchange
 	exchange.start()
 	return 0, nil
