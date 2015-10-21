@@ -90,6 +90,23 @@ func (server *Server) createSystemExchanges() {
 		panic("amq.fanout system exchange already exists!")
 	}
 	server.exchanges[fanoutEx.name] = fanoutEx
+
+	// amqp.fanout
+	var topicEx = &Exchange{
+		name:       "amq.topic",
+		extype:     EX_TYPE_TOPIC,
+		durable:    false,
+		autodelete: false,
+		internal:   false,
+		arguments:  amqp.Table{},
+		incoming:   make(chan amqp.Frame),
+		system:     true,
+	}
+	_, hasKey = server.exchanges[topicEx.name]
+	if hasKey {
+		panic("amq.fanout system exchange already exists!")
+	}
+	server.exchanges[topicEx.name] = topicEx
 }
 
 func (server *Server) declareExchange(method *amqp.ExchangeDeclare) (uint16, error) {
