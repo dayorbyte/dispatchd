@@ -27,7 +27,11 @@ func (channel *Channel) channelRoute(methodFrame amqp.MethodFrame) error {
 
 func (channel *Channel) channelOpen(method *amqp.ChannelOpen) error {
 	fmt.Println("Handling " + method.MethodName())
-	// TODO(MUST): if channel is open, send 504 ChannelError
+	if channel.state == CH_STATE_OPEN {
+		var classId, methodId = method.MethodIdentifier()
+		channel.conn.connectionErrorWithMethod(504, "Channel already open", classId, methodId)
+		return nil
+	}
 	channel.sendMethod(&amqp.ChannelOpenOk{})
 	channel.setStateOpen()
 	return nil
