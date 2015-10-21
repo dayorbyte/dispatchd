@@ -39,7 +39,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
 	}
 
 	// Check the name format
-	var err = amqp.CheckExchangeName(method.Exchange)
+	var err = amqp.CheckExchangeOrQueueName(method.Exchange)
 	if err != nil {
 		channel.channelErrorWithMethod(406, err.Error(), classId, methodId)
 		return nil

@@ -25,13 +25,20 @@ func (channel *Channel) queueRoute(methodFrame amqp.MethodFrame) error {
 
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 	fmt.Println("Got queueDeclare")
+	var classId, methodId = method.MethodIdentifier()
+	// Check the name format
+	var err = amqp.CheckExchangeOrQueueName(method.Queue)
+	if err != nil {
+		channel.channelErrorWithMethod(406, err.Error(), classId, methodId)
+		return nil
+	}
+
 	if method.Passive {
 		_, found := channel.conn.server.queues[method.Queue]
 		if found {
 			channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, 0, 0})
 			return nil
 		}
-		var classId, methodId = method.MethodIdentifier()
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
 	fmt.Println("calling declareQueue")

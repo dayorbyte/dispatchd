@@ -55,7 +55,9 @@ func (frame *ContentHeaderFrame) FrameType() byte {
 
 var exchangeNameRegex = regexp.MustCompile(`^[a-zA-Z0-9-_.:]*$`)
 
-func CheckExchangeName(s string) error {
+func CheckExchangeOrQueueName(s string) error {
+	// Is it possible this length check is generally ignored since a short
+	// string is only twice as long?
 	if len(s) > 127 {
 		return fmt.Errorf("Exchange name too long: %d", len(s))
 	}

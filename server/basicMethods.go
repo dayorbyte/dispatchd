@@ -116,6 +116,12 @@ func (channel *Channel) basicPublish(method *amqp.BasicPublish) error {
 		var classId, methodId = method.MethodIdentifier()
 		channel.conn.connectionErrorWithMethod(540, "Immediate flag not yet supported", classId, methodId)
 	}
+	var _, found = channel.server.exchanges[method.Exchange]
+	if !found {
+		var classId, methodId = method.MethodIdentifier()
+		channel.channelErrorWithMethod(404, "Exchange not found", classId, methodId)
+		return nil
+	}
 	channel.startPublish(method)
 	return nil
 }

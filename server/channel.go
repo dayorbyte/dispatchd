@@ -235,9 +235,13 @@ func (channel *Channel) start() {
 			case frame.FrameType == uint8(amqp.FrameMethod):
 				channel.routeMethod(frame)
 			case frame.FrameType == uint8(amqp.FrameHeader):
-				channel.handleContentHeader(frame)
+				if channel.state != CH_STATE_CLOSING {
+					channel.handleContentHeader(frame)
+				}
 			case frame.FrameType == uint8(amqp.FrameBody):
-				channel.handleContentBody(frame)
+				if channel.state != CH_STATE_CLOSING {
+					channel.handleContentBody(frame)
+				}
 			default:
 				fmt.Println("Unknown frame type!")
 			}
