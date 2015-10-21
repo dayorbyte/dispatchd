@@ -34,9 +34,9 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 	}
 
 	if method.Passive {
-		_, found := channel.conn.server.queues[method.Queue]
+		queue, found := channel.conn.server.queues[method.Queue]
 		if found {
-			channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, 0, 0})
+			channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, queue.queue.Len(), len(queue.consumers)})
 			return nil
 		}
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
