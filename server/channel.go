@@ -357,6 +357,7 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
 	if size < channel.currentMessage.header.ContentBodySize {
 		return
 	}
+
 	var server = channel.server
 	var message = channel.currentMessage
 	server.exchanges[message.method.Exchange].publish(server, channel, channel.currentMessage)
