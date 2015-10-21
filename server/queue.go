@@ -10,11 +10,11 @@ import (
 )
 
 type Message struct {
-	header   *amqp.ContentHeaderFrame
-	payload  []*amqp.WireFrame
-	exchange string
-	key      string
-	method   *amqp.BasicPublish
+	header      *amqp.ContentHeaderFrame
+	payload     []*amqp.WireFrame
+	exchange    string
+	key         string
+	method      *amqp.BasicPublish
 	redelivered bool
 }
 

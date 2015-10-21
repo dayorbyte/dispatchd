@@ -11,9 +11,10 @@ import (
 type extype uint8
 
 const (
-	EX_TYPE_DIRECT extype = 1
-	EX_TYPE_FANOUT extype = 2
-	EX_TYPE_TOPIC  extype = 3
+	EX_TYPE_DIRECT  extype = 1
+	EX_TYPE_FANOUT  extype = 2
+	EX_TYPE_TOPIC   extype = 3
+	EX_TYPE_HEADERS extype = 4
 )
 
 type Exchange struct {
@@ -64,6 +65,8 @@ func exchangeNameToType(et string) (extype, error) {
 		return EX_TYPE_FANOUT, nil
 	case et == "topic":
 		return EX_TYPE_TOPIC, nil
+	case et == "headers":
+		return EX_TYPE_HEADERS, nil
 	default:
 		return 0, errors.New("Unknown exchang type " + et)
 	}
@@ -77,6 +80,8 @@ func exchangeTypeToName(et extype) string {
 		return "fanout"
 	case et == EX_TYPE_TOPIC:
 		return "topic"
+	case et == EX_TYPE_HEADERS:
+		return "headers"
 	default:
 		panic(fmt.Sprintf("bad exchange type: %d", et))
 	}
@@ -127,7 +132,11 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 				matched = true
 			}
 		}
+	case exchange.extype == EX_TYPE_HEADERS:
+		// TODO: implement
+		panic("Headers is not implemented!")
 	default:
+		// TODO: can this happen? Seems like checks should be earlier
 		panic("unknown exchange type!")
 	}
 	if matched == true {
