@@ -15,6 +15,7 @@ type Message struct {
 	exchange string
 	key      string
 	method   *amqp.BasicPublish
+	redelivered bool
 }
 
 func NewMessage(method *amqp.BasicPublish) *Message {
@@ -119,6 +120,9 @@ func (q *Queue) readd(message *Message) {
 	fmt.Println("Re-adding queue message!")
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
+	// this method is only called when we get a nack or we shut down a channel,
+	// so it means the message was not acked.
+	message.redelivered = true
 	q.queue.PushFront(message)
 	q.maybeReady <- true
 }
