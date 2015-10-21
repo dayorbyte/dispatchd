@@ -67,7 +67,7 @@ func (channel *Channel) connectionStartOk(conn *AMQPConnection, method *amqp.Con
 	if method.Mechanism != "PLAIN" {
 		conn.hardClose()
 	}
-
+	conn.clientProperties = &method.ClientProperties
 	// TODO(MUST): add support these being enforced at the connection level.
 	channel.sendMethod(&amqp.ConnectionTune{
 		conn.maxChannels,

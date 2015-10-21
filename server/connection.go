@@ -40,6 +40,7 @@ type AMQPConnection struct {
 	receiveHeartbeatInterval time.Duration
 	maxChannels              uint16
 	maxFrameSize             uint32
+	clientProperties         *amqp.Table
 }
 
 func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
