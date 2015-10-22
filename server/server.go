@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"net"
-	"sync"
 	"strings"
+	"sync"
 )
 
 type Server struct {
@@ -152,7 +152,6 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare) (uint16, err
 	if strings.HasPrefix(method.Exchange, "amq.") {
 		return 0, errors.New("Exchange names starting with 'amq.' are reserved")
 	}
-
 
 	server.exchanges[exchange.name] = exchange
 	exchange.start()

@@ -47,8 +47,8 @@ type Queue struct {
 	durable         bool
 	exclusive       bool
 	autoDelete      bool
-	closed          bool
 	arguments       amqp.Table
+	closed          bool
 	queue           *list.List // *Message
 	queueLock       sync.Mutex
 	consumerLock    sync.RWMutex
@@ -56,6 +56,25 @@ type Queue struct {
 	currentConsumer int
 	statCount       uint64
 	maybeReady      chan bool
+}
+
+func equivalentQueues(q1 *Queue, q2 *Queue) bool {
+	if q1.name != q2.name {
+		return false
+	}
+	if q1.durable != q2.durable {
+		return false
+	}
+	if q1.exclusive != q2.exclusive {
+		return false
+	}
+	if q1.autoDelete != q2.autoDelete {
+		return false
+	}
+	if !amqp.EquivalentTables(&q1.arguments, &q2.arguments) {
+		return false
+	}
+	return true
 }
 
 func (q *Queue) nextConsumer() *Consumer {

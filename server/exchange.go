@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
-	"reflect"
 )
 
 type extype uint8
@@ -51,7 +50,7 @@ func equivalentExchanges(ex1 *Exchange, ex2 *Exchange) bool {
 	if ex1.internal != ex2.internal {
 		return false
 	}
-	if reflect.DeepEqual(ex1, ex2) {
+	if !amqp.EquivalentTables(&ex1.arguments, &ex2.arguments) {
 		return false
 	}
 	return true

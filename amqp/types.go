@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"regexp"
 )
 
@@ -51,6 +52,10 @@ func NewTruncatedBodyFrame(channel uint16) WireFrame {
 
 func (frame *ContentHeaderFrame) FrameType() byte {
 	return 2
+}
+
+func EquivalentTables(t1 *Table, t2 *Table) bool {
+	return reflect.DeepEqual(t1, t2)
 }
 
 var exchangeNameRegex = regexp.MustCompile(`^[a-zA-Z0-9-_.:]*$`)
