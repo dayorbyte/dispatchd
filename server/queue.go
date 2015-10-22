@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
@@ -113,6 +114,12 @@ func (q *Queue) close() {
 }
 
 func (q *Queue) purge() uint32 {
+	q.queueLock.Lock()
+	defer q.queueLock.Unlock()
+	return q.purgeNotThreadSafe()
+}
+
+func (q *Queue) purgeNotThreadSafe() uint32 {
 	var length = q.queue.Len()
 	q.queue.Init()
 	return uint32(length)
@@ -138,6 +145,27 @@ func (q *Queue) add(channel *Channel, message *Message) {
 		case q.maybeReady <- true:
 		}
 	}
+}
+
+func (q *Queue) delete(ifUnused bool, ifEmpty bool) (uint32, error) {
+	// Lock
+	q.queueLock.Lock()
+	defer q.queueLock.Unlock()
+	q.consumerLock.Lock()
+	defer q.consumerLock.Unlock()
+
+	// Check
+	var usedOk = !ifUnused || len(q.consumers) == 0
+	var emptyOk = !ifEmpty || q.queue.Len() == 0
+	if !usedOk {
+		return 0, errors.New("if-unused specified and there are consumers")
+	}
+	if !emptyOk {
+		return 0, errors.New("if-empty specified and there are messages in the queue")
+	}
+	// Purge
+	q.cancelConsumers()
+	return q.purgeNotThreadSafe(), nil
 }
 
 func (q *Queue) readd(message *Message) {

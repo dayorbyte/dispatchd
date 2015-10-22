@@ -183,6 +183,19 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) (string, error) {
 	return queue.name, nil
 }
 
+func (server *Server) deleteQueue(method *amqp.QueueDelete) (uint32, uint16, error) {
+	var queue, foundQueue = server.queues[method.Queue]
+	if !foundQueue {
+		return 0, 404, errors.New("Queue not found")
+	}
+	numPurged, err := queue.delete(method.IfUnused, method.IfEmpty)
+	if err != nil {
+		return 0, 406, err
+	}
+	return numPurged, 0, nil
+
+}
+
 func (server *Server) deleteExchange(method *amqp.ExchangeDelete) error {
 	// TODO: clean up exchange
 	delete(server.exchanges, method.Exchange)
