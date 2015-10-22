@@ -30,7 +30,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 	var classId, methodId = method.MethodIdentifier()
 	// No name means generate a name
 	if len(method.Queue) == 0 {
-		method.Queue = randomQueueId()
+		method.Queue = randomId()
 	}
 
 	// Check the name format
@@ -189,7 +189,7 @@ func init() {
 
 var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
-func randomQueueId() string {
+func randomId() string {
 	var size = 32
 	var numChars = len(chars)
 	id := make([]rune, size)

@@ -25,6 +25,7 @@ type Channel struct {
 	confirmMode    bool
 	currentMessage *Message
 	consumers      map[string]*Consumer
+	consumerLock   sync.Mutex
 	sendLock       sync.Mutex
 	lastQueueName  string
 	// Consumers
@@ -142,9 +143,15 @@ func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint
 	return tag
 }
 
-func (channel *Channel) addConsumer(consumer *Consumer) {
-	// TODO: error handling
+func (channel *Channel) addConsumer(consumer *Consumer) error {
+	channel.consumerLock.Lock()
+	defer channel.consumerLock.Unlock()
+	_, found := channel.consumers[consumer.consumerTag]
+	if found {
+		return fmt.Errorf("Consumer tag already exists: %s", consumer.consumerTag)
+	}
 	channel.consumers[consumer.consumerTag] = consumer
+	return nil
 }
 
 func (channel *Channel) consumeLimitsOk() bool {

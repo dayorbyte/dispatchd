@@ -211,10 +211,10 @@ func (q *Queue) cancelConsumers() {
 	q.consumers = make([]*Consumer, 0, 1)
 }
 
-func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) bool {
+func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16, error) {
 	fmt.Printf("Adding consumer\n")
 	if q.closed {
-		return false
+		return 0, nil
 	}
 	var consumer = &Consumer{
 		arguments:   method.Arguments,
@@ -236,7 +236,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) bool {
 	q.consumers = append(q.consumers, consumer)
 	q.consumerLock.Unlock()
 	consumer.start()
-	return true
+	return 0, nil
 }
 
 func (q *Queue) start() {

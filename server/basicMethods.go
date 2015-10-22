@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
-	"time"
 )
 
 func (channel *Channel) basicRoute(methodFrame amqp.MethodFrame) error {
@@ -64,21 +63,33 @@ func (channel *Channel) basicNack(method *amqp.BasicNack) error {
 }
 
 func (channel *Channel) basicConsume(method *amqp.BasicConsume) error {
-	fmt.Println("Handling BasicConsume")
+	var classId, methodId = method.MethodIdentifier()
+	// Check queue
+	if len(method.Queue) == 0 {
+		if len(channel.lastQueueName) == 0 {
+			channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
+			return nil
+		} else {
+			method.Queue = channel.lastQueueName
+		}
+	}
 	// TODO: do not directly access channel.conn.server.queues
 	var queue, found = channel.conn.server.queues[method.Queue]
 	if !found {
 		// Spec doesn't say, but seems like a 404?
-		var classId, methodId = method.MethodIdentifier()
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
 	if len(method.ConsumerTag) == 0 {
-		method.ConsumerTag = fmt.Sprintf("%d", time.Now().UnixNano())
+		method.ConsumerTag = randomId()
 	}
-	success := queue.addConsumer(channel, method)
-	if !success {
+	errCode, err := queue.addConsumer(channel, method)
+	if err != nil {
 		var classId, methodId = method.MethodIdentifier()
-		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
+		// TODO: there should probably be a single error handling function
+		// which does channel or connection errors based on the code. I would
+		// need to gen a hard vs soft error function, but it wouldn't be too
+		// difficult
+		channel.conn.connectionErrorWithMethod(errCode, err.Error(), classId, methodId)
 	}
 	if !method.NoWait {
 		channel.sendMethod(&amqp.BasicConsumeOk{method.ConsumerTag})
