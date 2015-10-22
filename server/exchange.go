@@ -96,39 +96,51 @@ func (exchange *Exchange) start() {
 }
 
 func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message) {
-	var matched = false
+	var seen = make(map[string]bool)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
 			if binding.matchDirect(msg.method) {
+				var _, alreadySeen = seen[binding.queueName]
+				if alreadySeen {
+					continue
+				}
 				var queue, foundQueue = server.queues[binding.queueName]
 				if !foundQueue {
 					panic("queue not found!")
 				}
 				queue.add(channel, msg)
-				matched = true
+				seen[binding.queueName] = true
 			}
 		}
 	case exchange.extype == EX_TYPE_FANOUT:
 		for _, binding := range exchange.bindings {
 			if binding.matchFanout(msg.method) {
+				var _, alreadySeen = seen[binding.queueName]
+				if alreadySeen {
+					continue
+				}
 				var queue, foundQueue = server.queues[binding.queueName]
 				if !foundQueue {
 					panic("queue not found!")
 				}
 				queue.add(channel, msg)
-				matched = true
+				seen[binding.queueName] = true
 			}
 		}
 	case exchange.extype == EX_TYPE_TOPIC:
 		for _, binding := range exchange.bindings {
 			if binding.matchTopic(msg.method) {
+				var _, alreadySeen = seen[binding.queueName]
+				if alreadySeen {
+					continue
+				}
 				var queue, foundQueue = server.queues[binding.queueName]
 				if !foundQueue {
 					panic("queue not found!")
 				}
 				queue.add(channel, msg)
-				matched = true
+				seen[binding.queueName] = true
 			}
 		}
 	case exchange.extype == EX_TYPE_HEADERS:
@@ -138,7 +150,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 		// TODO: can this happen? Seems like checks should be earlier
 		panic("unknown exchange type!")
 	}
-	if matched == true {
+	if len(seen) > 0 {
 		return
 	}
 	// If we got here the message was unroutable.
