@@ -158,7 +158,7 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare) (uint16, err
 	return 0, nil
 }
 
-func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
+func (server *Server) declareQueue(method *amqp.QueueDeclare) (string, error) {
 	var queue = &Queue{
 		name:       method.Queue,
 		durable:    method.Durable,
@@ -169,11 +169,10 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
 		consumers:  make([]*Consumer, 0, 1),
 		maybeReady: make(chan bool, 1),
 	}
+
 	_, hasKey := server.queues[queue.name]
 	if hasKey {
-		// TODO(MUST): channel exception if there is a queue with the same name
-		// and different properties
-		return nil
+		return queue.name, nil
 	}
 	server.queues[queue.name] = queue
 	var defaultExchange = server.exchanges[""]
@@ -181,7 +180,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) error {
 	defaultExchange.addBinding(queue, defaultBinding)
 	// TODO: queue should store bindings too?
 	queue.start()
-	return nil
+	return queue.name, nil
 }
 
 func (server *Server) deleteExchange(method *amqp.ExchangeDelete) error {

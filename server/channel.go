@@ -26,6 +26,7 @@ type Channel struct {
 	currentMessage *Message
 	consumers      map[string]*Consumer
 	sendLock       sync.Mutex
+	lastQueueName  string
 	// Consumers
 	msgIndex uint64
 	// Delivery Tracking

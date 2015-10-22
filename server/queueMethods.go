@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
+
 	"github.com/jeffjenkins/mq/amqp"
 )
 
@@ -24,8 +27,12 @@ func (channel *Channel) queueRoute(methodFrame amqp.MethodFrame) error {
 }
 
 func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
-	fmt.Println("Got queueDeclare")
 	var classId, methodId = method.MethodIdentifier()
+	// No name means generate a name
+	if len(method.Queue) == 0 {
+		method.Queue = randomQueueId()
+	}
+
 	// Check the name format
 	var err = amqp.CheckExchangeOrQueueName(method.Queue)
 	if err != nil {
@@ -39,15 +46,19 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 			var qsize = uint32(queue.queue.Len())
 			var csize = uint32(len(queue.consumers))
 			channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, qsize, csize})
+			channel.lastQueueName = method.Queue
 			return nil
 		}
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
-	fmt.Println("calling declareQueue")
-	channel.conn.server.declareQueue(method)
-	fmt.Println("Sending QueueDeclareOk")
+	name, err := channel.conn.server.declareQueue(method)
+	if err != nil {
+		channel.channelErrorWithMethod(500, "Error creating queue", classId, methodId)
+		return nil
+	}
+	channel.lastQueueName = method.Queue
 	if !method.NoWait {
-		channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, uint32(0), uint32(0)})
+		channel.sendMethod(&amqp.QueueDeclareOk{name, uint32(0), uint32(0)})
 	}
 	return nil
 }
@@ -135,4 +146,20 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) error {
 
 	exchange.removeBinding(queue, binding)
 	return nil
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
+
+func randomQueueId() string {
+	var size = 32
+	var numChars = len(chars)
+	id := make([]rune, size)
+	for i := range id {
+		id[i] = chars[rand.Intn(numChars)]
+	}
+	return string(id)
 }
