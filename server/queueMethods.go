@@ -45,7 +45,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 		if found {
 			if !method.NoWait {
 				var qsize = uint32(queue.queue.Len())
-				var csize = uint32(len(queue.consumers))
+				var csize = queue.activeConsumerCount()
 				channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, qsize, csize})
 			}
 			channel.lastQueueName = method.Queue

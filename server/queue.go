@@ -77,6 +77,12 @@ func equivalentQueues(q1 *Queue, q2 *Queue) bool {
 	return true
 }
 
+func (q *Queue) activeConsumerCount() uint32 {
+	// TODO(MUST): don't count consumers in the Channel.Flow state once
+	// that is implemented
+	return uint32(len(q.consumers))
+}
+
 func (q *Queue) nextConsumer() *Consumer {
 	// TODO: also check availability
 	q.consumerLock.RLock()
