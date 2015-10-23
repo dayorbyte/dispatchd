@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/boltdb/bolt"
 	"net"
 	"strings"
 	"sync"
@@ -18,6 +19,7 @@ type Server struct {
 	mutex     sync.Mutex
 	nextId    uint64
 	conns     map[uint64]*AMQPConnection
+	db 				*bolt.DB
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
@@ -27,17 +29,37 @@ func (server *Server) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewServer() *Server {
+func NewServer(dbPath string) *Server {
+	db, err := bolt.Open(dbPath, 0600, nil)
+	if err != nil {
+		panic(err.Error())
+
+	}
+	defer db.Close()
+
 	var server = &Server{
 		exchanges: make(map[string]*Exchange),
 		queues:    make(map[string]*Queue),
 		bindings:  make([]*Binding, 0),
 		conns:     make(map[uint64]*AMQPConnection),
+		db:				 db,
 	}
+
+	server.init()
 
 	server.createSystemExchanges()
 
 	return server
+}
+
+func (server *Server) init() {
+	err := server.db.View(func(tx *bolt.Tx) error {
+
+    return nil
+	})
+	if err != nil {
+		panic("Could not init server: " + err.Error())
+	}
 }
 
 func (server *Server) createSystemExchanges() {
