@@ -14,13 +14,13 @@ func handleConnection(server *Server, conn net.Conn) {
 }
 
 func main() {
-	fmt.Printf("Listening on port 1111\n")
 	var server = NewServer("mq.db")
 	ln, err := net.Listen("tcp", ":1111")
 	if err != nil {
 		fmt.Printf("Error!\n")
 		os.Exit(1)
 	}
+	fmt.Printf("Listening on port 1111\n")
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
