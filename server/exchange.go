@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 )
@@ -67,7 +66,7 @@ func exchangeNameToType(et string) (extype, error) {
 	case et == "headers":
 		return EX_TYPE_HEADERS, nil
 	default:
-		return 0, errors.New("Unknown exchang type " + et)
+		return 0, fmt.Errorf("Unknown exchang type '%s', %d %d", et, len(et), len("direct"))
 	}
 }
 

@@ -1,12 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"container/list"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jeffjenkins/mq/amqp"
 	"github.com/boltdb/bolt"
+	"github.com/jeffjenkins/mq/amqp"
 	"net"
 	"strings"
 	"sync"
@@ -19,7 +20,7 @@ type Server struct {
 	mutex     sync.Mutex
 	nextId    uint64
 	conns     map[uint64]*AMQPConnection
-	db 				*bolt.DB
+	db        *bolt.DB
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
@@ -42,7 +43,7 @@ func NewServer(dbPath string) *Server {
 		queues:    make(map[string]*Queue),
 		bindings:  make([]*Binding, 0),
 		conns:     make(map[uint64]*AMQPConnection),
-		db:				 db,
+		db:        db,
 	}
 
 	server.init()
@@ -55,7 +56,7 @@ func NewServer(dbPath string) *Server {
 func (server *Server) init() {
 	// Load exchanges
 	err := server.db.View(func(tx *bolt.Tx) error {
-    return nil
+		return nil
 	})
 	if err != nil {
 		panic("Could not init server: " + err.Error())
@@ -63,64 +64,110 @@ func (server *Server) init() {
 }
 
 func (server *Server) createSystemExchanges() {
-	// Default exchange
+
+	// LOAD FROM PERSISTENT STORAGE
+	err := server.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("exchanges"))
+		if bucket == nil {
+			return nil
+		}
+		// iterate through exchanges
+		cursor := bucket.Cursor()
+		for name, data := cursor.First(); name != nil; name, data = cursor.Next() {
+			// TODO: maybe convert the name ~ to empty string?
+			var method = &amqp.ExchangeDeclare{}
+			var reader = bytes.NewReader(data)
+			var err = method.Read(reader)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to read exchange '%s': %s", name, err.Error()))
+			}
+			system, err := amqp.ReadBit(reader)
+			fmt.Printf("Got exchange from disk: %s (%s)\n", method.Exchange, method.Type)
+			_, err = server.declareExchange(method, system, true)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		panic("********** FAILED TO LOAD EXCHANGES: " + err.Error())
+	}
+
+	// DECLARE MISSING SYSEM EXCHANGES
 	var _, hasKey = server.exchanges[""]
 	if !hasKey {
-		server.declareExchange(&amqp.ExchangeDeclare{
+		fmt.Println("System exchange '' doesn't exist. Creating")
+		_, err := server.declareExchange(&amqp.ExchangeDeclare{
 			Exchange:   "",
 			Type:       "direct",
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
-			Arguments:  amqp.Table{},
-		}, true)
+			Arguments:  make(amqp.Table),
+		}, true, false)
+		if err != nil {
+			panic("Error making exchange: " + err.Error())
+		}
 	}
 
 	// amq.direct
 	_, hasKey = server.exchanges["amq.direct"]
 	if !hasKey {
-		server.declareExchange(&amqp.ExchangeDeclare{
+		fmt.Println("System exchange 'amq.direct' doesn't exist. Creating")
+		_, err := server.declareExchange(&amqp.ExchangeDeclare{
 			Exchange:   "amq.direct",
-			Type:     	"direct",
+			Type:       "direct",
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
-			Arguments:  amqp.Table{},
-		}, true)
+			Arguments:  make(amqp.Table),
+		}, true, false)
+		if err != nil {
+			panic("Error making exchange: " + err.Error())
+		}
 	}
 
 	// amqp.fanout
 	_, hasKey = server.exchanges["amq.fanout"]
-	if hasKey {
-		server.declareExchange(&amqp.ExchangeDeclare{
+	if !hasKey {
+		fmt.Println("System exchange 'amq.fanout' doesn't exist. Creating")
+		_, err = server.declareExchange(&amqp.ExchangeDeclare{
 			Exchange:   "amq.fanout",
-			Type:     	"fanout",
+			Type:       "fanout",
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
-			Arguments:  amqp.Table{},
-		}, true)
+			Arguments:  make(amqp.Table),
+		}, true, false)
+		if err != nil {
+			panic("Error making exchange: " + err.Error())
+		}
 	}
-	// amqp.fanout
+	// amqp.topic
 	_, hasKey = server.exchanges["amq.topic"]
-	if hasKey {
-		server.declareExchange(&amqp.ExchangeDeclare{
+	if !hasKey {
+		fmt.Println("System exchange 'amq.topic' doesn't exist. Creating")
+		_, err = server.declareExchange(&amqp.ExchangeDeclare{
 			Exchange:   "amq.topic",
-			Type:     	"topic",
+			Type:       "topic",
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
-			Arguments:  amqp.Table{},
-		}, true)
+			Arguments:  make(amqp.Table),
+		}, true, false)
+		if err != nil {
+			panic("Error making exchange: " + err.Error())
+		}
 	}
 }
 
-func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool) (uint16, error) {
+func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool, diskLoad bool) (uint16, error) {
 	var tp, err = exchangeNameToType(method.Type)
 	if err != nil || tp == EX_TYPE_HEADERS {
 		// TODO: I should really make ChannelException and ConnectionException
 		// types
-		return uint16(503), fmt.Errorf("Exchange type not supported: %s", method.Type)
+		return uint16(503), err
 	}
 	var exchange = &Exchange{
 		name:       method.Exchange,
@@ -130,13 +177,16 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool)
 		internal:   method.Internal,
 		arguments:  method.Arguments,
 		incoming:   make(chan amqp.Frame),
-		system:     false,
+		system:     system,
 	}
 	existing, hasKey := server.exchanges[exchange.name]
 	if !hasKey && method.Passive {
 		return 404, errors.New("Exchange does not exist")
 	}
 	if hasKey {
+		if diskLoad {
+			panic(fmt.Sprintf("Can't disk load a key that exists: %s", exchange.name))
+		}
 		if existing.extype != exchange.extype {
 			return 530, errors.New("Cannot redeclare an exchange with a different type")
 		}
@@ -154,20 +204,38 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool)
 
 	// outside of passive mode you can't create an exchange starting with
 	// amq.
-	if strings.HasPrefix(method.Exchange, "amq.") {
+	if strings.HasPrefix(method.Exchange, "amq.") && !system {
 		return 0, errors.New("Exchange names starting with 'amq.' are reserved")
 	}
 
-	if exchange.durable {
-		server.persistExchange(method)
+	if exchange.durable && !diskLoad {
+		server.persistExchange(method, exchange.system)
 	}
 	server.exchanges[exchange.name] = exchange
 	exchange.start()
 	return 0, nil
 }
 
-func (server *Server) persistExchange(method *amqp.ExchangeDeclare) {
-
+func (server *Server) persistExchange(method *amqp.ExchangeDeclare, system bool) {
+	err := server.db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("exchanges"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
+		method.Write(buffer)
+		amqp.WriteBit(buffer, system)
+		var name = method.Exchange
+		if name == "" {
+			name = "~"
+		}
+		// trim off the first four bytes, they're the class/method, which we
+		// already know
+		return bucket.Put([]byte(name), buffer.Bytes()[4:])
+	})
+	if err != nil {
+		fmt.Printf("********** FAILED TO PERSIST EXCHANGE '%s': %s\n", method.Exchange, err.Error())
+	}
 }
 
 func (server *Server) declareQueue(method *amqp.QueueDeclare) (string, error) {

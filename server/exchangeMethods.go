@@ -38,15 +38,12 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
 		return nil
 	}
 
-	if method.Durable {
-		panic("Durable not implemented")
-	}
 	if method.AutoDelete {
 		panic("Autodelete not implemented")
 	}
 
 	// Declare!
-	errCode, err := channel.server.declareExchange(method, false)
+	errCode, err := channel.server.declareExchange(method, false, false)
 	if err != nil {
 		channel.channelErrorWithMethod(errCode, err.Error(), classId, methodId)
 		return nil

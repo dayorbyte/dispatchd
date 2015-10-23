@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 )
@@ -238,7 +239,7 @@ func readValue(reader io.Reader) (interface{}, error) {
 	case t == 'V':
 		return nil, nil
 	}
-	return nil, errors.New("Unknown table value type")
+	return nil, fmt.Errorf("Unknown table value type %d", t)
 }
 
 func readArray(reader io.Reader) ([]interface{}, error) {
