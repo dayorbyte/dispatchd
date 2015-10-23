@@ -46,7 +46,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
 	}
 
 	// Declare!
-	errCode, err := channel.server.declareExchange(method)
+	errCode, err := channel.server.declareExchange(method, false)
 	if err != nil {
 		channel.channelErrorWithMethod(errCode, err.Error(), classId, methodId)
 		return nil

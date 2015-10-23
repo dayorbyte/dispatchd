@@ -23,9 +23,9 @@ type Exchange struct {
 	autodelete bool
 	internal   bool
 	arguments  amqp.Table
-	incoming   chan amqp.Frame
 	system     bool
 	bindings   []*Binding
+	incoming   chan amqp.Frame
 }
 
 func (exchange *Exchange) MarshalJSON() ([]byte, error) {

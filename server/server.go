@@ -35,7 +35,7 @@ func NewServer(dbPath string) *Server {
 		panic(err.Error())
 
 	}
-	defer db.Close()
+	// defer db.Close()
 
 	var server = &Server{
 		exchanges: make(map[string]*Exchange),
@@ -53,8 +53,8 @@ func NewServer(dbPath string) *Server {
 }
 
 func (server *Server) init() {
+	// Load exchanges
 	err := server.db.View(func(tx *bolt.Tx) error {
-
     return nil
 	})
 	if err != nil {
@@ -64,75 +64,58 @@ func (server *Server) init() {
 
 func (server *Server) createSystemExchanges() {
 	// Default exchange
-	var defaultEx = &Exchange{
-		name:       "",
-		extype:     EX_TYPE_DIRECT,
-		durable:    false,
-		autodelete: false,
-		internal:   false,
-		arguments:  amqp.Table{},
-		incoming:   make(chan amqp.Frame),
-		system:     true,
+	var _, hasKey = server.exchanges[""]
+	if !hasKey {
+		server.declareExchange(&amqp.ExchangeDeclare{
+			Exchange:   "",
+			Type:       "direct",
+			Durable:    true,
+			AutoDelete: false,
+			Internal:   false,
+			Arguments:  amqp.Table{},
+		}, true)
 	}
-	var _, hasKey = server.exchanges[defaultEx.name]
-	if hasKey {
-		panic("Default system exchange already exists!")
-	}
-	server.exchanges[defaultEx.name] = defaultEx
 
 	// amq.direct
-	var directEx = &Exchange{
-		name:       "amq.direct",
-		extype:     EX_TYPE_DIRECT,
-		durable:    false,
-		autodelete: false,
-		internal:   false,
-		arguments:  amqp.Table{},
-		incoming:   make(chan amqp.Frame),
-		system:     true,
+	_, hasKey = server.exchanges["amq.direct"]
+	if !hasKey {
+		server.declareExchange(&amqp.ExchangeDeclare{
+			Exchange:   "amq.direct",
+			Type:     	"direct",
+			Durable:    true,
+			AutoDelete: false,
+			Internal:   false,
+			Arguments:  amqp.Table{},
+		}, true)
 	}
-	_, hasKey = server.exchanges[directEx.name]
-	if hasKey {
-		panic("amq.direct system exchange already exists!")
-	}
-	server.exchanges[directEx.name] = directEx
 
 	// amqp.fanout
-	var fanoutEx = &Exchange{
-		name:       "amq.fanout",
-		extype:     EX_TYPE_FANOUT,
-		durable:    false,
-		autodelete: false,
-		internal:   false,
-		arguments:  amqp.Table{},
-		incoming:   make(chan amqp.Frame),
-		system:     true,
-	}
-	_, hasKey = server.exchanges[fanoutEx.name]
+	_, hasKey = server.exchanges["amq.fanout"]
 	if hasKey {
-		panic("amq.fanout system exchange already exists!")
+		server.declareExchange(&amqp.ExchangeDeclare{
+			Exchange:   "amq.fanout",
+			Type:     	"fanout",
+			Durable:    true,
+			AutoDelete: false,
+			Internal:   false,
+			Arguments:  amqp.Table{},
+		}, true)
 	}
-	server.exchanges[fanoutEx.name] = fanoutEx
-
 	// amqp.fanout
-	var topicEx = &Exchange{
-		name:       "amq.topic",
-		extype:     EX_TYPE_TOPIC,
-		durable:    false,
-		autodelete: false,
-		internal:   false,
-		arguments:  amqp.Table{},
-		incoming:   make(chan amqp.Frame),
-		system:     true,
-	}
-	_, hasKey = server.exchanges[topicEx.name]
+	_, hasKey = server.exchanges["amq.topic"]
 	if hasKey {
-		panic("amq.fanout system exchange already exists!")
+		server.declareExchange(&amqp.ExchangeDeclare{
+			Exchange:   "amq.topic",
+			Type:     	"topic",
+			Durable:    true,
+			AutoDelete: false,
+			Internal:   false,
+			Arguments:  amqp.Table{},
+		}, true)
 	}
-	server.exchanges[topicEx.name] = topicEx
 }
 
-func (server *Server) declareExchange(method *amqp.ExchangeDeclare) (uint16, error) {
+func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool) (uint16, error) {
 	var tp, err = exchangeNameToType(method.Type)
 	if err != nil || tp == EX_TYPE_HEADERS {
 		// TODO: I should really make ChannelException and ConnectionException
@@ -175,9 +158,16 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare) (uint16, err
 		return 0, errors.New("Exchange names starting with 'amq.' are reserved")
 	}
 
+	if exchange.durable {
+		server.persistExchange(method)
+	}
 	server.exchanges[exchange.name] = exchange
 	exchange.start()
 	return 0, nil
+}
+
+func (server *Server) persistExchange(method *amqp.ExchangeDeclare) {
+
 }
 
 func (server *Server) declareQueue(method *amqp.QueueDeclare) (string, error) {
