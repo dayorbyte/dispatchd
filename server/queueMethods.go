@@ -174,6 +174,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) error {
 	if err := exchange.removeBinding(queue, binding); err != nil {
 		channel.channelErrorWithMethod(500, err.Error(), classId, methodId)
 	}
+	channel.sendMethod(&amqp.QueueUnbindOk{})
 	return nil
 }
 

@@ -50,6 +50,7 @@ type Queue struct {
 	autoDelete      bool
 	arguments       amqp.Table
 	closed          bool
+	objLock         sync.RWMutex
 	queue           *list.List // *Message
 	queueLock       sync.Mutex
 	consumerLock    sync.RWMutex
@@ -149,10 +150,11 @@ func (q *Queue) add(channel *Channel, message *Message) {
 
 func (q *Queue) delete(ifUnused bool, ifEmpty bool) (uint32, error) {
 	// Lock
+	if !q.closed {
+		panic("Queue deleted before it was closed!")
+	}
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
-	q.consumerLock.Lock()
-	defer q.consumerLock.Unlock()
 
 	// Check
 	var usedOk = !ifUnused || len(q.consumers) == 0

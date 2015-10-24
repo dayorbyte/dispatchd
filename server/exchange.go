@@ -172,7 +172,7 @@ func (exchange *Exchange) addBinding(method *amqp.QueueBind, fromDisk bool) (uin
 
 	// Check queue
 	var queue, foundQueue = exchange.server.queues[method.Queue]
-	if !foundQueue {
+	if !foundQueue || queue.closed {
 		return 404, fmt.Errorf("Queue not found: %s", method.Queue)
 	}
 
@@ -193,18 +193,42 @@ func (exchange *Exchange) addBinding(method *amqp.QueueBind, fromDisk bool) (uin
 	return 0, nil
 }
 
+func (exchange *Exchange) bindingsForQueue(queueName string) []*Binding {
+	var ret = make([]*Binding, 0)
+	exchange.bindingsLock.Lock()
+	defer exchange.bindingsLock.Unlock()
+	for _, b := range exchange.bindings {
+		if b.queueName == queueName {
+			ret = append(ret, b)
+		}
+	}
+	return ret
+}
+
+func (exchange *Exchange) removeBindingsForQueue(queueName string) {
+	var remaining = make([]*Binding, 0)
+	exchange.bindingsLock.Lock()
+	defer exchange.bindingsLock.Unlock()
+	for _, b := range exchange.bindings {
+		if b.queueName != queueName {
+			remaining = append(remaining, b)
+		}
+	}
+	exchange.bindings = remaining
+}
+
 func (exchange *Exchange) removeBinding(queue *Queue, binding *Binding) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
-	err := exchange.server.depersistBinding(&amqp.QueueBind{
-		Exchange:   exchange.name,
-		Queue:      queue.name,
-		RoutingKey: binding.key,
-		Arguments:  binding.arguments,
-	})
-	if err != nil {
-		return err
+	// First de-persist
+	if queue.durable && exchange.durable {
+		err := exchange.server.depersistBinding(binding)
+		if err != nil {
+			return err
+		}
 	}
+
+	// Delete binding
 	for i, b := range exchange.bindings {
 		if binding.Equals(b) {
 			exchange.bindings = append(exchange.bindings[:i], exchange.bindings[i+1:]...)

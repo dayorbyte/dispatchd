@@ -336,23 +336,9 @@ func (server *Server) persistBinding(method *amqp.QueueBind) error {
 	})
 }
 
-func (server *Server) depersistBinding(method *amqp.QueueBind) error {
+func (server *Server) depersistBinding(binding *Binding) error {
 	return server.db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte("bindings"))
-		if err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
-		method.Write(buffer)
-		// trim off the first four bytes, they're the class/method, which we
-		// already know
-		var value = buffer.Bytes()[4:]
-		// bindings aren't named, so we hash the bytes we were given. I wonder
-		// if we could make make the bytes the key and use no value?
-		hash := sha1.New()
-		hash.Write(value)
-
-		return bucket.Delete([]byte(hash.Sum(nil)))
+		return depersistBinding(tx, binding)
 	})
 }
 
@@ -390,16 +376,50 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, fromDisk bool) (st
 }
 
 func (server *Server) deleteQueue(method *amqp.QueueDelete) (uint32, uint16, error) {
+	// Validate
 	var queue, foundQueue = server.queues[method.Queue]
 	if !foundQueue {
 		return 0, 404, errors.New("Queue not found")
 	}
+	// Close to stop anything from changing
+	queue.close()
+	// Delete for storage
+	server.depersistQueue(queue)
+	server.removeBindingsForQueue(method.Queue)
+	// Cleanup
 	numPurged, err := queue.delete(method.IfUnused, method.IfEmpty)
+	delete(server.queues, method.Queue)
 	if err != nil {
 		return 0, 406, err
 	}
 	return numPurged, 0, nil
 
+}
+
+func (server *Server) depersistQueue(queue *Queue) error {
+	bindings := server.bindingsForQueue(queue.name)
+	return server.db.Update(func(tx *bolt.Tx) error {
+		for _, binding := range bindings {
+			if err := depersistBinding(tx, binding); err != nil {
+				return err
+			}
+		}
+		return depersistQueue(tx, queue)
+	})
+}
+
+func (server *Server) bindingsForQueue(queueName string) []*Binding {
+	ret := make([]*Binding, 0)
+	for _, exchange := range server.exchanges {
+		ret = append(ret, exchange.bindingsForQueue(queueName)...)
+	}
+	return ret
+}
+
+func (server *Server) removeBindingsForQueue(queueName string) {
+	for _, exchange := range server.exchanges {
+		exchange.removeBindingsForQueue(queueName)
+	}
 }
 
 func (server *Server) deleteExchange(method *amqp.ExchangeDelete) error {
