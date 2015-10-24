@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"container/list"
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -53,10 +54,46 @@ func NewServer(dbPath string) *Server {
 func (server *Server) init() {
 	server.initExchanges()
 	server.initQueues()
+	server.initBindings()
+}
+
+func (server *Server) initBindings() {
+	fmt.Printf("Loading bindings from disk\n")
+	// LOAD FROM PERSISTENT STORAGE
+	err := server.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("bindings"))
+		if bucket == nil {
+			return nil
+		}
+		// iterate through queues
+		cursor := bucket.Cursor()
+		for name, data := cursor.First(); name != nil; name, data = cursor.Next() {
+			// Read
+			var method = &amqp.QueueBind{}
+			var reader = bytes.NewReader(data)
+			var err = method.Read(reader)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to read binding '%s': %s", name, err.Error()))
+			}
+
+			// Get Exchange
+			var exchange, foundExchange = server.exchanges[method.Exchange]
+			if !foundExchange {
+				return fmt.Errorf("Couldn't bind non-existant exchange %s", method.Exchange)
+			}
+
+			// Add Binding
+			exchange.addBinding(method, true)
+		}
+		return nil
+	})
+	if err != nil {
+		panic("********** FAILED TO LOAD BINDINGS: " + err.Error())
+	}
 }
 
 func (server *Server) initQueues() {
-
+	fmt.Printf("Loading queues from disk\n")
 	// LOAD FROM PERSISTENT STORAGE
 	err := server.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte("queues"))
@@ -72,8 +109,8 @@ func (server *Server) initQueues() {
 			if err != nil {
 				panic(fmt.Sprintf("Failed to read queue '%s': %s", name, err.Error()))
 			}
-			fmt.Printf("Got queue from disk: %s\n", method.Queue)
-			_, err = server.declareQueue(method)
+			// fmt.Printf("Got queue from disk: %s\n", method.Queue)
+			_, err = server.declareQueue(method, true)
 			if err != nil {
 				return err
 			}
@@ -85,9 +122,8 @@ func (server *Server) initQueues() {
 	}
 }
 
-
 func (server *Server) initExchanges() {
-
+	fmt.Printf("Loading exchanges from disk\n")
 	// LOAD FROM PERSISTENT STORAGE
 	err := server.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte("exchanges"))
@@ -105,7 +141,7 @@ func (server *Server) initExchanges() {
 				panic(fmt.Sprintf("Failed to read exchange '%s': %s", name, err.Error()))
 			}
 			system, err := amqp.ReadBit(reader)
-			fmt.Printf("Got exchange from disk: %s (%s)\n", method.Exchange, method.Type)
+			// fmt.Printf("Got exchange from disk: %s (%s)\n", method.Exchange, method.Type)
 			_, err = server.declareExchange(method, system, true)
 			if err != nil {
 				return err
@@ -201,6 +237,7 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		arguments:  method.Arguments,
 		incoming:   make(chan amqp.Frame),
 		system:     system,
+		server:     server,
 	}
 	existing, hasKey := server.exchanges[exchange.name]
 	if !hasKey && method.Passive {
@@ -278,8 +315,27 @@ func (server *Server) persistQueue(method *amqp.QueueDeclare) {
 	}
 }
 
+func (server *Server) persistBinding(method *amqp.QueueBind) error {
+	return server.db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("bindings"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
+		method.Write(buffer)
+		// trim off the first four bytes, they're the class/method, which we
+		// already know
+		var value = buffer.Bytes()[4:]
+		// bindings aren't named, so we hash the bytes we were given. I wonder
+		// if we could make make the bytes the key and use no value?
+		hash := sha1.New()
+		hash.Write(value)
 
-func (server *Server) declareQueue(method *amqp.QueueDeclare) (string, error) {
+		return bucket.Put([]byte(hash.Sum(nil)), value)
+	})
+}
+
+func (server *Server) declareQueue(method *amqp.QueueDeclare, fromDisk bool) (string, error) {
 	var queue = &Queue{
 		name:       method.Queue,
 		durable:    method.Durable,
@@ -297,10 +353,15 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) (string, error) {
 	}
 	server.queues[queue.name] = queue
 	var defaultExchange = server.exchanges[""]
-	var defaultBinding = NewBinding(queue.name, "", queue.name, make(amqp.Table))
-	defaultExchange.addBinding(queue, defaultBinding)
+	var defaultBinding = &amqp.QueueBind{
+		Queue:      queue.name,
+		Exchange:   "",
+		RoutingKey: queue.name,
+		Arguments:  make(amqp.Table),
+	}
+	defaultExchange.addBinding(defaultBinding, fromDisk)
 	// TODO: queue should store bindings too?
-	if method.Durable {
+	if method.Durable && !fromDisk {
 		server.persistQueue(method)
 	}
 	queue.start()

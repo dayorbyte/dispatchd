@@ -53,7 +53,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 		}
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
-	name, err := channel.conn.server.declareQueue(method)
+	name, err := channel.conn.server.declareQueue(method, false)
 	if err != nil {
 		channel.channelErrorWithMethod(500, "Error creating queue", classId, methodId)
 		return nil
@@ -77,12 +77,6 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 		}
 	}
 
-	// Check queue
-	var queue, foundQueue = channel.server.queues[method.Queue]
-	if !foundQueue {
-		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
-		return nil
-	}
 	// Check exchange
 	var exchange, foundExchange = channel.server.exchanges[method.Exchange]
 	if !foundExchange {
@@ -90,9 +84,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 		return nil
 	}
 
-	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
-
-	exchange.addBinding(queue, binding)
+	exchange.addBinding(method, false)
 
 	if !method.NoWait {
 		channel.sendMethod(&amqp.QueueBindOk{})

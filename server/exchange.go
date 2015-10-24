@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"sync"
 )
 
 type extype uint8
@@ -16,20 +17,23 @@ const (
 )
 
 type Exchange struct {
-	name       string
-	extype     extype
-	durable    bool
-	autodelete bool
-	internal   bool
-	arguments  amqp.Table
-	system     bool
-	bindings   []*Binding
-	incoming   chan amqp.Frame
+	name         string
+	extype       extype
+	durable      bool
+	autodelete   bool
+	internal     bool
+	arguments    amqp.Table
+	system       bool
+	bindings     []*Binding
+	bindingsLock sync.Mutex
+	incoming     chan amqp.Frame
+	server       *Server
 }
 
 func (exchange *Exchange) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"type": exchangeTypeToName(exchange.extype),
+		"type":     exchangeTypeToName(exchange.extype),
+		"bindings": exchange.bindings,
 	})
 }
 
@@ -162,19 +166,38 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 
 }
 
-func (exchange *Exchange) addBinding(queue *Queue, binding *Binding) bool {
+func (exchange *Exchange) addBinding(method *amqp.QueueBind, fromDisk bool) (uint16, error) {
+	exchange.bindingsLock.Lock()
+	defer exchange.bindingsLock.Unlock()
+
+	// Check queue
+	var queue, foundQueue = exchange.server.queues[method.Queue]
+	if !foundQueue {
+		return 404, fmt.Errorf("Queue not found: %s", method.Queue)
+	}
+
+	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
+
 	for _, b := range exchange.bindings {
 		if binding.Equals(b) {
-			return false
+			return 0, nil
+		}
+	}
+	if exchange.durable && queue.durable && !fromDisk {
+		var err = exchange.server.persistBinding(method)
+		if err != nil {
+			return 500, err
 		}
 	}
 	exchange.bindings = append(exchange.bindings, binding)
-	return true
+	return 0, nil
 }
 
 func (exchange *Exchange) removeBinding(queue *Queue, binding *Binding) bool {
+	exchange.bindingsLock.Lock()
+	defer exchange.bindingsLock.Unlock()
 	for i, b := range exchange.bindings {
-		if binding == b {
+		if binding.Equals(b) {
 			exchange.bindings = append(exchange.bindings[:i], exchange.bindings[i+1:]...)
 			return true
 		}
