@@ -236,6 +236,7 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		internal:   method.Internal,
 		arguments:  method.Arguments,
 		incoming:   make(chan amqp.Frame),
+		bindings:   make([]*Binding, 0),
 		system:     system,
 		server:     server,
 	}
@@ -332,6 +333,26 @@ func (server *Server) persistBinding(method *amqp.QueueBind) error {
 		hash.Write(value)
 
 		return bucket.Put([]byte(hash.Sum(nil)), value)
+	})
+}
+
+func (server *Server) depersistBinding(method *amqp.QueueBind) error {
+	return server.db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("bindings"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
+		method.Write(buffer)
+		// trim off the first four bytes, they're the class/method, which we
+		// already know
+		var value = buffer.Bytes()[4:]
+		// bindings aren't named, so we hash the bytes we were given. I wonder
+		// if we could make make the bytes the key and use no value?
+		hash := sha1.New()
+		hash.Write(value)
+
+		return bucket.Delete([]byte(hash.Sum(nil)))
 	})
 }
 

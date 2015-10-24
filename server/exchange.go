@@ -193,14 +193,23 @@ func (exchange *Exchange) addBinding(method *amqp.QueueBind, fromDisk bool) (uin
 	return 0, nil
 }
 
-func (exchange *Exchange) removeBinding(queue *Queue, binding *Binding) bool {
+func (exchange *Exchange) removeBinding(queue *Queue, binding *Binding) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
+	err := exchange.server.depersistBinding(&amqp.QueueBind{
+		Exchange:   exchange.name,
+		Queue:      queue.name,
+		RoutingKey: binding.key,
+		Arguments:  binding.arguments,
+	})
+	if err != nil {
+		return err
+	}
 	for i, b := range exchange.bindings {
 		if binding.Equals(b) {
 			exchange.bindings = append(exchange.bindings[:i], exchange.bindings[i+1:]...)
-			return true
+			return nil
 		}
 	}
-	return false
+	return nil
 }
