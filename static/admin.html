@@ -13,39 +13,57 @@
   <body ng-app="adminApp">
     <div ng-controller="ServerController as sc" class="container-fluid">
       <h2>Exchanges</h2>
-      <table class="table table-striped">
-        <tr>
-        <th>Name</th>
-        <th>Exchange Type</th>
-        </tr>
-        <tr ng-repeat="(name, exchange) in server.exchanges">
-          <td>{{name}}</td>
-          <td>{{exchange.type}}</td>
-        </tr>
-      </table>
-      <h2>Queues</h2>
-      <div ng-repeat="(name, queue) in server.queues">
-        <h4>{{name}}</h4>
-        <div>consumers: {{queue.consumers.length}}</div>
-        <div>queue length: {{queue.size}}</div>
-        <table class="table table-striped">
-          <tr>
-            <th>Tag</th>
-            <th>Ack?</th>
-            <th>QoS</th>
-            <th>Active</th>
-            <th>Lifetime</th>
-          </tr>
-          <tr ng-repeat="consumer in queue.consumers">
-            <td>{{consumer.tag}}</td>
-            <td>{{consumer.ack}}</td>
-            <td>{{consumer.stats.qos}}</td>
-            <td ng-if="consumer.ack">{{consumer.stats.active_count}}</td>
-            <td ng-if="!consumer.ack">N/A</td>
-            <td>{{consumer.stats.total}}</td>
-          </tr>
-        </table>
+      <div class="panel panel-default" ng-repeat="(name, exchange) in server.exchanges">
+        <div class="panel-heading">
+          <span class="label label-info">"{{name}}"</span>
+          <span ng-if="name == ''">(default exchange)</span>
+          — Type: {{exchange.type}}
+        </div>
+
+        <div class="panel-body" ng-if="exchange.bindings.length > 0">
+          <h4>Bindings</h4>
+          <table class="table table-striped" >
+            <tr>
+              <th>Queue</th>
+              <th>Key</th>
+            </tr>
+            <tr ng-repeat="(index, binding) in exchange.bindings">
+              <td>{{binding.queueName}}</td>
+              <td>{{binding.key}}</td>
+            </tr>
+          </table>
+        </div>
       </div>
+      <h2>Queues</h2>
+      <div class="panel panel-default" ng-repeat="(name, queue) in server.queues">
+        <div class="panel-heading">
+          {{name}}
+        </div>
+        <div class="panel-body">
+          <table class="table table-striped">
+            <tr>
+              <th>Tag</th>
+              <th>Ack?</th>
+              <th>QoS</th>
+              <th>Active</th>
+              <th>Lifetime</th>
+            </tr>
+            <tr ng-repeat="consumer in queue.consumers">
+              <td>{{consumer.tag}}</td>
+              <td>{{consumer.ack}}</td>
+              <td>{{consumer.stats.qos}}</td>
+              <td ng-if="consumer.ack">{{consumer.stats.active_count}}</td>
+              <td ng-if="!consumer.ack">N/A</td>
+              <td>{{consumer.stats.total}}</td>
+            </tr>
+          </table>
+        </div>
+        <div class="panel-footer">
+          Num Consumers: {{queue.consumers.length}},
+          Queue length: {{queue.size}}
+        </div>
+      </div>
+
     </div>
   </body>
 </html>
