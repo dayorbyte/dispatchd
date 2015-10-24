@@ -47,23 +47,46 @@ func NewServer(dbPath string) *Server {
 	}
 
 	server.init()
-
-	server.createSystemExchanges()
-
 	return server
 }
 
 func (server *Server) init() {
-	// Load exchanges
+	server.initExchanges()
+	server.initQueues()
+}
+
+func (server *Server) initQueues() {
+
+	// LOAD FROM PERSISTENT STORAGE
 	err := server.db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("queues"))
+		if bucket == nil {
+			return nil
+		}
+		// iterate through queues
+		cursor := bucket.Cursor()
+		for name, data := cursor.First(); name != nil; name, data = cursor.Next() {
+			var method = &amqp.QueueDeclare{}
+			var reader = bytes.NewReader(data)
+			var err = method.Read(reader)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to read queue '%s': %s", name, err.Error()))
+			}
+			fmt.Printf("Got queue from disk: %s\n", method.Queue)
+			_, err = server.declareQueue(method)
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	})
 	if err != nil {
-		panic("Could not init server: " + err.Error())
+		panic("********** FAILED TO LOAD QUEUES: " + err.Error())
 	}
 }
 
-func (server *Server) createSystemExchanges() {
+
+func (server *Server) initExchanges() {
 
 	// LOAD FROM PERSISTENT STORAGE
 	err := server.db.View(func(tx *bolt.Tx) error {
@@ -238,6 +261,24 @@ func (server *Server) persistExchange(method *amqp.ExchangeDeclare, system bool)
 	}
 }
 
+func (server *Server) persistQueue(method *amqp.QueueDeclare) {
+	err := server.db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("queues"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
+		method.Write(buffer)
+		// trim off the first four bytes, they're the class/method, which we
+		// already know
+		return bucket.Put([]byte(method.Queue), buffer.Bytes()[4:])
+	})
+	if err != nil {
+		fmt.Printf("********** FAILED TO PERSIST QUEUE '%s': %s\n", method.Queue, err.Error())
+	}
+}
+
+
 func (server *Server) declareQueue(method *amqp.QueueDeclare) (string, error) {
 	var queue = &Queue{
 		name:       method.Queue,
@@ -259,6 +300,9 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare) (string, error) {
 	var defaultBinding = NewBinding(queue.name, "", queue.name, make(amqp.Table))
 	defaultExchange.addBinding(queue, defaultBinding)
 	// TODO: queue should store bindings too?
+	if method.Durable {
+		server.persistQueue(method)
+	}
 	queue.start()
 	return queue.name, nil
 }
