@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"github.com/jeffjenkins/mq/amqp"
 	"regexp"
 	"strings"
@@ -12,6 +13,15 @@ type Binding struct {
 	key          string
 	arguments    amqp.Table
 	topicMatcher *regexp.Regexp
+}
+
+func (binding *Binding) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"queueName":    binding.queueName,
+		"exchangeName": binding.exchangeName,
+		"key":          binding.key,
+		"arguments":    binding.arguments,
+	})
 }
 
 func (binding *Binding) Equals(other *Binding) bool {
