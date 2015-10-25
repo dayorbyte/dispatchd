@@ -408,6 +408,17 @@ func (server *Server) depersistQueue(queue *Queue) error {
 	})
 }
 
+func (server *Server) depersistExchange(exchange *Exchange) error {
+	return server.db.Update(func(tx *bolt.Tx) error {
+		for _, binding := range exchange.bindings {
+			if err := depersistBinding(tx, binding); err != nil {
+				return err
+			}
+		}
+		return depersistExchange(tx, exchange)
+	})
+}
+
 func (server *Server) bindingsForQueue(queueName string) []*Binding {
 	ret := make([]*Binding, 0)
 	for _, exchange := range server.exchanges {

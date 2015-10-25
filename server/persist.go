@@ -16,6 +16,14 @@ func depersistQueue(tx *bolt.Tx, queue *Queue) error {
 	return bucket.Delete([]byte(queue.name))
 }
 
+func depersistExchange(tx *bolt.Tx, exchange *Exchange) error {
+	bucket, err := tx.CreateBucketIfNotExists([]byte("exchanges"))
+	if err != nil {
+		return fmt.Errorf("create bucket: %s", err)
+	}
+	return bucket.Delete([]byte(exchange.name))
+}
+
 func depersistBinding(tx *bolt.Tx, binding *Binding) error {
 	var method = &amqp.QueueBind{
 		Exchange:   binding.exchangeName,
