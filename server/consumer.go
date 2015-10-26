@@ -25,6 +25,7 @@ type Consumer struct {
 	activeCount   uint16
 	stopped       bool
 	statCount     uint64
+	localId       uint64
 }
 
 func (consumer *Consumer) MarshalJSON() ([]byte, error) {
@@ -74,10 +75,7 @@ func (consumer *Consumer) decrActive(size uint16, bytes uint32) {
 }
 
 func (consumer *Consumer) start() {
-	fmt.Printf("Starting %d consumers\n", consumer.qos)
-	for i := uint16(0); i < consumer.qos; i++ {
-		go consumer.consume(i)
-	}
+	go consumer.consume(0)
 }
 
 func (consumer *Consumer) consume(id uint16) {
@@ -89,7 +87,7 @@ func (consumer *Consumer) consume(id uint16) {
 			continue
 		}
 		// Try to get message/check channel limit
-		var msg = consumer.queue.getOne(consumer.channel)
+		var msg = consumer.queue.getOne(consumer.channel, consumer)
 		if msg == nil {
 			continue
 		}

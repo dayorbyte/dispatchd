@@ -17,14 +17,16 @@ type Message struct {
 	key         string
 	method      *amqp.BasicPublish
 	redelivered bool
+	localId     uint64
 }
 
-func NewMessage(method *amqp.BasicPublish) *Message {
+func NewMessage(method *amqp.BasicPublish, localId uint64) *Message {
 	return &Message{
 		method:   method,
 		exchange: method.Exchange,
 		key:      method.RoutingKey,
 		payload:  make([]*amqp.WireFrame, 0, 1),
+		localId:  localId,
 	}
 }
 
@@ -232,6 +234,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 		queue:         q,
 		prefetchSize:  channel.defaultPrefetchSize,
 		prefetchCount: channel.defaultPrefetchCount,
+		localId:       channel.conn.id,
 	}
 	q.consumerLock.Lock()
 	channel.addConsumer(consumer)
@@ -282,7 +285,7 @@ func (q *Queue) getOneForced() *Message {
 	return q.queue.Remove(q.queue.Front()).(*Message)
 }
 
-func (q *Queue) getOne(channel *Channel) *Message {
+func (q *Queue) getOne(channel *Channel, consumer *Consumer) *Message {
 	// Get one message. If there is a message try to acquire the resources
 	// from the channel.
 	q.queueLock.Lock()
@@ -291,6 +294,9 @@ func (q *Queue) getOne(channel *Channel) *Message {
 		return nil
 	}
 	var msg = q.queue.Front().Value.(*Message)
+	if consumer.noLocal && msg.localId == consumer.localId {
+		return nil
+	}
 	if channel.acquireResources(1, msg.size()) {
 		q.queue.Remove(q.queue.Front())
 		return msg

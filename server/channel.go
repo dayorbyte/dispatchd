@@ -203,7 +203,7 @@ func (channel *Channel) activateConfirmMode() {
 }
 
 func (channel *Channel) startPublish(method *amqp.BasicPublish) error {
-	channel.currentMessage = NewMessage(method)
+	channel.currentMessage = NewMessage(method, channel.conn.id)
 	return nil
 }
 
