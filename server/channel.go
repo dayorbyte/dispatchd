@@ -406,6 +406,16 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
 		return nil
 	}
 
+	// Non-open method on an INIT-state channel is an error
+	if channel.state == CH_STATE_INIT && (classId != 20 || methodId != 10) {
+		channel.conn.connectionErrorWithMethod(
+			503,
+			"Non-Channel.Open method called on unopened channel",
+			classId,
+			methodId,
+		)
+		return nil
+	}
 	// Route
 	// fmt.Println("Routing method: " + methodFrame.MethodName())
 	switch {
