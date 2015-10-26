@@ -28,6 +28,11 @@ type Exchange struct {
 	bindingsLock sync.Mutex
 	incoming     chan amqp.Frame
 	server       *Server
+	closed       bool
+}
+
+func (exchange *Exchange) close() {
+	exchange.closed = true
 }
 
 func (exchange *Exchange) MarshalJSON() ([]byte, error) {
@@ -89,16 +94,16 @@ func exchangeTypeToName(et extype) string {
 	}
 }
 
-func (exchange *Exchange) start() {
-	go func() {
-		for {
-			<-exchange.incoming
-			fmt.Printf("Exchange %s got a frame\n", exchange.name)
-		}
-	}()
-}
-
 func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message) {
+	// Concurrency note: Since there is no lock we can, technically, have messages
+	// published after the exchange has been closed. These couldn't be on the same
+	// channel as the close is happening on, so that seems justifiable.
+	if exchange.closed {
+		if msg.method.Mandatory || msg.method.Immediate {
+			returnMessage(channel, msg)
+		}
+		return
+	}
 	var seen = make(map[string]bool)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
@@ -158,12 +163,15 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 	}
 	// If we got here the message was unroutable.
 	if msg.method.Mandatory || msg.method.Immediate {
-		channel.sendContent(&amqp.BasicReturn{
-			ReplyCode: 200, // TODO: what code?
-			ReplyText: "Message unroutable",
-		}, msg)
+		returnMessage(channel, msg)
 	}
+}
 
+func returnMessage(channel *Channel, msg *Message) {
+	channel.sendContent(&amqp.BasicReturn{
+		ReplyCode: 200, // TODO: what code?
+		ReplyText: "Message unroutable",
+	}, msg)
 }
 
 func (exchange *Exchange) addBinding(method *amqp.QueueBind, fromDisk bool) (uint16, error) {

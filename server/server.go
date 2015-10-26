@@ -15,13 +15,14 @@ import (
 )
 
 type Server struct {
-	exchanges map[string]*Exchange
-	queues    map[string]*Queue
-	bindings  []*Binding
-	mutex     sync.Mutex
-	nextId    uint64
-	conns     map[uint64]*AMQPConnection
-	db        *bolt.DB
+	exchanges  map[string]*Exchange
+	queues     map[string]*Queue
+	bindings   []*Binding
+	idLock     sync.Mutex
+	nextId     uint64
+	conns      map[uint64]*AMQPConnection
+	db         *bolt.DB
+	serverLock sync.Mutex
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
@@ -240,6 +241,8 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		system:     system,
 		server:     server,
 	}
+	server.serverLock.Lock()
+	defer server.serverLock.Unlock()
 	existing, hasKey := server.exchanges[exchange.name]
 	if !hasKey && method.Passive {
 		return 404, errors.New("Exchange does not exist")
@@ -273,7 +276,6 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		server.persistExchange(method, exchange.system)
 	}
 	server.exchanges[exchange.name] = exchange
-	exchange.start()
 	return 0, nil
 }
 
@@ -353,7 +355,8 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, fromDisk bool) (st
 		consumers:  make([]*Consumer, 0, 1),
 		maybeReady: make(chan bool, 1),
 	}
-
+	server.serverLock.Lock()
+	defer server.serverLock.Unlock()
 	_, hasKey := server.queues[queue.name]
 	if hasKey {
 		return queue.name, nil
@@ -376,6 +379,8 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, fromDisk bool) (st
 }
 
 func (server *Server) deleteQueue(method *amqp.QueueDelete) (uint32, uint16, error) {
+	server.serverLock.Lock()
+	defer server.serverLock.Unlock()
 	// Validate
 	var queue, foundQueue = server.queues[method.Queue]
 	if !foundQueue {
@@ -433,17 +438,29 @@ func (server *Server) removeBindingsForQueue(queueName string) {
 	}
 }
 
-func (server *Server) deleteExchange(method *amqp.ExchangeDelete) error {
-	// TODO: clean up exchange
+func (server *Server) deleteExchange(method *amqp.ExchangeDelete) (uint16, error) {
+	server.serverLock.Lock()
+	defer server.serverLock.Unlock()
+	exchange, found := server.exchanges[method.Exchange]
+	if !found {
+		return 404, fmt.Errorf("Exchange not found: '%s'", method.Exchange)
+	}
+	if exchange.system {
+		return 530, fmt.Errorf("Cannot delete system exchange: '%s'", method.Exchange)
+	}
+	exchange.close()
+	server.depersistExchange(exchange)
+	// Note: we don't need to delete the bindings from the queues they are
+	// associated with because they are stored on the exchange.
 	delete(server.exchanges, method.Exchange)
-	return nil
+	return 0, nil
 }
 
 func (server *Server) nextConnId() uint64 {
-	server.mutex.Lock()
+	server.idLock.Lock()
 	var id = server.nextId
 	server.nextId += 1
-	server.mutex.Unlock()
+	server.idLock.Unlock()
 	return id
 }
 

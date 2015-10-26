@@ -55,9 +55,11 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
 }
 
 func (channel *Channel) exchangeDelete(method *amqp.ExchangeDelete) error {
-	var err = channel.server.deleteExchange(method)
+	var classId, methodId = method.MethodIdentifier()
+	var errCode, err = channel.server.deleteExchange(method)
 	if err != nil {
-		return err
+		channel.channelErrorWithMethod(errCode, err.Error(), classId, methodId)
+		return nil
 	}
 	if !method.NoWait {
 		channel.sendMethod(&amqp.ExchangeDeleteOk{})
