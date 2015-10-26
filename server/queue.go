@@ -273,11 +273,27 @@ func (q *Queue) processOne() {
 	}
 }
 
-func (q *Queue) getOne() *Message {
+func (q *Queue) getOneForced() *Message {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	if q.queue.Len() == 0 {
 		return nil
 	}
 	return q.queue.Remove(q.queue.Front()).(*Message)
+}
+
+func (q *Queue) getOne(channel *Channel) *Message {
+	// Get one message. If there is a message try to acquire the resources
+	// from the channel.
+	q.queueLock.Lock()
+	defer q.queueLock.Unlock()
+	if q.queue.Len() == 0 {
+		return nil
+	}
+	var msg = q.queue.Front().Value.(*Message)
+	if channel.acquireResources(1, msg.size()) {
+		q.queue.Remove(q.queue.Front())
+		return msg
+	}
+	return nil
 }

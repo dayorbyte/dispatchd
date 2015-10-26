@@ -61,7 +61,9 @@ func (channel *Channel) ackBelow(tag uint64) bool {
 		// fmt.Printf("%d(%d), ", k, tag)
 		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
-			unacked.consumer.decrActive(1, unacked.msg.size())
+			var size = unacked.msg.size()
+			unacked.consumer.decrActive(1, size)
+			channel.decrActive(1, size)
 			// TODO: select?
 			unacked.consumer.ackChan <- true
 			count += 1
@@ -82,7 +84,10 @@ func (channel *Channel) ackOne(tag uint64) bool {
 		return false
 	}
 	delete(channel.awaitingAcks, tag)
-	unacked.consumer.decrActive(1, unacked.msg.size())
+	var size = unacked.msg.size()
+	unacked.consumer.decrActive(1, size)
+	channel.decrActive(1, size)
+	unacked.msg.size()
 	// TODO: select?
 	unacked.consumer.ackChan <- true
 	return true
@@ -98,7 +103,9 @@ func (channel *Channel) nackBelow(tag uint64) bool {
 		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
 			unacked.consumer.queue.readd(unacked.msg)
-			unacked.consumer.decrActive(1, unacked.msg.size())
+			var size = unacked.msg.size()
+			unacked.consumer.decrActive(1, size)
+			channel.decrActive(1, size)
 			// TODO: select?
 			unacked.consumer.ackChan <- true
 			count += 1
@@ -118,7 +125,9 @@ func (channel *Channel) nackOne(tag uint64) bool {
 		return false
 	}
 	unacked.consumer.queue.readd(unacked.msg)
-	unacked.consumer.decrActive(1, unacked.msg.size())
+	var size = unacked.msg.size()
+	unacked.consumer.decrActive(1, size)
+	channel.decrActive(1, size)
 	// TODO: select?
 	unacked.consumer.ackChan <- true
 	delete(channel.awaitingAcks, tag)
@@ -154,25 +163,25 @@ func (channel *Channel) addConsumer(consumer *Consumer) error {
 	return nil
 }
 
-func (channel *Channel) consumeLimitsOk() bool {
-	var sizeOk = channel.prefetchSize == 0 || channel.activeSize <= channel.prefetchSize
-	var countOk = channel.prefetchCount == 0 || channel.activeCount <= channel.prefetchCount
-	// fmt.Printf("%d|%d || %d|%d\n", channel.prefetchSize, channel.activeSize, channel.prefetchCount, channel.activeCount)
-	return sizeOk && countOk
-}
-
-func (channel *Channel) incrActive(count uint16, size uint32) {
-	channel.limitLock.Lock()
-	channel.activeCount += count
-	channel.activeSize += size
-	channel.limitLock.Unlock()
-}
-
 func (channel *Channel) decrActive(count uint16, size uint32) {
 	channel.limitLock.Lock()
 	channel.activeCount -= count
 	channel.activeSize -= size
 	channel.limitLock.Unlock()
+}
+
+func (channel *Channel) acquireResources(count uint16, size uint32) bool {
+	channel.limitLock.Lock()
+	defer channel.limitLock.Unlock()
+	var sizeOk = channel.prefetchSize == 0 || channel.activeSize <= channel.prefetchSize
+	var countOk = channel.prefetchCount == 0 || channel.activeCount <= channel.prefetchCount
+	// If we're OK on size and count, acquire the resources
+	if sizeOk && countOk {
+		channel.activeCount += count
+		channel.activeSize += size
+		return true
+	}
+	return false
 }
 
 func (channel *Channel) setPrefetch(count uint16, size uint32, global bool) {
@@ -290,7 +299,9 @@ func (channel *Channel) shutdown() {
 		unacked.consumer.queue.readd(unacked.msg)
 		// this probably isn't needed, but for debugging purposes it's nice to
 		// ensure that all the active counts/sizes get back to 0
-		unacked.consumer.decrActive(1, unacked.msg.size())
+		var size = unacked.msg.size()
+		unacked.consumer.decrActive(1, size)
+		channel.decrActive(1, size)
 	}
 }
 

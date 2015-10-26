@@ -48,36 +48,29 @@ func (consumer *Consumer) stop() {
 	consumer.stopped = true
 }
 
-func (consumer *Consumer) ready() bool {
+func (consumer *Consumer) consumerReady() bool {
 	if consumer.noAck {
 		return true
 	}
-	if !consumer.channel.consumeLimitsOk() {
-		return false
-	}
+	consumer.limitLock.Lock()
+	defer consumer.limitLock.Unlock()
 	var sizeOk = consumer.prefetchSize == 0 || consumer.activeSize <= consumer.prefetchSize
 	var bytesOk = consumer.prefetchCount == 0 || consumer.activeCount <= consumer.prefetchCount
 	return sizeOk && bytesOk
 }
 
 func (consumer *Consumer) incrActive(size uint16, bytes uint32) {
-	// fmt.Printf("+Active => %d\n", consumer.activeCount)
-	consumer.channel.incrActive(size, bytes)
 	consumer.limitLock.Lock()
 	consumer.activeCount += size
 	consumer.activeSize += bytes
 	consumer.limitLock.Unlock()
-	// fmt.Printf("+Active => %d\n", consumer.activeCount)
 }
 
 func (consumer *Consumer) decrActive(size uint16, bytes uint32) {
-	// fmt.Printf("-Active => %d\n", consumer.activeCount)
-	consumer.channel.decrActive(size, bytes)
 	consumer.limitLock.Lock()
 	consumer.activeCount -= size
 	consumer.activeSize -= bytes
 	consumer.limitLock.Unlock()
-	// fmt.Printf("-Active => %d\n", consumer.activeCount)
 }
 
 func (consumer *Consumer) start() {
@@ -91,7 +84,12 @@ func (consumer *Consumer) consume(id uint16) {
 	fmt.Printf("[C:%s#%d]Starting consumer\n", consumer.consumerTag, id)
 	consumer.queue.maybeReady <- false
 	for _ = range consumer.incoming {
-		var msg = consumer.queue.getOne()
+		// Check local limit
+		if !consumer.consumerReady() {
+			continue
+		}
+		// Try to get message/check channel limit
+		var msg = consumer.queue.getOne(consumer.channel)
 		if msg == nil {
 			continue
 		}

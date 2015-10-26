@@ -146,7 +146,7 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) error {
 		var classId, methodId = method.MethodIdentifier()
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
-	var msg = queue.getOne()
+	var msg = queue.getOneForced()
 	if msg == nil {
 		channel.sendMethod(&amqp.BasicGetEmpty{})
 		return nil
