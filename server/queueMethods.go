@@ -2,9 +2,6 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
-
 	"github.com/jeffjenkins/mq/amqp"
 )
 
@@ -176,20 +173,4 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) error {
 	}
 	channel.sendMethod(&amqp.QueueUnbindOk{})
 	return nil
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
-
-func randomId() string {
-	var size = 32
-	var numChars = len(chars)
-	id := make([]rune, size)
-	for i := range id {
-		id[i] = chars[rand.Intn(numChars)]
-	}
-	return string(id)
 }
