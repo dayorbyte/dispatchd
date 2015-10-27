@@ -60,6 +60,7 @@ type Queue struct {
 	currentConsumer int
 	statCount       uint64
 	maybeReady      chan bool
+	soleConsumer    *Consumer
 }
 
 func equivalentQueues(q1 *Queue, q2 *Queue) bool {
@@ -187,7 +188,9 @@ func (q *Queue) readd(message *Message) {
 func (q *Queue) removeConsumer(consumerTag string) {
 	q.consumerLock.Lock()
 	defer q.consumerLock.Unlock()
-
+	if q.soleConsumer != nil && q.soleConsumer.consumerTag == consumerTag {
+		q.soleConsumer = nil
+	}
 	// remove from list
 	for i, c := range q.consumers {
 		if c.consumerTag == consumerTag {
@@ -207,6 +210,7 @@ func (q *Queue) removeConsumer(consumerTag string) {
 func (q *Queue) cancelConsumers() {
 	q.consumerLock.Lock()
 	defer q.consumerLock.Unlock()
+	q.soleConsumer = nil
 	// Send cancel to each consumer
 	for _, c := range q.consumers {
 		c.channel.sendMethod(&amqp.BasicCancel{c.consumerTag, true})
@@ -237,6 +241,13 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 		localId:       channel.conn.id,
 	}
 	q.consumerLock.Lock()
+	if method.Exclusive {
+		if len(q.consumers) == 0 {
+			q.soleConsumer = consumer
+		} else {
+			return 403, fmt.Errorf("Exclusive access denied, %d consumers active", len(q.consumers))
+		}
+	}
 	channel.addConsumer(consumer)
 	q.consumers = append(q.consumers, consumer)
 	q.consumerLock.Unlock()
