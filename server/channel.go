@@ -93,7 +93,7 @@ func (channel *Channel) ackOne(tag uint64) bool {
 	return true
 }
 
-func (channel *Channel) nackBelow(tag uint64) bool {
+func (channel *Channel) nackBelow(tag uint64, requeue bool) bool {
 	// fmt.Println("Nack below")
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
@@ -102,7 +102,9 @@ func (channel *Channel) nackBelow(tag uint64) bool {
 		fmt.Printf("%d(%d), ", k, tag)
 		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
-			unacked.consumer.queue.readd(unacked.msg)
+			if requeue {
+				unacked.consumer.queue.readd(unacked.msg)
+			}
 			var size = unacked.msg.size()
 			unacked.consumer.decrActive(1, size)
 			channel.decrActive(1, size)
@@ -117,14 +119,16 @@ func (channel *Channel) nackBelow(tag uint64) bool {
 	return true
 }
 
-func (channel *Channel) nackOne(tag uint64) bool {
+func (channel *Channel) nackOne(tag uint64, requeue bool) bool {
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
 	var unacked, found = channel.awaitingAcks[tag]
 	if !found {
 		return false
 	}
-	unacked.consumer.queue.readd(unacked.msg)
+	if requeue {
+		unacked.consumer.queue.readd(unacked.msg)
+	}
 	var size = unacked.msg.size()
 	unacked.consumer.decrActive(1, size)
 	channel.decrActive(1, size)
@@ -296,6 +300,9 @@ func (channel *Channel) shutdown() {
 	}
 	// Any unacked messages should be re-added
 	for _, unacked := range channel.awaitingAcks {
+		// TODO(MUST): If we want at-most-once delivery we can't re-add these
+		// messages. Need to figure out if the spec specifies, and after that
+		// provide a way to have both options. Maybe a message header?
 		unacked.consumer.queue.readd(unacked.msg)
 		// this probably isn't needed, but for debugging purposes it's nice to
 		// ensure that all the active counts/sizes get back to 0

@@ -50,9 +50,9 @@ func (channel *Channel) basicNack(method *amqp.BasicNack) error {
 	fmt.Println("Handling BasicNack")
 	var ok = false
 	if method.Multiple {
-		ok = channel.nackBelow(method.DeliveryTag)
+		ok = channel.nackBelow(method.DeliveryTag, method.Requeue)
 	} else {
-		ok = channel.nackOne(method.DeliveryTag)
+		ok = channel.nackOne(method.DeliveryTag, method.Requeue)
 	}
 	if !ok {
 		var classId, methodId = method.MethodIdentifier()
@@ -179,7 +179,7 @@ func (channel *Channel) basicAck(method *amqp.BasicAck) error {
 
 func (channel *Channel) basicReject(method *amqp.BasicReject) error {
 	fmt.Printf("Handling BasicReject: %d\n", method.DeliveryTag)
-	if !channel.nackOne(method.DeliveryTag) {
+	if !channel.nackOne(method.DeliveryTag, method.Requeue) {
 		var classId, methodId = method.MethodIdentifier()
 		var msg = fmt.Sprintf("Precondition Failed: Delivery Tag not found: %d", method.DeliveryTag)
 		channel.channelErrorWithMethod(406, msg, classId, methodId)
