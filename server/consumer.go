@@ -99,7 +99,7 @@ func (consumer *Consumer) consume(id uint16) {
 		consumer.channel.sendContent(&amqp.BasicDeliver{
 			ConsumerTag: consumer.consumerTag,
 			DeliveryTag: tag,
-			Redelivered: false,
+			Redelivered: msg.redelivered > 0,
 			Exchange:    msg.exchange,
 			RoutingKey:  msg.key,
 		}, msg)

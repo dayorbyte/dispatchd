@@ -153,7 +153,7 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) error {
 	}
 	channel.sendContent(&amqp.BasicGetOk{
 		DeliveryTag:  channel.nextDeliveryTag(),
-		Redelivered:  false,
+		Redelivered:  msg.redelivered > 0,
 		Exchange:     msg.exchange,
 		RoutingKey:   msg.key,
 		MessageCount: 1,

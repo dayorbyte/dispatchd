@@ -16,7 +16,7 @@ type Message struct {
 	exchange    string
 	key         string
 	method      *amqp.BasicPublish
-	redelivered bool
+	redelivered uint32
 	localId     uint64
 }
 
@@ -180,7 +180,7 @@ func (q *Queue) readd(message *Message) {
 	defer q.queueLock.Unlock()
 	// this method is only called when we get a nack or we shut down a channel,
 	// so it means the message was not acked.
-	message.redelivered = true
+	message.redelivered += 1
 	q.queue.PushFront(message)
 	q.maybeReady <- true
 }
