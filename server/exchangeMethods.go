@@ -38,10 +38,6 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) error {
 		return nil
 	}
 
-	if method.AutoDelete {
-		panic("Autodelete not implemented")
-	}
-
 	// Declare!
 	errCode, err := channel.server.declareExchange(method, false, false)
 	if err != nil {

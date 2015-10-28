@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
+	"time"
 )
 
 type extype uint8
@@ -29,6 +30,7 @@ type Exchange struct {
 	incoming     chan amqp.Frame
 	server       *Server
 	closed       bool
+	deleteActive time.Time
 }
 
 func (exchange *Exchange) close() {
@@ -43,6 +45,8 @@ func (exchange *Exchange) MarshalJSON() ([]byte, error) {
 }
 
 func equivalentExchanges(ex1 *Exchange, ex2 *Exchange) bool {
+	// NOTE: auto-delete is ignored for existing exchanges, so we
+	// do not check it here.
 	if ex1.name != ex2.name {
 		return false
 	}
@@ -50,9 +54,6 @@ func equivalentExchanges(ex1 *Exchange, ex2 *Exchange) bool {
 		return false
 	}
 	if ex1.durable != ex2.durable {
-		return false
-	}
-	if ex1.autodelete != ex2.autodelete {
 		return false
 	}
 	if ex1.internal != ex2.internal {
@@ -197,6 +198,9 @@ func (exchange *Exchange) addBinding(method *amqp.QueueBind, fromDisk bool) (uin
 			return 500, err
 		}
 	}
+	if exchange.autodelete {
+		exchange.deleteActive = time.Unix(0, 0)
+	}
 	exchange.bindings = append(exchange.bindings, binding)
 	return 0, nil
 }
@@ -225,7 +229,7 @@ func (exchange *Exchange) removeBindingsForQueue(queueName string) {
 	exchange.bindings = remaining
 }
 
-func (exchange *Exchange) removeBinding(queue *Queue, binding *Binding) error {
+func (exchange *Exchange) removeBinding(server *Server, queue *Queue, binding *Binding) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 	// First de-persist
@@ -240,8 +244,25 @@ func (exchange *Exchange) removeBinding(queue *Queue, binding *Binding) error {
 	for i, b := range exchange.bindings {
 		if binding.Equals(b) {
 			exchange.bindings = append(exchange.bindings[:i], exchange.bindings[i+1:]...)
+			if exchange.autodelete && len(exchange.bindings) == 0 {
+				go exchange.autodeleteTimeout(server)
+			}
 			return nil
 		}
 	}
 	return nil
+}
+
+func (exchange *Exchange) autodeleteTimeout(server *Server) {
+	// There's technically a race condition here where a new binding could be
+	// added right as we check this, but after a 5 second wait with no activity
+	// I think this is probably safe enough.
+	var now = time.Now()
+	exchange.deleteActive = now
+	time.Sleep(5 * time.Second)
+	if exchange.deleteActive == now {
+		server.deleteExchange(&amqp.ExchangeDelete{
+			Exchange: exchange.name,
+		})
+	}
 }
