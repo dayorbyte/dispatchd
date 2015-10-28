@@ -50,6 +50,9 @@ func (consumer *Consumer) stop() {
 }
 
 func (consumer *Consumer) consumerReady() bool {
+	if !consumer.channel.flow {
+		return false
+	}
 	if consumer.noAck {
 		return true
 	}

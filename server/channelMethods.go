@@ -38,9 +38,8 @@ func (channel *Channel) channelOpen(method *amqp.ChannelOpen) error {
 }
 
 func (channel *Channel) channelFlow(method *amqp.ChannelFlow) error {
-	fmt.Println("Handling " + method.MethodName())
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+	channel.changeFlow(method.Active)
+	channel.sendMethod(&amqp.ChannelFlowOk{channel.flow})
 	return nil
 }
 

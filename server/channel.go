@@ -28,6 +28,7 @@ type Channel struct {
 	consumerLock   sync.Mutex
 	sendLock       sync.Mutex
 	lastQueueName  string
+	flow           bool
 	// Consumers
 	msgIndex uint64
 	// Delivery Tracking
@@ -44,6 +45,20 @@ type Channel struct {
 	// Consumer default QOS limits
 	defaultPrefetchSize  uint32
 	defaultPrefetchCount uint16
+}
+
+func (channel *Channel) changeFlow(active bool) {
+	if channel.flow == active {
+		return
+	}
+	channel.flow = active
+	// If flow is active again, ping the consumers to let them try getting
+	// work again.
+	if channel.flow {
+		for _, consumer := range channel.consumers {
+			consumer.incoming <- true
+		}
+	}
 }
 
 func (channel *Channel) channelErrorWithMethod(code uint16, message string, classId uint16, methodId uint16) {
@@ -218,6 +233,7 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 		incoming:     make(chan *amqp.WireFrame),
 		outgoing:     conn.outgoing,
 		conn:         conn,
+		flow:         true,
 		state:        CH_STATE_INIT,
 		consumers:    make(map[string]*Consumer),
 		awaitingAcks: make(map[uint64]UnackedMessage),
