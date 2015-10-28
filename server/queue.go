@@ -17,10 +17,10 @@ type Message struct {
 	key         string
 	method      *amqp.BasicPublish
 	redelivered uint32
-	localId     uint64
+	localId     int64
 }
 
-func NewMessage(method *amqp.BasicPublish, localId uint64) *Message {
+func NewMessage(method *amqp.BasicPublish, localId int64) *Message {
 	return &Message{
 		method:   method,
 		exchange: method.Exchange,
@@ -61,6 +61,7 @@ type Queue struct {
 	statCount       uint64
 	maybeReady      chan bool
 	soleConsumer    *Consumer
+	connId          int64
 }
 
 func equivalentQueues(q1 *Queue, q2 *Queue) bool {
@@ -105,6 +106,7 @@ func (q *Queue) MarshalJSON() ([]byte, error) {
 		"name":       q.name,
 		"durable":    q.durable,
 		"exclusive":  q.exclusive,
+		"connId":     q.connId,
 		"autoDelete": q.autoDelete,
 		"size":       q.queue.Len(),
 		"consumers":  q.consumers,

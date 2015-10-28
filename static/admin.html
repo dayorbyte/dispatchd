@@ -38,6 +38,9 @@
       <div class="panel panel-default" ng-repeat="(name, queue) in server.queues">
         <div class="panel-heading">
           {{name}}
+          <span ng-if="queue.exclusive">
+            (exclusive: {{queue.connId}})
+          </span>
         </div>
         <div class="panel-body">
           <table class="table table-striped">

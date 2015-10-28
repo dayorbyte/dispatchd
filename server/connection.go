@@ -27,7 +27,7 @@ type ConnectStatus struct {
 }
 
 type AMQPConnection struct {
-	id                       uint64
+	id                       int64
 	nextChannel              int
 	channels                 map[uint16]*Channel
 	outgoing                 chan *amqp.WireFrame
@@ -92,6 +92,7 @@ func (conn *AMQPConnection) hardClose() {
 	conn.network.Close()
 	conn.connectStatus.closed = true
 	conn.server.deregisterConnection(conn.id)
+	conn.server.deleteQueuesForConn(conn.id)
 	for _, channel := range conn.channels {
 		channel.shutdown()
 	}

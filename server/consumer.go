@@ -25,7 +25,7 @@ type Consumer struct {
 	activeCount   uint16
 	stopped       bool
 	statCount     uint64
-	localId       uint64
+	localId       int64
 }
 
 func (consumer *Consumer) MarshalJSON() ([]byte, error) {

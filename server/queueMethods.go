@@ -50,7 +50,8 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 		}
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
-	name, err := channel.conn.server.declareQueue(method, false)
+
+	name, err := channel.conn.server.declareQueue(method, channel.conn.id, false)
 	if err != nil {
 		channel.channelErrorWithMethod(500, "Error creating queue", classId, methodId)
 		return nil
@@ -81,7 +82,11 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 		return nil
 	}
 
-	exchange.addBinding(method, false)
+	errCode, err := exchange.addBinding(method, channel.conn.id, false)
+	if err != nil {
+		channel.channelErrorWithMethod(errCode, err.Error(), classId, methodId)
+		return nil
+	}
 
 	if !method.NoWait {
 		channel.sendMethod(&amqp.QueueBindOk{})
@@ -108,6 +113,12 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) error {
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 		return nil
 	}
+
+	if queue.connId != -1 && queue.connId != channel.conn.id {
+		channel.channelErrorWithMethod(405, "Queue is locked to another connection", classId, methodId)
+		return nil
+	}
+
 	numPurged := queue.purge()
 	if !method.NoWait {
 		channel.sendMethod(&amqp.QueuePurgeOk{numPurged})
@@ -129,7 +140,7 @@ func (channel *Channel) queueDelete(method *amqp.QueueDelete) error {
 		}
 	}
 
-	numPurged, errCode, err := channel.server.deleteQueue(method)
+	numPurged, errCode, err := channel.server.deleteQueue(method, channel.conn.id)
 	if err != nil {
 		channel.channelErrorWithMethod(errCode, err.Error(), classId, methodId)
 		return nil
@@ -159,6 +170,12 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) error {
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 		return nil
 	}
+
+	if queue.connId != -1 && queue.connId != channel.conn.id {
+		channel.channelErrorWithMethod(405, "Queue is locked to another connection", classId, methodId)
+		return nil
+	}
+
 	// Check exchange
 	var exchange, foundExchange = channel.server.exchanges[method.Exchange]
 	if !foundExchange {

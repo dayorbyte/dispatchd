@@ -19,8 +19,8 @@ type Server struct {
 	queues     map[string]*Queue
 	bindings   []*Binding
 	idLock     sync.Mutex
-	nextId     uint64
-	conns      map[uint64]*AMQPConnection
+	nextId     int64
+	conns      map[int64]*AMQPConnection
 	db         *bolt.DB
 	serverLock sync.Mutex
 }
@@ -44,7 +44,7 @@ func NewServer(dbPath string) *Server {
 		exchanges: make(map[string]*Exchange),
 		queues:    make(map[string]*Queue),
 		bindings:  make([]*Binding, 0),
-		conns:     make(map[uint64]*AMQPConnection),
+		conns:     make(map[int64]*AMQPConnection),
 		db:        db,
 	}
 
@@ -84,7 +84,7 @@ func (server *Server) initBindings() {
 			}
 
 			// Add Binding
-			exchange.addBinding(method, true)
+			exchange.addBinding(method, -1, true)
 		}
 		return nil
 	})
@@ -111,7 +111,7 @@ func (server *Server) initQueues() {
 				panic(fmt.Sprintf("Failed to read queue '%s': %s", name, err.Error()))
 			}
 			// fmt.Printf("Got queue from disk: %s\n", method.Queue)
-			_, err = server.declareQueue(method, true)
+			_, err = server.declareQueue(method, -1, true)
 			if err != nil {
 				return err
 			}
@@ -344,7 +344,10 @@ func (server *Server) depersistBinding(binding *Binding) error {
 	})
 }
 
-func (server *Server) declareQueue(method *amqp.QueueDeclare, fromDisk bool) (string, error) {
+func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, fromDisk bool) (string, error) {
+	if !method.Exclusive {
+		connId = -1
+	}
 	var queue = &Queue{
 		name:       method.Queue,
 		durable:    method.Durable,
@@ -354,6 +357,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, fromDisk bool) (st
 		queue:      list.New(),
 		consumers:  make([]*Consumer, 0, 1),
 		maybeReady: make(chan bool, 1),
+		connId:     connId,
 	}
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()
@@ -369,7 +373,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, fromDisk bool) (st
 		RoutingKey: queue.name,
 		Arguments:  make(amqp.Table),
 	}
-	defaultExchange.addBinding(defaultBinding, fromDisk)
+	defaultExchange.addBinding(defaultBinding, connId, fromDisk)
 	// TODO: queue should store bindings too?
 	if method.Durable && !fromDisk {
 		server.persistQueue(method)
@@ -378,7 +382,24 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, fromDisk bool) (st
 	return queue.name, nil
 }
 
-func (server *Server) deleteQueue(method *amqp.QueueDelete) (uint32, uint16, error) {
+func (server *Server) deleteQueuesForConn(connId int64) {
+	server.serverLock.Lock()
+	var queues = make([]*Queue, 0)
+	for _, queue := range server.queues {
+		if queue.connId == connId {
+			queues = append(queues, queue)
+		}
+	}
+	server.serverLock.Unlock()
+	for _, queue := range queues {
+		var method = &amqp.QueueDelete{
+			Queue: queue.name,
+		}
+		server.deleteQueue(method, connId)
+	}
+}
+
+func (server *Server) deleteQueue(method *amqp.QueueDelete, connId int64) (uint32, uint16, error) {
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()
 	// Validate
@@ -386,6 +407,11 @@ func (server *Server) deleteQueue(method *amqp.QueueDelete) (uint32, uint16, err
 	if !foundQueue {
 		return 0, 404, errors.New("Queue not found")
 	}
+
+	if queue.connId != -1 && queue.connId != connId {
+		return 0, 405, fmt.Errorf("Queue is locked to another connection")
+	}
+
 	// Close to stop anything from changing
 	queue.close()
 	// Delete for storage
@@ -456,7 +482,7 @@ func (server *Server) deleteExchange(method *amqp.ExchangeDelete) (uint16, error
 	return 0, nil
 }
 
-func (server *Server) nextConnId() uint64 {
+func (server *Server) nextConnId() int64 {
 	server.idLock.Lock()
 	var id = server.nextId
 	server.nextId += 1
@@ -464,7 +490,7 @@ func (server *Server) nextConnId() uint64 {
 	return id
 }
 
-func (server *Server) deregisterConnection(id uint64) {
+func (server *Server) deregisterConnection(id int64) {
 	delete(server.conns, id)
 }
 

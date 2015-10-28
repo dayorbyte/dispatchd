@@ -175,7 +175,7 @@ func returnMessage(channel *Channel, msg *Message) {
 	}, msg)
 }
 
-func (exchange *Exchange) addBinding(method *amqp.QueueBind, fromDisk bool) (uint16, error) {
+func (exchange *Exchange) addBinding(method *amqp.QueueBind, connId int64, fromDisk bool) (uint16, error) {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 
@@ -183,6 +183,10 @@ func (exchange *Exchange) addBinding(method *amqp.QueueBind, fromDisk bool) (uin
 	var queue, foundQueue = exchange.server.queues[method.Queue]
 	if !foundQueue || queue.closed {
 		return 404, fmt.Errorf("Queue not found: %s", method.Queue)
+	}
+
+	if queue.connId != -1 && queue.connId != connId {
+		return 405, fmt.Errorf("Queue is locked to another connection")
 	}
 
 	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
