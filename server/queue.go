@@ -89,18 +89,6 @@ func (q *Queue) activeConsumerCount() uint32 {
 	return uint32(len(q.consumers))
 }
 
-func (q *Queue) nextConsumer() *Consumer {
-	// TODO: also check availability
-	q.consumerLock.RLock()
-	defer q.consumerLock.RUnlock()
-	var num = len(q.consumers)
-	if num == 0 {
-		return nil
-	}
-	q.currentConsumer = (q.currentConsumer + 1) % len(q.consumers)
-	return q.consumers[q.currentConsumer]
-}
-
 func (q *Queue) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"name":       q.name,
@@ -131,15 +119,10 @@ func (q *Queue) purgeNotThreadSafe() uint32 {
 	return uint32(length)
 }
 
-func (q *Queue) add(channel *Channel, message *Message) {
+func (q *Queue) add(message *Message) {
 	// TODO: if there is a consumer available, dispatch
 	if message.method.Immediate {
-		panic("Immediate not implemented!")
-		// TODO: deliver this message somewhere if possible, otherwise:
-		channel.sendContent(&amqp.BasicReturn{
-			ReplyCode: 313, // TODO: what code?
-			ReplyText: "No consumers available",
-		}, message)
+		panic("Queue.add cannot be called with an Immediate message!")
 	}
 
 	if !q.closed {
@@ -151,6 +134,18 @@ func (q *Queue) add(channel *Channel, message *Message) {
 		case q.maybeReady <- true:
 		}
 	}
+}
+
+func (q *Queue) consumeImmediate(msg *Message) bool {
+	// TODO: randomize or round-robin through consumers
+	q.consumerLock.RLock()
+	defer q.consumerLock.RUnlock()
+	for _, consumer := range q.consumers {
+		if consumer.consumeImmediate(msg) {
+			return true
+		}
+	}
+	return false
 }
 
 func (q *Queue) delete(ifUnused bool, ifEmpty bool) (uint32, error) {
@@ -232,7 +227,6 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 		consumerTag: method.ConsumerTag,
 		exclusive:   method.Exclusive,
 		incoming:    make(chan bool),
-		ackChan:     make(chan bool),
 		noAck:       method.NoAck,
 		noLocal:     method.NoLocal,
 		// TODO: size QOS

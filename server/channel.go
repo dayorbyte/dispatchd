@@ -108,7 +108,7 @@ func (channel *Channel) ackBelow(tag uint64) bool {
 			unacked.consumer.decrActive(1, size)
 			channel.decrActive(1, size)
 			// TODO: select?
-			unacked.consumer.ackChan <- true
+			unacked.consumer.incoming <- true
 			count += 1
 		}
 	}
@@ -132,7 +132,7 @@ func (channel *Channel) ackOne(tag uint64) bool {
 	channel.decrActive(1, size)
 	unacked.msg.size()
 	// TODO: select?
-	unacked.consumer.ackChan <- true
+	unacked.consumer.incoming <- true
 	return true
 }
 
@@ -152,7 +152,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool) bool {
 			unacked.consumer.decrActive(1, size)
 			channel.decrActive(1, size)
 			// TODO: select?
-			unacked.consumer.ackChan <- true
+			unacked.consumer.incoming <- true
 			count += 1
 		}
 	}
@@ -176,7 +176,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool) bool {
 	unacked.consumer.decrActive(1, size)
 	channel.decrActive(1, size)
 	// TODO: select?
-	unacked.consumer.ackChan <- true
+	unacked.consumer.incoming <- true
 	delete(channel.awaitingAcks, tag)
 	return true
 }
@@ -220,8 +220,8 @@ func (channel *Channel) decrActive(count uint16, size uint32) {
 func (channel *Channel) acquireResources(count uint16, size uint32) bool {
 	channel.limitLock.Lock()
 	defer channel.limitLock.Unlock()
-	var sizeOk = channel.prefetchSize == 0 || channel.activeSize <= channel.prefetchSize
-	var countOk = channel.prefetchCount == 0 || channel.activeCount <= channel.prefetchCount
+	var sizeOk = channel.prefetchSize == 0 || channel.activeSize < channel.prefetchSize
+	var countOk = channel.prefetchCount == 0 || channel.activeCount < channel.prefetchCount
 	// If we're OK on size and count, acquire the resources
 	if sizeOk && countOk {
 		channel.activeCount += count
@@ -380,7 +380,6 @@ func (channel *Channel) sendMethod(method amqp.MethodFrame) {
 func (channel *Channel) sendContent(method amqp.MethodFrame, message *Message) {
 	channel.sendLock.Lock()
 	defer channel.sendLock.Unlock()
-	// fmt.Println("Sending content\n")
 	// deliver
 	channel.sendMethod(method)
 	// header

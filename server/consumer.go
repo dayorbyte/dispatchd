@@ -13,11 +13,11 @@ type Consumer struct {
 	consumerTag   string
 	exclusive     bool
 	incoming      chan bool
-	ackChan       chan bool
 	noAck         bool
 	noLocal       bool
 	qos           uint16
 	queue         *Queue
+	consumeLock   sync.Mutex
 	limitLock     sync.Mutex
 	prefetchSize  uint32
 	prefetchCount uint16
@@ -58,8 +58,9 @@ func (consumer *Consumer) consumerReady() bool {
 	}
 	consumer.limitLock.Lock()
 	defer consumer.limitLock.Unlock()
-	var sizeOk = consumer.prefetchSize == 0 || consumer.activeSize <= consumer.prefetchSize
-	var bytesOk = consumer.prefetchCount == 0 || consumer.activeCount <= consumer.prefetchCount
+	fmt.Println("values:", consumer.activeSize, consumer.prefetchSize, consumer.activeCount, consumer.prefetchCount)
+	var sizeOk = consumer.prefetchSize == 0 || consumer.activeSize < consumer.prefetchSize
+	var bytesOk = consumer.prefetchCount == 0 || consumer.activeCount < consumer.prefetchCount
 	return sizeOk && bytesOk
 }
 
@@ -81,42 +82,64 @@ func (consumer *Consumer) start() {
 	go consumer.consume(0)
 }
 
-func (consumer *Consumer) reconsume(msg *Message) {
-
-}
-
 func (consumer *Consumer) consume(id uint16) {
 	fmt.Printf("[C:%s#%d]Starting consumer\n", consumer.consumerTag, id)
 	consumer.queue.maybeReady <- false
 	for _ = range consumer.incoming {
-		// Check local limit
-		if !consumer.consumerReady() {
-			continue
-		}
-		// Try to get message/check channel limit
-		var msg = consumer.queue.getOne(consumer.channel, consumer)
-		if msg == nil {
-			continue
-		}
-		var tag uint64 = 0
-		if !consumer.noAck {
-			tag = consumer.channel.addUnackedMessage(consumer, msg)
-			consumer.incrActive(1, msg.size())
-		}
-		consumer.channel.sendContent(&amqp.BasicDeliver{
-			ConsumerTag: consumer.consumerTag,
-			DeliveryTag: tag,
-			Redelivered: msg.redelivered > 0,
-			Exchange:    msg.exchange,
-			RoutingKey:  msg.key,
-		}, msg)
-		consumer.statCount += 1
-		// Wait on ack if applicable
-		if !consumer.noAck {
-			// TODO: this currently only deals with count QoS
-			<-consumer.ackChan
-		}
+		consumer.consumeOne()
 	}
+}
+
+func (consumer *Consumer) consumeOne() {
+	// Check local limit
+	consumer.consumeLock.Lock()
+	defer consumer.consumeLock.Unlock()
+	if !consumer.consumerReady() {
+		return
+	}
+	// Try to get message/check channel limit
+	var msg = consumer.queue.getOne(consumer.channel, consumer)
+	if msg == nil {
+		return
+	}
+	var tag uint64 = 0
+	if !consumer.noAck {
+		tag = consumer.channel.addUnackedMessage(consumer, msg)
+		consumer.incrActive(1, msg.size())
+	}
+	consumer.channel.sendContent(&amqp.BasicDeliver{
+		ConsumerTag: consumer.consumerTag,
+		DeliveryTag: tag,
+		Redelivered: msg.redelivered > 0,
+		Exchange:    msg.exchange,
+		RoutingKey:  msg.key,
+	}, msg)
+	consumer.statCount += 1
+}
+
+func (consumer *Consumer) consumeImmediate(msg *Message) bool {
+	fmt.Printf("Consume immediate\n")
+	consumer.consumeLock.Lock()
+	defer consumer.consumeLock.Unlock()
+	if !consumer.consumerReady() {
+		fmt.Printf("Not Ready\n")
+		return false
+	}
+	fmt.Printf("Ready\n")
+	var tag uint64 = 0
+	if !consumer.noAck {
+		tag = consumer.channel.addUnackedMessage(consumer, msg)
+		consumer.incrActive(1, msg.size())
+	}
+	consumer.channel.sendContent(&amqp.BasicDeliver{
+		ConsumerTag: consumer.consumerTag,
+		DeliveryTag: tag,
+		Redelivered: msg.redelivered > 0,
+		Exchange:    msg.exchange,
+		RoutingKey:  msg.key,
+	}, msg)
+	consumer.statCount += 1
+	return true
 }
 
 // Send again, leave all stats the same since this consumer was already

@@ -101,16 +101,17 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 	// channel as the close is happening on, so that seems justifiable.
 	if exchange.closed {
 		if msg.method.Mandatory || msg.method.Immediate {
-			returnMessage(channel, msg)
+			exchange.returnMessage(channel, msg, 313, "Exchange closed, cannot route to queues or consumers")
 		}
 		return
 	}
-	var seen = make(map[string]bool)
+
+	var queues = make(map[string]*Queue)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
 			if binding.matchDirect(msg.method) {
-				var _, alreadySeen = seen[binding.queueName]
+				var _, alreadySeen = queues[binding.queueName]
 				if alreadySeen {
 					continue
 				}
@@ -118,14 +119,13 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 				if !foundQueue {
 					panic("queue not found!")
 				}
-				queue.add(channel, msg)
-				seen[binding.queueName] = true
+				queues[binding.queueName] = queue
 			}
 		}
 	case exchange.extype == EX_TYPE_FANOUT:
 		for _, binding := range exchange.bindings {
 			if binding.matchFanout(msg.method) {
-				var _, alreadySeen = seen[binding.queueName]
+				var _, alreadySeen = queues[binding.queueName]
 				if alreadySeen {
 					continue
 				}
@@ -133,14 +133,13 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 				if !foundQueue {
 					panic("queue not found!")
 				}
-				queue.add(channel, msg)
-				seen[binding.queueName] = true
+				queues[binding.queueName] = queue
 			}
 		}
 	case exchange.extype == EX_TYPE_TOPIC:
 		for _, binding := range exchange.bindings {
 			if binding.matchTopic(msg.method) {
-				var _, alreadySeen = seen[binding.queueName]
+				var _, alreadySeen = queues[binding.queueName]
 				if alreadySeen {
 					continue
 				}
@@ -148,8 +147,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 				if !foundQueue {
 					panic("queue not found!")
 				}
-				queue.add(channel, msg)
-				seen[binding.queueName] = true
+				queues[binding.queueName] = queue
 			}
 		}
 	case exchange.extype == EX_TYPE_HEADERS:
@@ -159,19 +157,36 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 		// TODO: can this happen? Seems like checks should be earlier
 		panic("unknown exchange type!")
 	}
-	if len(seen) > 0 {
-		return
+	if len(queues) == 0 {
+		// If we got here the message was unroutable.
+		if msg.method.Mandatory || msg.method.Immediate {
+			exchange.returnMessage(channel, msg, 313, "No queues available")
+		}
 	}
-	// If we got here the message was unroutable.
-	if msg.method.Mandatory || msg.method.Immediate {
-		returnMessage(channel, msg)
+	// This dispatch order will be random because go randomizes map
+	// iteration order.
+	var consumed = false
+	for _, queue := range queues {
+		fmt.Printf("Publish %s %b\n", queue.name, msg.method.Immediate)
+		if msg.method.Immediate {
+			consumed = queue.consumeImmediate(msg) || consumed
+		} else {
+			queue.add(msg)
+		}
 	}
+	if !consumed && msg.method.Immediate {
+		fmt.Println("Returning message")
+		exchange.returnMessage(channel, msg, 313, "No consumers available for immediate message")
+	}
+
 }
 
-func returnMessage(channel *Channel, msg *Message) {
+func (exchange *Exchange) returnMessage(channel *Channel, msg *Message, code uint16, text string) {
 	channel.sendContent(&amqp.BasicReturn{
-		ReplyCode: 200, // TODO: what code?
-		ReplyText: "Message unroutable",
+		Exchange:   exchange.name,
+		RoutingKey: msg.method.RoutingKey,
+		ReplyCode:  code,
+		ReplyText:  text,
 	}, msg)
 }
 
