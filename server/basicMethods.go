@@ -39,10 +39,8 @@ func (channel *Channel) basicQos(method *amqp.BasicQos) error {
 }
 
 func (channel *Channel) basicRecover(method *amqp.BasicRecover) error {
-	var classId, methodId = method.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-
-	fmt.Println("Handling BasicRecover")
+	channel.recover(method.Requeue)
+	channel.sendMethod(&amqp.BasicRecoverOk{})
 	return nil
 }
 

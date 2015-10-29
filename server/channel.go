@@ -47,6 +47,34 @@ type Channel struct {
 	defaultPrefetchCount uint16
 }
 
+func (channel *Channel) recover(requeue bool) {
+	if requeue {
+		channel.ackLock.Lock()
+		defer channel.ackLock.Unlock()
+		// Requeue. Make sure we update stats
+		for _, unacked := range channel.awaitingAcks {
+			unacked.msg.redelivered += 1
+			unacked.queue.readd(unacked.msg)
+			var size = unacked.msg.size()
+			channel.decrActive(1, size)
+			unacked.consumer.decrActive(1, size)
+		}
+		// Clear awaiting acks
+		channel.awaitingAcks = make(map[uint64]UnackedMessage)
+	} else {
+		// Redeliver. Don't need to mess with stats.
+		// We do this in a short-lived goroutine since this could end up
+		// blocking on sending to the network inside the consumer
+		go func() {
+			for tag, unacked := range channel.awaitingAcks {
+				unacked.msg.redelivered += 1
+				unacked.consumer.redeliver(tag, unacked.msg)
+			}
+		}()
+
+	}
+}
+
 func (channel *Channel) changeFlow(active bool) {
 	if channel.flow == active {
 		return

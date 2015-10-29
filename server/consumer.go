@@ -81,6 +81,10 @@ func (consumer *Consumer) start() {
 	go consumer.consume(0)
 }
 
+func (consumer *Consumer) reconsume(msg *Message) {
+
+}
+
 func (consumer *Consumer) consume(id uint16) {
 	fmt.Printf("[C:%s#%d]Starting consumer\n", consumer.consumerTag, id)
 	consumer.queue.maybeReady <- false
@@ -113,4 +117,16 @@ func (consumer *Consumer) consume(id uint16) {
 			<-consumer.ackChan
 		}
 	}
+}
+
+// Send again, leave all stats the same since this consumer was already
+// dealing with this message
+func (consumer *Consumer) redeliver(tag uint64, msg *Message) {
+	consumer.channel.sendContent(&amqp.BasicDeliver{
+		ConsumerTag: consumer.consumerTag,
+		DeliveryTag: tag,
+		Redelivered: msg.redelivered > 0,
+		Exchange:    msg.exchange,
+		RoutingKey:  msg.key,
+	}, msg)
 }
