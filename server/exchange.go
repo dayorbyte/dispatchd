@@ -167,7 +167,6 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 	// iteration order.
 	var consumed = false
 	for _, queue := range queues {
-		fmt.Printf("Publish %s %b\n", queue.name, msg.method.Immediate)
 		if msg.method.Immediate {
 			consumed = queue.consumeImmediate(msg) || consumed
 		} else {

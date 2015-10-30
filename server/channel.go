@@ -84,7 +84,7 @@ func (channel *Channel) changeFlow(active bool) {
 	// work again.
 	if channel.flow {
 		for _, consumer := range channel.consumers {
-			consumer.incoming <- true
+			consumer.ping()
 		}
 	}
 }
@@ -98,30 +98,26 @@ func (channel *Channel) channelErrorWithMethod(code uint16, message string, clas
 func (channel *Channel) ackBelow(tag uint64) bool {
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
-	fmt.Println("Ack below")
 	var count = 0
 	for k, unacked := range channel.awaitingAcks {
-		// fmt.Printf("%d(%d), ", k, tag)
 		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
 			var size = unacked.msg.size()
 			unacked.consumer.decrActive(1, size)
 			channel.decrActive(1, size)
 			// TODO: select?
-			unacked.consumer.incoming <- true
+			unacked.consumer.ping()
 			count += 1
 		}
 	}
-	// fmt.Println()
-	// fmt.Printf("Acked %d messages\n", count)
 	// TODO: should this be false if nothing was actually deleted and tag != 0?
 	return true
 }
 
 func (channel *Channel) ackOne(tag uint64) bool {
-	// fmt.Println("Ack one")
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
+
 	var unacked, found = channel.awaitingAcks[tag]
 	if !found {
 		return false
@@ -131,8 +127,7 @@ func (channel *Channel) ackOne(tag uint64) bool {
 	unacked.consumer.decrActive(1, size)
 	channel.decrActive(1, size)
 	unacked.msg.size()
-	// TODO: select?
-	unacked.consumer.incoming <- true
+	unacked.consumer.ping()
 	return true
 }
 
@@ -152,7 +147,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool) bool {
 			unacked.consumer.decrActive(1, size)
 			channel.decrActive(1, size)
 			// TODO: select?
-			unacked.consumer.incoming <- true
+			unacked.consumer.ping()
 			count += 1
 		}
 	}
@@ -176,13 +171,12 @@ func (channel *Channel) nackOne(tag uint64, requeue bool) bool {
 	unacked.consumer.decrActive(1, size)
 	channel.decrActive(1, size)
 	// TODO: select?
-	unacked.consumer.incoming <- true
+	unacked.consumer.ping()
 	delete(channel.awaitingAcks, tag)
 	return true
 }
 
 func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint64 {
-	// fmt.Println("Adding unacked message")
 	var tag = channel.nextDeliveryTag()
 	var unacked = UnackedMessage{
 		consumer: consumer,
@@ -190,6 +184,7 @@ func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint
 	}
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
+
 	_, found := channel.awaitingAcks[tag]
 	if found {
 		panic(fmt.Sprintf("Already found tag: %s", tag))

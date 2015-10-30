@@ -247,7 +247,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 		channel:     channel,
 		consumerTag: method.ConsumerTag,
 		exclusive:   method.Exclusive,
-		incoming:    make(chan bool),
+		incoming:    make(chan bool, 1),
 		noAck:       method.NoAck,
 		noLocal:     method.NoLocal,
 		// TODO: size QOS

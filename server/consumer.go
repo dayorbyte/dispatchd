@@ -58,7 +58,6 @@ func (consumer *Consumer) consumerReady() bool {
 	}
 	consumer.limitLock.Lock()
 	defer consumer.limitLock.Unlock()
-	fmt.Println("values:", consumer.activeSize, consumer.prefetchSize, consumer.activeCount, consumer.prefetchCount)
 	var sizeOk = consumer.prefetchSize == 0 || consumer.activeSize < consumer.prefetchSize
 	var bytesOk = consumer.prefetchCount == 0 || consumer.activeCount < consumer.prefetchCount
 	return sizeOk && bytesOk
@@ -80,6 +79,13 @@ func (consumer *Consumer) decrActive(size uint16, bytes uint32) {
 
 func (consumer *Consumer) start() {
 	go consumer.consume(0)
+}
+
+func (consumer *Consumer) ping() {
+	select {
+	case consumer.incoming <- true:
+	default:
+	}
 }
 
 func (consumer *Consumer) consume(id uint16) {
@@ -118,14 +124,11 @@ func (consumer *Consumer) consumeOne() {
 }
 
 func (consumer *Consumer) consumeImmediate(msg *Message) bool {
-	fmt.Printf("Consume immediate\n")
 	consumer.consumeLock.Lock()
 	defer consumer.consumeLock.Unlock()
 	if !consumer.consumerReady() {
-		fmt.Printf("Not Ready\n")
 		return false
 	}
-	fmt.Printf("Ready\n")
 	var tag uint64 = 0
 	if !consumer.noAck {
 		tag = consumer.channel.addUnackedMessage(consumer, msg)
