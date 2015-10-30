@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
-	// "time"
+	"time"
 )
 
 type Message struct {
@@ -62,9 +62,14 @@ type Queue struct {
 	maybeReady      chan bool
 	soleConsumer    *Consumer
 	connId          int64
+	deleteActive    time.Time
+	hasHadConsumers bool
+	server          *Server
 }
 
 func equivalentQueues(q1 *Queue, q2 *Queue) bool {
+	// Note: autodelete is not included since the spec says to ignore
+	// the field if the queue is already created
 	if q1.name != q2.name {
 		return false
 	}
@@ -72,9 +77,6 @@ func equivalentQueues(q1 *Queue, q2 *Queue) bool {
 		return false
 	}
 	if q1.exclusive != q2.exclusive {
-		return false
-	}
-	if q1.autoDelete != q2.autoDelete {
 		return false
 	}
 	if !amqp.EquivalentTables(&q1.arguments, &q2.arguments) {
@@ -198,10 +200,29 @@ func (q *Queue) removeConsumer(consumerTag string) {
 	var size = len(q.consumers)
 	if size == 0 {
 		q.currentConsumer = 0
+		if q.autoDelete && q.hasHadConsumers {
+			go q.autodeleteTimeout()
+		}
 	} else {
 		q.currentConsumer = q.currentConsumer % size
 	}
 
+}
+
+func (q *Queue) autodeleteTimeout() {
+	// There's technically a race condition here where a new binding could be
+	// added right as we check this, but after a 5 second wait with no activity
+	// I think this is probably safe enough.
+	var now = time.Now()
+	q.deleteActive = now
+	time.Sleep(5 * time.Second)
+	if q.deleteActive == now {
+		// Note: we can send -1 as the connection id because this isn't coming
+		// from a client.
+		q.server.deleteQueue(&amqp.QueueDelete{
+			Queue: q.name,
+		}, -1)
+	}
 }
 
 func (q *Queue) cancelConsumers() {
@@ -246,6 +267,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 	}
 	channel.addConsumer(consumer)
 	q.consumers = append(q.consumers, consumer)
+	q.hasHadConsumers = true
 	q.consumerLock.Unlock()
 	consumer.start()
 	return 0, nil
