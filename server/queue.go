@@ -296,12 +296,7 @@ func (q *Queue) processOne() {
 	for count := 0; count < size; count++ {
 		q.currentConsumer = (q.currentConsumer + 1) % size
 		var c = q.consumers[q.currentConsumer]
-		select {
-		case c.incoming <- true:
-			break
-		default:
-		}
-
+		c.ping()
 	}
 }
 

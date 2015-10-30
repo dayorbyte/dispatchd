@@ -23,6 +23,7 @@ type Consumer struct {
 	prefetchCount uint16
 	activeSize    uint32
 	activeCount   uint16
+	stopLock      sync.Mutex
 	stopped       bool
 	statCount     uint64
 	localId       int64
@@ -43,10 +44,12 @@ func (consumer *Consumer) MarshalJSON() ([]byte, error) {
 
 func (consumer *Consumer) stop() {
 	if !consumer.stopped {
+		consumer.stopLock.Lock()
+		consumer.stopped = true
 		close(consumer.incoming)
+		consumer.stopLock.Unlock()
 		consumer.queue.removeConsumer(consumer.consumerTag)
 	}
-	consumer.stopped = true
 }
 
 func (consumer *Consumer) consumerReady() bool {
@@ -82,10 +85,15 @@ func (consumer *Consumer) start() {
 }
 
 func (consumer *Consumer) ping() {
-	select {
-	case consumer.incoming <- true:
-	default:
+	consumer.stopLock.Lock()
+	defer consumer.stopLock.Unlock()
+	if !consumer.stopped {
+		select {
+		case consumer.incoming <- true:
+		default:
+		}
 	}
+
 }
 
 func (consumer *Consumer) consume(id uint16) {
