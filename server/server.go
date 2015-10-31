@@ -26,9 +26,14 @@ type Server struct {
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
+	conns := make(map[string]*AMQPConnection)
+	for id, value := range server.conns {
+		conns[fmt.Sprintf("%d", id)] = value
+	}
 	return json.Marshal(map[string]interface{}{
-		"exchanges": server.exchanges,
-		"queues":    server.queues,
+		"exchanges":   server.exchanges,
+		"queues":      server.queues,
+		"connections": conns,
 	})
 }
 

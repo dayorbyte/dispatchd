@@ -1,14 +1,13 @@
 package main
 
 import (
-	"fmt"
-	"net"
-	"time"
-	// "errors"
-	// "os"
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"net"
 	"sync"
+	"time"
 )
 
 // TODO: we can only be "in" one of these at once, so this should probably
@@ -41,6 +40,13 @@ type AMQPConnection struct {
 	maxChannels              uint16
 	maxFrameSize             uint32
 	clientProperties         *amqp.Table
+}
+
+func (conn *AMQPConnection) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"id":      conn.id,
+		"address": fmt.Sprintf("%s", conn.network.RemoteAddr()),
+	})
 }
 
 func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {

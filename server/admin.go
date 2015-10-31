@@ -9,7 +9,10 @@ import (
 )
 
 func homeJSON(w http.ResponseWriter, r *http.Request, server *Server) {
-	var b, _ = json.MarshalIndent(server, "", "    ")
+	var b, err = json.MarshalIndent(server, "", "    ")
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
 	w.Write(b)
 }
 
