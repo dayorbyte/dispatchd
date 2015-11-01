@@ -24,11 +24,13 @@ func (channel *Channel) txSelect(method *amqp.TxSelect) error {
 }
 
 func (channel *Channel) txCommit(method *amqp.TxCommit) error {
+	channel.commitTx()
 	channel.sendMethod(&amqp.TxCommitOk{})
 	return nil
 }
 
 func (channel *Channel) txRollback(method *amqp.TxRollback) error {
+	channel.rollbackTx()
 	channel.sendMethod(&amqp.TxRollbackOk{})
 	return nil
 }

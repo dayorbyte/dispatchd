@@ -21,11 +21,11 @@
   ones on a direct exchange without acks
 * There is a simple admin page that can show basic info about what's
   happening in the server
+* Transactions are supported
 
 ## Soon
 
 * Durability of messages
-* Transactions
 
 ## Later
 

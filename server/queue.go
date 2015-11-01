@@ -111,6 +111,8 @@ func (q *Queue) MarshalJSON() ([]byte, error) {
 func (q *Queue) close() {
 	// This discards any messages which would be added. It does not
 	// do cleanup
+	q.queueLock.Lock()
+	defer q.queueLock.Unlock()
 	q.closed = true
 }
 
@@ -132,15 +134,16 @@ func (q *Queue) add(message *Message) {
 		panic("Queue.add cannot be called with an Immediate message!")
 	}
 
+	q.queueLock.Lock()
 	if !q.closed {
-		q.queueLock.Lock()
 		q.statCount += 1
 		q.queue.PushBack(message)
-		q.queueLock.Unlock()
 		select {
 		case q.maybeReady <- true:
+		default:
 		}
 	}
+	q.queueLock.Unlock()
 }
 
 func (q *Queue) consumeImmediate(msg *Message) bool {
