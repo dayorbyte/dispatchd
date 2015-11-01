@@ -29,6 +29,9 @@ type Channel struct {
 	sendLock       sync.Mutex
 	lastQueueName  string
 	flow           bool
+	txMode         bool
+	txLock         sync.Mutex
+	txMessages     []*TxMessage
 	// Consumers
 	msgIndex uint64
 	// Delivery Tracking
@@ -45,6 +48,10 @@ type Channel struct {
 	// Consumer default QOS limits
 	defaultPrefetchSize  uint32
 	defaultPrefetchCount uint16
+}
+
+func (channel *Channel) startTxMode() {
+	channel.txMode = true
 }
 
 func (channel *Channel) recover(requeue bool) {
@@ -426,9 +433,29 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
 		return
 	}
 
+	// We have the whole contents, let's publish!
 	var server = channel.server
 	var message = channel.currentMessage
-	server.exchanges[message.method.Exchange].publish(server, channel, channel.currentMessage)
+
+	exchange, _ := server.exchanges[message.method.Exchange]
+
+	if channel.txMode {
+		// TxMode, add the messages to a list
+		queues := exchange.queuesForPublish(server, channel, channel.currentMessage)
+		channel.txLock.Lock()
+		for queueName, _ := range queues {
+			var txmsg = &TxMessage{
+				msg:       message,
+				queueName: queueName,
+			}
+			channel.txMessages = append(channel.txMessages, txmsg)
+		}
+		channel.txLock.Unlock()
+	} else {
+		// Normal mode, publish directly
+		exchange.publish(server, channel, channel.currentMessage)
+	}
+
 	channel.currentMessage = nil
 	if channel.confirmMode {
 		channel.msgIndex += 1
@@ -474,6 +501,8 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
 		channel.queueRoute(methodFrame)
 	case classId == 60:
 		channel.basicRoute(methodFrame)
+	case classId == 90:
+		channel.txRoute(methodFrame)
 	case classId == 85:
 		channel.confirmRoute(methodFrame)
 	default:

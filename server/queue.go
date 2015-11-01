@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+type TxMessage struct {
+	queueName string
+	msg       *Message
+}
+
 type Message struct {
 	header      *amqp.ContentHeaderFrame
 	payload     []*amqp.WireFrame

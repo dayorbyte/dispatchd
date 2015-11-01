@@ -95,17 +95,7 @@ func exchangeTypeToName(et extype) string {
 	}
 }
 
-func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message) {
-	// Concurrency note: Since there is no lock we can, technically, have messages
-	// published after the exchange has been closed. These couldn't be on the same
-	// channel as the close is happening on, so that seems justifiable.
-	if exchange.closed {
-		if msg.method.Mandatory || msg.method.Immediate {
-			exchange.returnMessage(channel, msg, 313, "Exchange closed, cannot route to queues or consumers")
-		}
-		return
-	}
-
+func (exchange *Exchange) queuesForPublish(server *Server, channel *Channel, msg *Message) map[string]*Queue {
 	var queues = make(map[string]*Queue)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
@@ -157,6 +147,21 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 		// TODO: can this happen? Seems like checks should be earlier
 		panic("unknown exchange type!")
 	}
+	return queues
+}
+
+func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message) {
+	// Concurrency note: Since there is no lock we can, technically, have messages
+	// published after the exchange has been closed. These couldn't be on the same
+	// channel as the close is happening on, so that seems justifiable.
+	if exchange.closed {
+		if msg.method.Mandatory || msg.method.Immediate {
+			exchange.returnMessage(channel, msg, 313, "Exchange closed, cannot route to queues or consumers")
+		}
+		return
+	}
+	queues := exchange.queuesForPublish(server, channel, msg)
+
 	if len(queues) == 0 {
 		// If we got here the message was unroutable.
 		if msg.method.Mandatory || msg.method.Immediate {
