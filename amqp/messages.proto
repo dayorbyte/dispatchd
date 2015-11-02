@@ -1,0 +1,9 @@
+
+package amqp;
+
+message WireFrame {
+  optional uint32 frameType = 1;
+  optional uint32 channel = 2;
+  optional bytes payload = 3;
+}
+

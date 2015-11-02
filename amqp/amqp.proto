@@ -1,0 +1,42 @@
+
+package amqp;
+
+message FieldValuePair {
+  optional string key = 1;
+  optional FieldValue value = 2;
+}
+
+message Table {
+  repeated FieldValuePair table = 1;
+}
+
+message FieldArray {
+  repeated FieldValue value = 1;
+}
+
+message Decimal {
+  optional uint32 scale = 1; // uint8
+  optional int32 value  = 2;
+}
+
+message FieldValue {
+  oneof value {
+    bool v_boolean                   = 1;
+    int32 v_int8                      = 2;
+    uint32 v_uint8                    = 3;
+    int32 v_int16                    = 4;
+    uint32 v_uint16                  = 5;
+    int32 v_int32                    = 6;
+    uint32 v_uint32                  = 7;
+    int64 v_int64                    = 8;
+    uint64 v_uint64                  = 9;
+    float v_float                    = 10;
+    double v_double                  = 11;
+    Decimal v_decimal                = 12;
+    string v_shortstr                = 13; // < 256 bytes
+    bytes v_longstr                  = 14;
+    FieldArray v_array               = 15;
+    uint64 v_timestamp               = 16;
+    Table v_table                    = 17;
+  }
+}

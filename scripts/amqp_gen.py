@@ -6,6 +6,8 @@ import xml.etree.ElementTree as ET
 
 CONSTANTS_FILE = 'amqp/constants_generated.go'
 PROTOCOL_FILE = 'amqp/protocol_generated.go'
+PROTOBUF_PROTOCOL_FILE = 'amqp/protocol_generated.proto'
+PROTOBUF_PROTOCOL_READWRITE_FILE = 'amqp/protocol_protobuf_readwrite_generated.go'
 DOMAIN_FILE = 'amqp/domains_generated.go'
 
 amqp_to_go_types = {
@@ -20,9 +22,21 @@ amqp_to_go_types = {
   'longstr' : '[]byte',
 }
 
+amqp_to_protobuf = {
+  'bit'   : 'bool',
+  'octet' : 'uint32',
+  'short' : 'uint32',
+  'long'  : 'uint32',
+  'longlong': 'uint64',
+  'table' : 'Table',
+  'timestamp' : 'uint64',
+  'shortstr' : 'string',
+  'longstr' : 'bytes',
+}
+
 def handle_constants(root):
   with open(CONSTANTS_FILE, 'w') as f:
-    f.write('package amqp\n\n')
+    f.write('package amqppb\n\n')
     # Manual constants
     f.write('''var MaxShortStringLength uint8 = 255\n''')
     # Protocol constants
@@ -46,6 +60,10 @@ def handle_constant(f, constant):
 def handle_classes(root, domains):
   with open(PROTOCOL_FILE, 'w') as f:
     f.write(render('protocol', root=root, domains=domains))
+  with open(PROTOBUF_PROTOCOL_FILE, 'w') as f:
+    f.write(render('protocol_protobuf', root=root, domains=domains))
+  with open(PROTOBUF_PROTOCOL_READWRITE_FILE, 'w') as f:
+    f.write(render('protocol_protobuf_readwrite', root=root, domains=domains))
 
 def handle_domains(node):
   domains = {}
@@ -66,6 +84,7 @@ class Domain(object):
     self.name_normalized = normalize_name(name)
     self.amqp_type = type
     self.go_type = amqp_to_go_types[type]
+    self.protobuf_type = amqp_to_protobuf[type]
     self.custom = name != self.amqp_type
 
 def normalize_name(name):
