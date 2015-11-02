@@ -55,7 +55,7 @@ type Queue struct {
 	durable         bool
 	exclusive       bool
 	autoDelete      bool
-	arguments       amqp.Table
+	arguments       *amqp.Table
 	closed          bool
 	objLock         sync.RWMutex
 	queue           *list.List // *Message
@@ -84,7 +84,7 @@ func equivalentQueues(q1 *Queue, q2 *Queue) bool {
 	if q1.exclusive != q2.exclusive {
 		return false
 	}
-	if !amqp.EquivalentTables(&q1.arguments, &q2.arguments) {
+	if !amqp.EquivalentTables(q1.arguments, q2.arguments) {
 		return false
 	}
 	return true

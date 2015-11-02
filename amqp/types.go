@@ -8,13 +8,6 @@ import (
 	"regexp"
 )
 
-type Decimal struct {
-	scale byte
-	value int32
-}
-
-type Table map[string]interface{}
-
 type Frame interface {
 	FrameType() byte
 }
@@ -25,12 +18,6 @@ type MethodFrame interface {
 	Read(reader io.Reader) (err error)
 	Write(writer io.Writer) (err error)
 	FrameType() byte
-}
-
-type WireFrame struct {
-	FrameType byte
-	Channel   uint16
-	Payload   []byte
 }
 
 type ContentHeaderFrame struct {
@@ -48,6 +35,10 @@ func NewTruncatedBodyFrame(channel uint16) WireFrame {
 		Channel:   channel,
 		Payload:   make([]byte, 0, 0),
 	}
+}
+
+func NewTable() *Table {
+	return &Table{Table: make([]*FieldValuePair, 0)}
 }
 
 func (frame *ContentHeaderFrame) FrameType() byte {

@@ -1,0 +1,925 @@
+package amqp;
+
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "amqp/amqp.proto";
+
+
+
+
+
+// **********************************************************************
+//                    Connection - Start
+// **********************************************************************
+
+message ConnectionStart {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 version_major = 4 [(gogoproto.casttype) = "byte", (gogoproto.nullable) = false];
+  optional uint32 version_minor = 5 [(gogoproto.casttype) = "byte", (gogoproto.nullable) = false];
+  optional Table server_properties = 6;
+  optional bytes mechanisms = 7;
+  optional bytes locales = 8;
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - StartOk
+// **********************************************************************
+
+message ConnectionStartOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional Table client_properties = 4;
+  optional string mechanism = 5 [(gogoproto.nullable) = false];
+  optional bytes response = 6;
+  optional string locale = 7 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - Secure
+// **********************************************************************
+
+message ConnectionSecure {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional bytes challenge = 4;
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - SecureOk
+// **********************************************************************
+
+message ConnectionSecureOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional bytes response = 4;
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - Tune
+// **********************************************************************
+
+message ConnectionTune {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 channel_max = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional uint32 frame_max = 5 [(gogoproto.nullable) = false];
+  optional uint32 heartbeat = 6 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - TuneOk
+// **********************************************************************
+
+message ConnectionTuneOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 channel_max = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional uint32 frame_max = 5 [(gogoproto.nullable) = false];
+  optional uint32 heartbeat = 6 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - Open
+// **********************************************************************
+
+message ConnectionOpen {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string virtual_host = 4 [(gogoproto.nullable) = false];
+  optional string reserved_1 = 5 [(gogoproto.nullable) = false];
+  optional bool reserved_2 = 6 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - OpenOk
+// **********************************************************************
+
+message ConnectionOpenOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string reserved_1 = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - Close
+// **********************************************************************
+
+message ConnectionClose {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reply_code = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string reply_text = 5 [(gogoproto.nullable) = false];
+  optional uint32 class_id = 6 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional uint32 method_id = 7 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - CloseOk
+// **********************************************************************
+
+message ConnectionCloseOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - Blocked
+// **********************************************************************
+
+message ConnectionBlocked {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string reason = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Connection - Unblocked
+// **********************************************************************
+
+message ConnectionUnblocked {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+
+
+// **********************************************************************
+//                    Channel - Open
+// **********************************************************************
+
+message ChannelOpen {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string reserved_1 = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Channel - OpenOk
+// **********************************************************************
+
+message ChannelOpenOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional bytes reserved_1 = 4;
+}
+
+
+
+
+// **********************************************************************
+//                    Channel - Flow
+// **********************************************************************
+
+message ChannelFlow {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional bool active = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Channel - FlowOk
+// **********************************************************************
+
+message ChannelFlowOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional bool active = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Channel - Close
+// **********************************************************************
+
+message ChannelClose {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reply_code = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string reply_text = 5 [(gogoproto.nullable) = false];
+  optional uint32 class_id = 6 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional uint32 method_id = 7 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Channel - CloseOk
+// **********************************************************************
+
+message ChannelCloseOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+
+
+// **********************************************************************
+//                    Exchange - Declare
+// **********************************************************************
+
+message ExchangeDeclare {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string exchange = 5 [(gogoproto.nullable) = false];
+  optional string type = 6 [(gogoproto.nullable) = false];
+  optional bool passive = 7 [(gogoproto.nullable) = false];
+  optional bool durable = 8 [(gogoproto.nullable) = false];
+  optional bool auto_delete = 9 [(gogoproto.nullable) = false];
+  optional bool internal = 10 [(gogoproto.nullable) = false];
+  optional bool no_wait = 11 [(gogoproto.nullable) = false];
+  optional Table arguments = 12;
+}
+
+
+
+
+// **********************************************************************
+//                    Exchange - DeclareOk
+// **********************************************************************
+
+message ExchangeDeclareOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Exchange - Delete
+// **********************************************************************
+
+message ExchangeDelete {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string exchange = 5 [(gogoproto.nullable) = false];
+  optional bool if_unused = 6 [(gogoproto.nullable) = false];
+  optional bool no_wait = 7 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Exchange - DeleteOk
+// **********************************************************************
+
+message ExchangeDeleteOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Exchange - Bind
+// **********************************************************************
+
+message ExchangeBind {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string destination = 5 [(gogoproto.nullable) = false];
+  optional string source = 6 [(gogoproto.nullable) = false];
+  optional string routing_key = 7 [(gogoproto.nullable) = false];
+  optional bool no_wait = 8 [(gogoproto.nullable) = false];
+  optional Table arguments = 9;
+}
+
+
+
+
+// **********************************************************************
+//                    Exchange - BindOk
+// **********************************************************************
+
+message ExchangeBindOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Exchange - Unbind
+// **********************************************************************
+
+message ExchangeUnbind {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string destination = 5 [(gogoproto.nullable) = false];
+  optional string source = 6 [(gogoproto.nullable) = false];
+  optional string routing_key = 7 [(gogoproto.nullable) = false];
+  optional bool no_wait = 8 [(gogoproto.nullable) = false];
+  optional Table arguments = 9;
+}
+
+
+
+
+// **********************************************************************
+//                    Exchange - UnbindOk
+// **********************************************************************
+
+message ExchangeUnbindOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+
+
+// **********************************************************************
+//                    Queue - Declare
+// **********************************************************************
+
+message QueueDeclare {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string queue = 5 [(gogoproto.nullable) = false];
+  optional bool passive = 6 [(gogoproto.nullable) = false];
+  optional bool durable = 7 [(gogoproto.nullable) = false];
+  optional bool exclusive = 8 [(gogoproto.nullable) = false];
+  optional bool auto_delete = 9 [(gogoproto.nullable) = false];
+  optional bool no_wait = 10 [(gogoproto.nullable) = false];
+  optional Table arguments = 11;
+}
+
+
+
+
+// **********************************************************************
+//                    Queue - DeclareOk
+// **********************************************************************
+
+message QueueDeclareOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string queue = 4 [(gogoproto.nullable) = false];
+  optional uint32 message_count = 5 [(gogoproto.nullable) = false];
+  optional uint32 consumer_count = 6 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Queue - Bind
+// **********************************************************************
+
+message QueueBind {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string queue = 5 [(gogoproto.nullable) = false];
+  optional string exchange = 6 [(gogoproto.nullable) = false];
+  optional string routing_key = 7 [(gogoproto.nullable) = false];
+  optional bool no_wait = 8 [(gogoproto.nullable) = false];
+  optional Table arguments = 9;
+}
+
+
+
+
+// **********************************************************************
+//                    Queue - BindOk
+// **********************************************************************
+
+message QueueBindOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Queue - Unbind
+// **********************************************************************
+
+message QueueUnbind {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string queue = 5 [(gogoproto.nullable) = false];
+  optional string exchange = 6 [(gogoproto.nullable) = false];
+  optional string routing_key = 7 [(gogoproto.nullable) = false];
+  optional Table arguments = 8;
+}
+
+
+
+
+// **********************************************************************
+//                    Queue - UnbindOk
+// **********************************************************************
+
+message QueueUnbindOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Queue - Purge
+// **********************************************************************
+
+message QueuePurge {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string queue = 5 [(gogoproto.nullable) = false];
+  optional bool no_wait = 6 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Queue - PurgeOk
+// **********************************************************************
+
+message QueuePurgeOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 message_count = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Queue - Delete
+// **********************************************************************
+
+message QueueDelete {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string queue = 5 [(gogoproto.nullable) = false];
+  optional bool if_unused = 6 [(gogoproto.nullable) = false];
+  optional bool if_empty = 7 [(gogoproto.nullable) = false];
+  optional bool no_wait = 8 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Queue - DeleteOk
+// **********************************************************************
+
+message QueueDeleteOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 message_count = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+message BasicContentHeaderProperties {
+  optional string content_type = 1 [(gogoproto.nullable) = false];
+  optional string content_encoding = 2 [(gogoproto.nullable) = false];
+  optional Table headers = 3;
+  optional uint32 delivery_mode = 4 [(gogoproto.casttype) = "byte", (gogoproto.nullable) = false];
+  optional uint32 priority = 5 [(gogoproto.casttype) = "byte", (gogoproto.nullable) = false];
+  optional string correlation_id = 6 [(gogoproto.nullable) = false];
+  optional string reply_to = 7 [(gogoproto.nullable) = false];
+  optional string expiration = 8 [(gogoproto.nullable) = false];
+  optional string message_id = 9 [(gogoproto.nullable) = false];
+  optional uint64 timestamp = 10 [(gogoproto.nullable) = false];
+  optional string type = 11 [(gogoproto.nullable) = false];
+  optional string user_id = 12 [(gogoproto.nullable) = false];
+  optional string app_id = 13 [(gogoproto.nullable) = false];
+  optional string reserved = 14 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Qos
+// **********************************************************************
+
+message BasicQos {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 prefetch_size = 4 [(gogoproto.nullable) = false];
+  optional uint32 prefetch_count = 5 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional bool global = 6 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - QosOk
+// **********************************************************************
+
+message BasicQosOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Consume
+// **********************************************************************
+
+message BasicConsume {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string queue = 5 [(gogoproto.nullable) = false];
+  optional string consumer_tag = 6 [(gogoproto.nullable) = false];
+  optional bool no_local = 7 [(gogoproto.nullable) = false];
+  optional bool no_ack = 8 [(gogoproto.nullable) = false];
+  optional bool exclusive = 9 [(gogoproto.nullable) = false];
+  optional bool no_wait = 10 [(gogoproto.nullable) = false];
+  optional Table arguments = 11;
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - ConsumeOk
+// **********************************************************************
+
+message BasicConsumeOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string consumer_tag = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Cancel
+// **********************************************************************
+
+message BasicCancel {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string consumer_tag = 4 [(gogoproto.nullable) = false];
+  optional bool no_wait = 5 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - CancelOk
+// **********************************************************************
+
+message BasicCancelOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string consumer_tag = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Publish
+// **********************************************************************
+
+message BasicPublish {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string exchange = 5 [(gogoproto.nullable) = false];
+  optional string routing_key = 6 [(gogoproto.nullable) = false];
+  optional bool mandatory = 7 [(gogoproto.nullable) = false];
+  optional bool immediate = 8 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Return
+// **********************************************************************
+
+message BasicReturn {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reply_code = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string reply_text = 5 [(gogoproto.nullable) = false];
+  optional string exchange = 6 [(gogoproto.nullable) = false];
+  optional string routing_key = 7 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Deliver
+// **********************************************************************
+
+message BasicDeliver {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string consumer_tag = 4 [(gogoproto.nullable) = false];
+  optional uint64 delivery_tag = 5 [(gogoproto.nullable) = false];
+  optional bool redelivered = 6 [(gogoproto.nullable) = false];
+  optional string exchange = 7 [(gogoproto.nullable) = false];
+  optional string routing_key = 8 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Get
+// **********************************************************************
+
+message BasicGet {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 reserved_1 = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional string queue = 5 [(gogoproto.nullable) = false];
+  optional bool no_ack = 6 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - GetOk
+// **********************************************************************
+
+message BasicGetOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint64 delivery_tag = 4 [(gogoproto.nullable) = false];
+  optional bool redelivered = 5 [(gogoproto.nullable) = false];
+  optional string exchange = 6 [(gogoproto.nullable) = false];
+  optional string routing_key = 7 [(gogoproto.nullable) = false];
+  optional uint32 message_count = 8 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - GetEmpty
+// **********************************************************************
+
+message BasicGetEmpty {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string reserved_1 = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Ack
+// **********************************************************************
+
+message BasicAck {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint64 delivery_tag = 4 [(gogoproto.nullable) = false];
+  optional bool multiple = 5 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Reject
+// **********************************************************************
+
+message BasicReject {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint64 delivery_tag = 4 [(gogoproto.nullable) = false];
+  optional bool requeue = 5 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - RecoverAsync
+// **********************************************************************
+
+message BasicRecoverAsync {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional bool requeue = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Recover
+// **********************************************************************
+
+message BasicRecover {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional bool requeue = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - RecoverOk
+// **********************************************************************
+
+message BasicRecoverOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Basic - Nack
+// **********************************************************************
+
+message BasicNack {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint64 delivery_tag = 4 [(gogoproto.nullable) = false];
+  optional bool multiple = 5 [(gogoproto.nullable) = false];
+  optional bool requeue = 6 [(gogoproto.nullable) = false];
+}
+
+
+
+
+
+
+// **********************************************************************
+//                    Tx - Select
+// **********************************************************************
+
+message TxSelect {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Tx - SelectOk
+// **********************************************************************
+
+message TxSelectOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Tx - Commit
+// **********************************************************************
+
+message TxCommit {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Tx - CommitOk
+// **********************************************************************
+
+message TxCommitOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Tx - Rollback
+// **********************************************************************
+
+message TxRollback {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+// **********************************************************************
+//                    Tx - RollbackOk
+// **********************************************************************
+
+message TxRollbackOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+
+
+// **********************************************************************
+//                    Confirm - Select
+// **********************************************************************
+
+message ConfirmSelect {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional bool nowait = 4 [(gogoproto.nullable) = false];
+}
+
+
+
+
+// **********************************************************************
+//                    Confirm - SelectOk
+// **********************************************************************
+
+message ConfirmSelectOk {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+}
+
+
+
+
+
+
+

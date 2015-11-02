@@ -44,14 +44,14 @@ type AMQPConnection struct {
 
 func (conn *AMQPConnection) MarshalJSON() ([]byte, error) {
 	cProps := make(map[string]interface{})
-	for name, value := range *conn.clientProperties {
-		switch v := value.(type) {
-		case []byte:
-			cProps[name] = string(v)
-		default:
-			cProps[name] = v
-		}
-	}
+	// for name, value := range *conn.clientProperties {
+	// 	switch v := value.(type) {
+	// 	case []byte:
+	// 		cProps[name] = string(v)
+	// 	default:
+	// 		cProps[name] = v
+	// 	}
+	// }
 
 	return json.Marshal(map[string]interface{}{
 		"id":               conn.id,

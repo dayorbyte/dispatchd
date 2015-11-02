@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 )
 
 func ReadFrame(reader io.Reader) (*WireFrame, error) {
@@ -150,17 +149,18 @@ func ReadLongstr(buf io.Reader) ([]byte, error) {
 	return slice, err
 }
 
-func ReadTimestamp(buf io.Reader) (time.Time, error) {
+func ReadTimestamp(buf io.Reader) (uint64, error) {
 	var t uint64
 	var err = binary.Read(buf, binary.BigEndian, &t)
 	if err != nil {
-		return time.Unix(0, 0), errors.New("Could not read uint64")
+		return 0, errors.New("Could not read uint64")
 	}
-	return time.Unix(int64(t), 0), nil
+	return t, nil
 }
 
-func ReadTable(reader io.Reader) (Table, error) {
-	var table = make(Table)
+func ReadTable(reader io.Reader) (*Table, error) {
+	var seen = make(map[string]bool)
+	var table = &Table{Table: make([]*FieldValuePair, 0)}
 	var byteData, err = ReadLongstr(reader)
 	if err != nil {
 		return nil, errors.New("Error reading table longstr: " + err.Error())
@@ -171,16 +171,20 @@ func ReadTable(reader io.Reader) (Table, error) {
 		if err != nil {
 			return nil, errors.New("Error reading key: " + err.Error())
 		}
+		if _, found := seen[key]; found {
+			return nil, fmt.Errorf("Duplicate key in table: %s", key)
+		}
 		value, err := readValue(data)
 		if err != nil {
 			return nil, errors.New("Error reading value for '" + key + "': " + err.Error())
 		}
-		table[key] = value
+		table.Table = append(table.Table, &FieldValuePair{Key: &key, Value: value,})
+		seen[key] = true
 	}
 	return table, nil
 }
 
-func readValue(reader io.Reader) (interface{}, error) {
+func readValue(reader io.Reader) (*FieldValue, error) {
 	var t, err = ReadOctet(reader)
 	if err != nil {
 		return nil, err
@@ -189,61 +193,118 @@ func readValue(reader io.Reader) (interface{}, error) {
 	switch {
 	case t == 't':
 		var v, err = ReadOctet(reader)
-		return v != 0, err
-	case t == 'b':
-		var v int8
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'B':
-		var v uint8
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'U':
-		var v int16
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'u':
-		var v uint16
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'I':
-		var v int32
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'i':
-		var v uint32
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'L':
-		var v int64
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'l':
-		var v uint64
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'f':
-		var v float32
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'd':
-		var v float64
-		return v, binary.Read(reader, binary.BigEndian, &v)
-	case t == 'D':
-		var v = Decimal{}
-		if err = binary.Read(reader, binary.BigEndian, &v.scale); err != nil {
+		if err != nil {
 			return nil, err
 		}
-		return v, binary.Read(reader, binary.BigEndian, &v.value)
+		var vb = v != 0
+		return &FieldValue{Value: &FieldValue_VBoolean{VBoolean: vb}}, nil
+	case t == 'b':
+		var v int8
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VInt8{VInt8: v}}, nil
+	case t == 'B':
+		var v uint8
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VUint8{VUint8: v}}, nil
+	case t == 'U':
+		var v int16
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VInt16{VInt16: v}}, nil
+	case t == 'u':
+		var v uint16
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VUint16{VUint16: v}}, nil
+	case t == 'I':
+		var v int32
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VInt32{VInt32: v}}, nil
+	case t == 'i':
+		var v uint32
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VUint32{VUint32: v}}, nil
+	case t == 'L':
+		var v int64
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VInt64{VInt64: v}}, nil
+	case t == 'l':
+		var v uint64
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VUint64{VUint64: v}}, nil
+	case t == 'f':
+		var v float32
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VFloat{VFloat: v}}, nil
+	case t == 'd':
+		var v float64
+		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VDouble{VDouble: v}}, nil
+	case t == 'D':
+		var v = Decimal{}
+		if err = binary.Read(reader, binary.BigEndian, &v.Scale); err != nil {
+			return nil, err
+		}
+		if err = binary.Read(reader, binary.BigEndian, &v.Value); err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VDecimal{VDecimal: &v}}, nil
 	case t == 's':
-		return ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		if err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VShortstr{VShortstr: v}}, nil
 	case t == 'S':
-		return ReadLongstr(reader)
+		v, err := ReadLongstr(reader)
+		if err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VLongstr{VLongstr: v}}, nil
 	case t == 'A':
-		return readArray(reader)
+		v, err := readArray(reader)
+		if err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VArray{VArray: &FieldArray{Value: v}}}, nil
 	case t == 'T':
-		return ReadTimestamp(reader)
+		v, err := ReadTimestamp(reader)
+		if err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VTimestamp{VTimestamp: v}}, nil
 	case t == 'F':
-		return ReadTable(reader)
+		v, err := ReadTable(reader)
+		if err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VTable{VTable: v}}, nil
 	case t == 'V':
 		return nil, nil
 	}
 	return nil, fmt.Errorf("Unknown table value type %d", t)
 }
 
-func readArray(reader io.Reader) ([]interface{}, error) {
-	var ret = make([]interface{}, 0, 1)
+func readArray(reader io.Reader) ([]*FieldValue, error) {
+	var ret = make([]*FieldValue, 0, 0)
 	var longstr, errs = ReadLongstr(reader)
 	if errs != nil {
 		return nil, errs

@@ -23,7 +23,7 @@ type Exchange struct {
 	durable      bool
 	autodelete   bool
 	internal     bool
-	arguments    amqp.Table
+	arguments    *amqp.Table
 	system       bool
 	bindings     []*Binding
 	bindingsLock sync.Mutex
@@ -59,7 +59,7 @@ func equivalentExchanges(ex1 *Exchange, ex2 *Exchange) bool {
 	if ex1.internal != ex2.internal {
 		return false
 	}
-	if !amqp.EquivalentTables(&ex1.arguments, &ex2.arguments) {
+	if !amqp.EquivalentTables(ex1.arguments, ex2.arguments) {
 		return false
 	}
 	return true

@@ -169,7 +169,7 @@ func (server *Server) initExchanges() {
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
-			Arguments:  make(amqp.Table),
+			Arguments:  amqp.NewTable(),
 		}, true, false)
 		if err != nil {
 			panic("Error making exchange: " + err.Error())
@@ -186,7 +186,7 @@ func (server *Server) initExchanges() {
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
-			Arguments:  make(amqp.Table),
+			Arguments:  amqp.NewTable(),
 		}, true, false)
 		if err != nil {
 			panic("Error making exchange: " + err.Error())
@@ -203,7 +203,7 @@ func (server *Server) initExchanges() {
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
-			Arguments:  make(amqp.Table),
+			Arguments:  amqp.NewTable(),
 		}, true, false)
 		if err != nil {
 			panic("Error making exchange: " + err.Error())
@@ -219,7 +219,7 @@ func (server *Server) initExchanges() {
 			Durable:    true,
 			AutoDelete: false,
 			Internal:   false,
-			Arguments:  make(amqp.Table),
+			Arguments:  amqp.NewTable(),
 		}, true, false)
 		if err != nil {
 			panic("Error making exchange: " + err.Error())
@@ -377,7 +377,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 		Queue:      queue.name,
 		Exchange:   "",
 		RoutingKey: queue.name,
-		Arguments:  make(amqp.Table),
+		Arguments:  amqp.NewTable(),
 	}
 	defaultExchange.addBinding(defaultBinding, connId, fromDisk)
 	// TODO: queue should store bindings too?

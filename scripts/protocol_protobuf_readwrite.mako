@@ -3,18 +3,11 @@
 # Global State
 ALL_METHODS = []
 
-def normalize_field(name):
-  return ''.join([w.capitalize() for w in name.split('-')])
-
-def normalize_struct(name):
-  return ''.join([w.capitalize() for w in name.split('-')])
-
-def pointer_star(field):
-  ## print field['type'].protobuf_type
-  if field['type'].protobuf_type in ('Table', 'bytes', 'string'):
-    return ''
-  ## print field
-  return '*'
+def normalize_name(name):
+  parts = [w.capitalize() for w in name.split('-')]
+  if 'Reserved' in parts:
+    return '_'.join(parts)
+  return ''.join(parts)
 
 def iter_tag(node, name):
   for child in node:
@@ -30,10 +23,11 @@ import (
 
 % for cls_node in iter_tag(root, 'class'):
 <%
-  cls_name = normalize_struct(cls_node.attrib['name'])
+  cls_name = normalize_name(cls_node.attrib['name'])
   cls_index = cls_node.attrib['index']
 %>
 ${comment_header(cls_name, big=True)}
+var ClassId${cls_name} uint16 = ${cls_index}
 ${class_body(cls_node, cls_name, cls_index)}
   % for method_node in iter_tag(cls_node, 'method'):
 ${method(method_node, cls_name, cls_index)}
@@ -52,7 +46,7 @@ if not class_fields:
 % for index, field in enumerate(class_fields):
 <% hex = '%04x' % (0 | 1 << (15 - index))
 %>
-var Mask${normalize_field(field.attrib['name'])} uint16 = 0x${hex}
+var Mask${normalize_name(field.attrib['name'])} uint16 = 0x${hex}
 % endfor
 
 </%def>
@@ -116,7 +110,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 <%def name="method(method_node, cls_name, cls_index)">
 <%
-method_name = normalize_field(method_node.attrib['name'])
+method_name = normalize_name(method_node.attrib['name'])
 method_index = method_node.attrib['index']
 struct_name = '{}{}'.format(cls_name, method_name)
 ALL_METHODS.append((cls_index, cls_name, method_index, struct_name))
@@ -130,9 +124,9 @@ for field in iter_tag(method_node, 'field'):
     type = domains[domain]
 
     fields.append(dict(
-      name=normalize_field(field.attrib['name']),
+      name=normalize_name(field.attrib['name']),
       type=type,
-      serializer=normalize_field(domain)
+      serializer=normalize_name(domain)
     ))
   except:
     print field, field.attrib['name'], field.attrib
@@ -142,10 +136,26 @@ for field in iter_tag(method_node, 'field'):
 ${comment_header('{} - {}'.format(cls_name, method_name))}
 var MethodId${cls_name}${method_name} uint16 = ${method_index}
 
+${method_struct(struct_name, fields, cls_index, method_index)}
 ${method_reader(struct_name, fields)}
 ${method_writer(struct_name, fields, cls_index, method_index)}
 
 
+</%def>
+
+<%def name="method_struct(struct_name, fields, cls_index, method_index)">
+
+func (f* ${struct_name}) MethodIdentifier() (uint16, uint16) {
+  return ${cls_index}, ${method_index}
+}
+
+func (f* ${struct_name}) MethodName() string {
+  return "${struct_name}"
+}
+
+func (f* ${struct_name}) FrameType() byte {
+  return 1
+}
 </%def>
 
 <%def name="method_reader(struct_name, fields)"><%
@@ -165,7 +175,7 @@ func (f *${struct_name}) Read(reader io.Reader) (err error) {
 <% bits += 1 %>
   % else:
 <% bits = 0 %>
-  ${pointer_star(field)}f.${field['name']}, err = Read${field['serializer']}(reader)
+  f.${field['name']}, err = Read${field['serializer']}(reader)
   % endif
   if err != nil {
     return errors.New("Error reading field ${field['name']}: " + err.Error())
@@ -178,12 +188,10 @@ func (f *${struct_name}) Read(reader io.Reader) (err error) {
 <%def name="method_writer(struct_name, fields, cls_index, method_index)">
 <% bits = 0 %>
 func (f *${struct_name}) Write(writer io.Writer) (err error) {
-  var clsIndex uint32 = ${cls_index}
-  if err = WriteShort(writer, &clsIndex); err != nil {
+  if err = WriteShort(writer, ${cls_index}); err != nil {
     return err
   }
-  var methodIndex uint32 = ${method_index}
-  if err = WriteShort(writer, &methodIndex); err != nil {
+  if err = WriteShort(writer, ${method_index}); err != nil {
     return err
   }
 

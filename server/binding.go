@@ -11,7 +11,7 @@ type Binding struct {
 	queueName    string
 	exchangeName string
 	key          string
-	arguments    amqp.Table
+	arguments    *amqp.Table
 	topicMatcher *regexp.Regexp
 }
 
@@ -33,7 +33,7 @@ func (binding *Binding) Equals(other *Binding) bool {
 		binding.key == other.key
 }
 
-func NewBinding(queueName string, exchangeName string, key string, arguments amqp.Table) *Binding {
+func NewBinding(queueName string, exchangeName string, key string, arguments *amqp.Table) *Binding {
 	var parts = strings.Split(key, ".")
 	for i, part := range parts {
 		if part == "*" {

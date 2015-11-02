@@ -67,7 +67,7 @@ func (channel *Channel) connectionStartOk(conn *AMQPConnection, method *amqp.Con
 	if method.Mechanism != "PLAIN" {
 		conn.hardClose()
 	}
-	conn.clientProperties = &method.ClientProperties
+	conn.clientProperties = method.ClientProperties
 	// TODO(MUST): add support these being enforced at the connection level.
 	channel.sendMethod(&amqp.ConnectionTune{
 		conn.maxChannels,
@@ -83,11 +83,11 @@ func (channel *Channel) connectionStartOk(conn *AMQPConnection, method *amqp.Con
 
 func (channel *Channel) startConnection() error {
 	// TODO(SHOULD): add fields: host, product, version, platform, copyright, information
-	var capabilities = make(amqp.Table)
-	capabilities["publisher_confirms"] = true
-	capabilities["basic.nack"] = true
-	var serverProps = make(amqp.Table)
-	serverProps["capabilities"] = capabilities
+	// var capabilities = amqp.NewTable()
+	// capabilities["publisher_confirms"] = true
+	// capabilities["basic.nack"] = true
+	var serverProps = amqp.NewTable()
+	// serverProps["capabilities"] = capabilities
 	// TODO: the java rabbitmq client I'm using for load testing doesn't like these string
 	//       fields even though the go/python clients do. commenting out until I can
 	//       compile and get some debugging info out of that client

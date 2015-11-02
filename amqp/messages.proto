@@ -1,9 +1,13 @@
 
 package amqp;
 
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
 message WireFrame {
-  optional uint32 frameType = 1;
-  optional uint32 channel = 2;
-  optional bytes payload = 3;
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional uint32 frameType = 1 [(gogoproto.nullable) = false, (gogoproto.casttype) = "uint8"];
+  optional uint32 channel   = 2 [(gogoproto.nullable) = false, (gogoproto.casttype) = "uint16"];
+  optional bytes payload    = 3 ;
 }
 

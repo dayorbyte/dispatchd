@@ -58,8 +58,12 @@ message ${normalize_struct(cls_name)}ContentHeaderProperties {
   if not domain:
     domain = field.attrib.get('type')
   type = domains[domain]
+  field = dict(
+    name=normalize_field(field.attrib['name']),
+    type=type,
+  )
 %>\
-  optional ${type.protobuf_type} ${normalize_field(field.attrib['name'])} = ${index+1};
+  ${field_str(field, index+1)}
 % endfor
 }
 

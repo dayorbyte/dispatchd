@@ -15,7 +15,7 @@ type TxAck struct {
 }
 
 type Consumer struct {
-	arguments     amqp.Table
+	arguments     *amqp.Table
 	channel       *Channel
 	consumerTag   string
 	exclusive     bool
