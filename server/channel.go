@@ -39,7 +39,7 @@ type Channel struct {
 	deliveryTag  uint64
 	deliveryLock sync.Mutex
 	ackLock      sync.Mutex
-	awaitingAcks map[uint64]UnackedMessage
+	awaitingAcks map[uint64]amqp.UnackedMessage
 	// Channel QOS Limits
 	limitLock     sync.Mutex
 	prefetchSize  uint32
@@ -106,22 +106,39 @@ func (channel *Channel) recover(requeue bool) {
 		defer channel.ackLock.Unlock()
 		// Requeue. Make sure we update stats
 		for _, unacked := range channel.awaitingAcks {
-			unacked.msg.Redelivered += 1
-			unacked.queue.readd(unacked.msg)
-			var size = messageSize(unacked.msg)
+			unacked.Msg.Redelivered += 1
+			// re-add to queue
+			queue, qFound := channel.server.queues[unacked.QueueName]
+			if qFound {
+				queue.readd(unacked.Msg)
+			}
+			consumer, cFound := channel.consumers[unacked.ConsumerTag]
+			// decr channel active
+			var size = messageSize(unacked.Msg)
 			channel.decrActive(1, size)
-			unacked.consumer.decrActive(1, size)
+			// decr consumer active
+			if cFound {
+				consumer.decrActive(1, size)
+			}
+
 		}
 		// Clear awaiting acks
-		channel.awaitingAcks = make(map[uint64]UnackedMessage)
+		channel.awaitingAcks = make(map[uint64]amqp.UnackedMessage)
 	} else {
 		// Redeliver. Don't need to mess with stats.
 		// We do this in a short-lived goroutine since this could end up
 		// blocking on sending to the network inside the consumer
 		go func() {
 			for tag, unacked := range channel.awaitingAcks {
-				unacked.msg.Redelivered += 1
-				unacked.consumer.redeliver(tag, unacked.msg)
+				consumer, cFound := channel.consumers[unacked.ConsumerTag]
+				var size = messageSize(unacked.Msg)
+				unacked.Msg.Redelivered += 1
+				if cFound {
+					consumer.redeliver(tag, unacked.Msg)
+				} else {
+					consumer.decrActive(1, size)
+				}
+
 			}
 		}()
 
@@ -166,11 +183,13 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) bool {
 	for k, unacked := range channel.awaitingAcks {
 		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
-			var size = messageSize(unacked.msg)
-			unacked.consumer.decrActive(1, size)
+			var size = messageSize(unacked.Msg)
 			channel.decrActive(1, size)
-			// TODO: select?
-			unacked.consumer.ping()
+			consumer, cFound := channel.consumers[unacked.ConsumerTag]
+			if cFound {
+				consumer.decrActive(1, size)
+			}
+			consumer.ping()
 			count += 1
 		}
 	}
@@ -198,10 +217,13 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) bool {
 		return true
 	}
 	delete(channel.awaitingAcks, tag)
-	var size = messageSize(unacked.msg)
-	unacked.consumer.decrActive(1, size)
+	var size = messageSize(unacked.Msg)
 	channel.decrActive(1, size)
-	unacked.consumer.ping()
+	consumer, cFound := channel.consumers[unacked.ConsumerTag]
+	if cFound {
+		consumer.decrActive(1, size)
+		consumer.ping()
+	}
 	return true
 }
 
@@ -225,14 +247,16 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) bool 
 		fmt.Printf("%d(%d), ", k, tag)
 		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
-			if requeue {
-				unacked.consumer.queue.readd(unacked.msg)
+			consumer, cFound := channel.consumers[unacked.ConsumerTag]
+			if requeue && cFound {
+				consumer.queue.readd(unacked.Msg)
 			}
-			var size = messageSize(unacked.msg)
-			unacked.consumer.decrActive(1, size)
+			var size = messageSize(unacked.Msg)
 			channel.decrActive(1, size)
-			// TODO: select?
-			unacked.consumer.ping()
+			if cFound {
+				consumer.decrActive(1, size)
+				consumer.ping()
+			}
 			count += 1
 		}
 	}
@@ -260,23 +284,25 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
 		})
 		return true
 	}
-	if requeue {
-		unacked.consumer.queue.readd(unacked.msg)
+	consumer, cFound := channel.consumers[unacked.ConsumerTag]
+	if requeue && cFound {
+		consumer.queue.readd(unacked.Msg)
 	}
-	var size = messageSize(unacked.msg)
-	unacked.consumer.decrActive(1, size)
+	var size = messageSize(unacked.Msg)
 	channel.decrActive(1, size)
-	// TODO: select?
-	unacked.consumer.ping()
+	if cFound {
+		consumer.decrActive(1, size)
+		consumer.ping()
+	}
 	delete(channel.awaitingAcks, tag)
 	return true
 }
 
 func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *amqp.Message) uint64 {
 	var tag = channel.nextDeliveryTag()
-	var unacked = UnackedMessage{
-		consumer: consumer,
-		msg:      msg,
+	var unacked = amqp.UnackedMessage{
+		ConsumerTag: consumer.consumerTag,
+		Msg:         msg,
 	}
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
@@ -357,7 +383,7 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 		txMessages:   make([]*amqp.TxMessage, 0),
 		txAcks:       make([]*amqp.TxAck, 0),
 		consumers:    make(map[string]*Consumer),
-		awaitingAcks: make(map[uint64]UnackedMessage),
+		awaitingAcks: make(map[uint64]amqp.UnackedMessage),
 	}
 }
 
@@ -440,12 +466,17 @@ func (channel *Channel) shutdown() {
 		// TODO(MUST): If we want at-most-once delivery we can't re-add these
 		// messages. Need to figure out if the spec specifies, and after that
 		// provide a way to have both options. Maybe a message header?
-		unacked.consumer.queue.readd(unacked.msg)
+		consumer, cFound := channel.consumers[unacked.ConsumerTag]
+		if cFound {
+			consumer.queue.readd(unacked.Msg)
+		}
 		// this probably isn't needed, but for debugging purposes it's nice to
 		// ensure that all the active counts/sizes get back to 0
-		var size = messageSize(unacked.msg)
-		unacked.consumer.decrActive(1, size)
+		var size = messageSize(unacked.Msg)
 		channel.decrActive(1, size)
+		if cFound {
+			consumer.decrActive(1, size)
+		}
 	}
 }
 

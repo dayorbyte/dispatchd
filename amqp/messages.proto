@@ -41,5 +41,11 @@ message TxAck {
   optional uint64 id             = 1 [(gogoproto.nullable) = false];
   optional bool multiple         = 2 [(gogoproto.nullable) = false];
   optional bool nack             = 3 [(gogoproto.nullable) = false];
-  optional bool requeueNack      = 4 [(gogoproto.nullable) = false];
+  optional bool requeue_nack      = 4 [(gogoproto.nullable) = false];
+}
+
+message UnackedMessage {
+  optional string  consumer_tag  = 1 [(gogoproto.nullable) = false];
+  optional Message msg           = 2;
+  optional string  queue_name    = 3 [(gogoproto.nullable) = false];
 }

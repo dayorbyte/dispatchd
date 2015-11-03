@@ -35,12 +35,6 @@ func NewMessage(method *amqp.BasicPublish, localId int64) *amqp.Message {
 	}
 }
 
-type UnackedMessage struct {
-	consumer *Consumer
-	msg      *amqp.Message // what's the message?
-	queue    *Queue        // where do we return this on failure?
-}
-
 func messageSize(message *amqp.Message) uint32 {
 	// TODO: include header size
 	var size uint32 = 0
