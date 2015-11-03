@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"time"
 )
 
 func WriteFrame(buf io.Writer, frame *WireFrame) {
@@ -99,20 +98,20 @@ func WriteLongstr(buf io.Writer, bytes []byte) (err error) {
 	return nil
 }
 
-func WriteTimestamp(buf io.Writer, timestamp time.Time) error {
-	return binary.Write(buf, binary.BigEndian, uint64(timestamp.Unix()))
+func WriteTimestamp(buf io.Writer, timestamp uint64) error {
+	return binary.Write(buf, binary.BigEndian, timestamp)
 }
 
 func WriteTable(writer io.Writer, table *Table) error {
 	var buf = bytes.NewBuffer([]byte{})
 	for _, kv := range table.Table {
 		WriteShortstr(buf, *kv.Key)
-		writeValue(buf, kv.Value.Value)
+		writeValue(buf, kv.Value)
 	}
 	return WriteLongstr(writer, buf.Bytes())
 }
 
-func writeArray(writer io.Writer, array []interface{}) error {
+func writeArray(writer io.Writer, array []*FieldValue) error {
 	var buf = bytes.NewBuffer([]byte{})
 	for _, v := range array {
 		if err := writeValue(buf, v); err != nil {
@@ -122,80 +121,184 @@ func writeArray(writer io.Writer, array []interface{}) error {
 	return WriteLongstr(writer, buf.Bytes())
 }
 
-func writeValue(writer io.Writer, value interface{}) (err error) {
-	switch v := value.(type) {
-	case bool:
+func writeValue(writer io.Writer, value *FieldValue) (err error) {
+	switch v := value.Value.(type) {
+	case *FieldValue_VBoolean:
 		if err = binary.Write(writer, binary.BigEndian, byte('t')); err == nil {
-			err = WriteBit(writer, v)
+			err = WriteBit(writer, v.VBoolean)
 		}
-	case int8:
+	case *FieldValue_VInt8:
 		if err = binary.Write(writer, binary.BigEndian, byte('b')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int8(v))
+			err = binary.Write(writer, binary.BigEndian, int8(v.VInt8))
 		}
-	case uint8:
+	case *FieldValue_VUint8:
 		if err = binary.Write(writer, binary.BigEndian, byte('B')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, uint8(v))
+			err = binary.Write(writer, binary.BigEndian, uint8(v.VUint8))
 		}
-	case int16:
+	case *FieldValue_VInt16:
 		if err = binary.Write(writer, binary.BigEndian, byte('U')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int16(v))
+			err = binary.Write(writer, binary.BigEndian, int16(v.VInt16))
 		}
-	case uint16:
+	case *FieldValue_VUint16:
 		if err = binary.Write(writer, binary.BigEndian, byte('u')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, uint16(v))
+			err = binary.Write(writer, binary.BigEndian, uint16(v.VUint16))
 		}
-	case int32:
+	case *FieldValue_VInt32:
 		if err = binary.Write(writer, binary.BigEndian, byte('I')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int32(v))
+			err = binary.Write(writer, binary.BigEndian, int32(v.VInt32))
 		}
-	case uint32:
+	case *FieldValue_VUint32:
 		if err = binary.Write(writer, binary.BigEndian, byte('i')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, uint32(v))
+			err = binary.Write(writer, binary.BigEndian, uint32(v.VUint32))
 		}
-	case int64:
+	case *FieldValue_VInt64:
 		if err = binary.Write(writer, binary.BigEndian, byte('L')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, int64(v))
+			err = binary.Write(writer, binary.BigEndian, int64(v.VInt64))
 		}
-	case uint64:
+	case *FieldValue_VUint64:
 		if err = binary.Write(writer, binary.BigEndian, byte('l')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, uint64(v))
+			err = binary.Write(writer, binary.BigEndian, uint64(v.VUint64))
 		}
-	case float32:
+	case *FieldValue_VFloat:
 		if err = binary.Write(writer, binary.BigEndian, byte('f')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, float32(v))
+			err = binary.Write(writer, binary.BigEndian, float32(v.VFloat))
 		}
-	case float64:
+	case *FieldValue_VDouble:
 		if err = binary.Write(writer, binary.BigEndian, byte('d')); err == nil {
-			err = binary.Write(writer, binary.BigEndian, float64(v))
+			err = binary.Write(writer, binary.BigEndian, float64(v.VDouble))
 		}
-	case Decimal:
-		if err = binary.Write(writer, binary.BigEndian, byte(*v.Scale)); err == nil {
-			err = binary.Write(writer, binary.BigEndian, uint32(*v.Value))
+	case *FieldValue_VDecimal:
+		if err = binary.Write(writer, binary.BigEndian, byte('D')); err == nil {
+			if err = binary.Write(writer, binary.BigEndian, byte(*v.VDecimal.Scale)); err == nil {
+				err = binary.Write(writer, binary.BigEndian, uint32(*v.VDecimal.Value))
+			}
 		}
-	case string:
+	case *FieldValue_VShortstr:
 		if err = WriteOctet(writer, byte('s')); err == nil {
-			err = WriteShortstr(writer, v)
+			err = WriteShortstr(writer, v.VShortstr)
 		}
-	case []byte:
+	case *FieldValue_VLongstr:
 		if err = WriteOctet(writer, byte('S')); err == nil {
-			err = WriteLongstr(writer, v)
+			err = WriteLongstr(writer, v.VLongstr)
 		}
-	case []interface{}:
+	case *FieldValue_VArray:
 		if err = WriteOctet(writer, byte('A')); err == nil {
-			err = writeArray(writer, v)
+			err = writeArray(writer, v.VArray.Value)
 		}
-	case time.Time:
+	case *FieldValue_VTimestamp:
 		if err = WriteOctet(writer, byte('T')); err == nil {
-			err = WriteTimestamp(writer, v)
+			err = WriteTimestamp(writer, v.VTimestamp)
 		}
-	case Table:
+	case *FieldValue_VTable:
 		if err = WriteOctet(writer, byte('F')); err == nil {
-			err = WriteTable(writer, &v)
+			err = WriteTable(writer, v.VTable)
 		}
 	case nil:
 		err = binary.Write(writer, binary.BigEndian, byte('V'))
 	default:
 		panic("unsupported type!")
+	}
+	return
+}
+
+func (props *BasicContentHeaderProperties) WriteProps(writer io.Writer) (flags uint16, err error) {
+	if props.ContentType != nil {
+		flags = flags | MaskContentType
+		err = WriteShortstr(writer, *props.ContentType)
+		if err != nil {
+			return
+		}
+	}
+	if props.ContentEncoding != nil {
+		flags = flags | MaskContentEncoding
+		err = WriteShortstr(writer, *props.ContentEncoding)
+		if err != nil {
+			return
+		}
+	}
+	if props.Headers != nil {
+		flags = flags | MaskHeaders
+		err = WriteTable(writer, props.Headers)
+		if err != nil {
+			return
+		}
+	}
+	if props.DeliveryMode != nil {
+		flags = flags | MaskDeliveryMode
+		err = WriteOctet(writer, *props.DeliveryMode)
+		if err != nil {
+			return
+		}
+	}
+	if props.Priority != nil {
+		flags = flags | MaskPriority
+		err = WriteOctet(writer, *props.Priority)
+		if err != nil {
+			return
+		}
+	}
+	if props.CorrelationId != nil {
+		flags = flags | MaskCorrelationId
+		err = WriteShortstr(writer, *props.CorrelationId)
+		if err != nil {
+			return
+		}
+	}
+	if props.ReplyTo != nil {
+		flags = flags | MaskReplyTo
+		err = WriteShortstr(writer, *props.ReplyTo)
+		if err != nil {
+			return
+		}
+	}
+	if props.Expiration != nil {
+		flags = flags | MaskExpiration
+		err = WriteShortstr(writer, *props.Expiration)
+		if err != nil {
+			return
+		}
+	}
+	if props.MessageId != nil {
+		flags = flags | MaskMessageId
+		err = WriteShortstr(writer, *props.MessageId)
+		if err != nil {
+			return
+		}
+	}
+	if props.Timestamp != nil {
+		flags = flags | MaskTimestamp
+		err = WriteLonglong(writer, *props.Timestamp)
+		if err != nil {
+			return
+		}
+	}
+	if props.Type != nil {
+		flags = flags | MaskType
+		err = WriteShortstr(writer, *props.Type)
+		if err != nil {
+			return
+		}
+	}
+	if props.UserId != nil {
+		flags = flags | MaskUserId
+		err = WriteShortstr(writer, *props.UserId)
+		if err != nil {
+			return
+		}
+	}
+	if props.AppId != nil {
+		flags = flags | MaskAppId
+		err = WriteShortstr(writer, *props.AppId)
+		if err != nil {
+			return
+		}
+	}
+	if props.Reserved != nil {
+		flags = flags | MaskReserved
+		err = WriteShortstr(writer, *props.Reserved)
+		if err != nil {
+			return
+		}
 	}
 	return
 }
