@@ -10,21 +10,6 @@ import (
 	"time"
 )
 
-// type TxMessage struct {
-// 	queueName string
-// 	msg       *amqp.Message
-// }
-
-// type Message struct {
-// 	header      *amqp.ContentHeaderFrame
-// 	payload     []*amqp.WireFrame
-// 	exchange    string
-// 	key         string
-// 	method      *amqp.BasicPublish
-// 	redelivered uint32
-// 	localId     int64
-// }
-
 func NewMessage(method *amqp.BasicPublish, localId int64) *amqp.Message {
 	return &amqp.Message{
 		Method:   method,
