@@ -32,7 +32,7 @@ type Channel struct {
 	txMode         bool
 	txLock         sync.Mutex
 	txMessages     []*amqp.TxMessage
-	txAcks         []*TxAck
+	txAcks         []*amqp.TxAck
 	// Consumers
 	msgIndex uint64
 	// Delivery Tracking
@@ -73,19 +73,19 @@ func (channel *Channel) commitTx() {
 
 	// Clear transaction
 	channel.txMessages = make([]*amqp.TxMessage, 0)
-	channel.txAcks = make([]*TxAck, 0)
+	channel.txAcks = make([]*amqp.TxAck, 0)
 }
 
-func (channel *Channel) txAckMessage(ack *TxAck) {
+func (channel *Channel) txAckMessage(ack *amqp.TxAck) {
 	switch {
-	case ack.multiple && !ack.nack:
-		channel.ackBelow(ack.id, true)
-	case ack.multiple && ack.nack:
-		channel.nackBelow(ack.id, ack.requeueNack, true)
-	case !ack.multiple && !ack.nack:
-		channel.ackOne(ack.id, true)
-	case !ack.multiple && ack.nack:
-		channel.nackOne(ack.id, ack.requeueNack, true)
+	case ack.Multiple && !ack.Nack:
+		channel.ackBelow(ack.Id, true)
+	case ack.Multiple && ack.Nack:
+		channel.nackBelow(ack.Id, ack.RequeueNack, true)
+	case !ack.Multiple && !ack.Nack:
+		channel.ackOne(ack.Id, true)
+	case !ack.Multiple && ack.Nack:
+		channel.nackOne(ack.Id, ack.RequeueNack, true)
 	}
 }
 
@@ -93,7 +93,7 @@ func (channel *Channel) rollbackTx() {
 	channel.txLock.Lock()
 	defer channel.txLock.Unlock()
 	channel.txMessages = make([]*amqp.TxMessage, 0)
-	channel.txAcks = make([]*TxAck, 0)
+	channel.txAcks = make([]*amqp.TxAck, 0)
 }
 
 func (channel *Channel) startTxMode() {
@@ -152,11 +152,11 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) bool {
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &TxAck{
-			id:          tag,
-			nack:        false,
-			requeueNack: false,
-			multiple:    true,
+		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
+			Id:          tag,
+			Nack:        false,
+			RequeueNack: false,
+			Multiple:    true,
 		})
 		return true
 	}
@@ -189,11 +189,11 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) bool {
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &TxAck{
-			id:          tag,
-			nack:        false,
-			requeueNack: false,
-			multiple:    false,
+		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
+			Id:          tag,
+			Nack:        false,
+			RequeueNack: false,
+			Multiple:    false,
 		})
 		return true
 	}
@@ -212,11 +212,11 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) bool 
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &TxAck{
-			id:          tag,
-			nack:        true,
-			requeueNack: requeue,
-			multiple:    true,
+		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
+			Id:          tag,
+			Nack:        true,
+			RequeueNack: requeue,
+			Multiple:    true,
 		})
 		return true
 	}
@@ -252,11 +252,11 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &TxAck{
-			id:          tag,
-			nack:        true,
-			requeueNack: requeue,
-			multiple:    false,
+		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
+			Id:          tag,
+			Nack:        true,
+			RequeueNack: requeue,
+			Multiple:    false,
 		})
 		return true
 	}
@@ -355,7 +355,7 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 		flow:         true,
 		state:        CH_STATE_INIT,
 		txMessages:   make([]*amqp.TxMessage, 0),
-		txAcks:       make([]*TxAck, 0),
+		txAcks:       make([]*amqp.TxAck, 0),
 		consumers:    make(map[string]*Consumer),
 		awaitingAcks: make(map[uint64]UnackedMessage),
 	}

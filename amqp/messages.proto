@@ -36,3 +36,10 @@ message TxMessage {
   optional Message msg = 1;
   optional string queue_name = 2 [(gogoproto.nullable) = false];
 }
+
+message TxAck {
+  optional uint64 id             = 1 [(gogoproto.nullable) = false];
+  optional bool multiple         = 2 [(gogoproto.nullable) = false];
+  optional bool nack             = 3 [(gogoproto.nullable) = false];
+  optional bool requeueNack      = 4 [(gogoproto.nullable) = false];
+}

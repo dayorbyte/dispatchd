@@ -7,13 +7,6 @@ import (
 	"sync"
 )
 
-type TxAck struct {
-	id          uint64
-	multiple    bool
-	nack        bool
-	requeueNack bool
-}
-
 type Consumer struct {
 	arguments     *amqp.Table
 	channel       *Channel
