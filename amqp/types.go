@@ -20,14 +20,14 @@ type MethodFrame interface {
 	FrameType() byte
 }
 
-type ContentHeaderFrame struct {
-	ContentClass    uint16
-	ContentWeight   uint16
-	ContentBodySize uint64
-	PropertyFlags   uint16
-	Properties      *BasicContentHeaderProperties
-	AsBytes         []byte
-}
+// type ContentHeaderFrame struct {
+// 	ContentClass    uint16
+// 	ContentWeight   uint16
+// 	ContentBodySize uint64
+// 	PropertyFlags   uint16
+// 	Properties      *BasicContentHeaderProperties
+// 	AsBytes         []byte
+// }
 
 func NewTruncatedBodyFrame(channel uint16) WireFrame {
 	return WireFrame{
@@ -88,97 +88,213 @@ func (frame *ContentHeaderFrame) Read(reader io.Reader) (err error) {
 	}
 
 	frame.Properties = &BasicContentHeaderProperties{}
-	err = frame.Properties.readProps(frame.PropertyFlags, reader)
+	err = frame.Properties.ReadProps(frame.PropertyFlags, reader)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (props *BasicContentHeaderProperties) readProps(flags uint16, reader io.Reader) (err error) {
+func (props *BasicContentHeaderProperties) ReadProps(flags uint16, reader io.Reader) (err error) {
 	if MaskContentType&flags != 0 {
-		props.ContentType, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.ContentType = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskContentEncoding&flags != 0 {
-		props.ContentEncoding, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.ContentEncoding = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskHeaders&flags != 0 {
-		props.Headers, err = ReadTable(reader)
+		v, err := ReadTable(reader)
+		props.Headers = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskDeliveryMode&flags != 0 {
-		props.DeliveryMode, err = ReadOctet(reader)
+		v, err := ReadOctet(reader)
+		*props.DeliveryMode = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskPriority&flags != 0 {
-		props.Priority, err = ReadOctet(reader)
+		v, err := ReadOctet(reader)
+		*props.Priority = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskCorrelationId&flags != 0 {
-		props.CorrelationId, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.CorrelationId = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskReplyTo&flags != 0 {
-		props.ReplyTo, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.ReplyTo = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskExpiration&flags != 0 {
-		props.Expiration, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.Expiration = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskMessageId&flags != 0 {
-		props.MessageId, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.MessageId = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskTimestamp&flags != 0 {
-		props.Timestamp, err = ReadLonglong(reader)
+		v, err := ReadLonglong(reader)
+		*props.Timestamp = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskType&flags != 0 {
-		props.Type, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.Type = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskUserId&flags != 0 {
-		props.UserId, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.UserId = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskAppId&flags != 0 {
-		props.AppId, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.AppId = v
 		if err != nil {
-			return
+			return err
 		}
 	}
 	if MaskReserved&flags != 0 {
-		props.Reserved, err = ReadShortstr(reader)
+		v, err := ReadShortstr(reader)
+		*props.Reserved = v
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (props *BasicContentHeaderProperties) WriteProps(writer io.Writer) (flags uint16, err error) {
+	if props.ContentType != nil {
+		flags = flags | MaskContentType
+		err = WriteShortstr(writer, *props.ContentType)
 		if err != nil {
 			return
 		}
 	}
-	return nil
+	if props.ContentEncoding != nil {
+		flags = flags | MaskContentEncoding
+		err = WriteShortstr(writer, *props.ContentEncoding)
+		if err != nil {
+			return
+		}
+	}
+	if props.Headers != nil {
+		flags = flags | MaskHeaders
+		err = WriteTable(writer, props.Headers)
+		if err != nil {
+			return
+		}
+	}
+	if props.DeliveryMode != nil {
+		flags = flags | MaskDeliveryMode
+		err = WriteOctet(writer, *props.DeliveryMode)
+		if err != nil {
+			return
+		}
+	}
+	if props.Priority != nil {
+		flags = flags | MaskPriority
+		err = WriteOctet(writer, *props.Priority)
+		if err != nil {
+			return
+		}
+	}
+	if props.CorrelationId != nil {
+		flags = flags | MaskCorrelationId
+		err = WriteShortstr(writer, *props.CorrelationId)
+		if err != nil {
+			return
+		}
+	}
+	if props.ReplyTo != nil {
+		flags = flags | MaskReplyTo
+		err = WriteShortstr(writer, *props.ReplyTo)
+		if err != nil {
+			return
+		}
+	}
+	if props.Expiration != nil {
+		flags = flags | MaskExpiration
+		err = WriteShortstr(writer, *props.Expiration)
+		if err != nil {
+			return
+		}
+	}
+	if props.MessageId != nil {
+		flags = flags | MaskMessageId
+		err = WriteShortstr(writer, *props.MessageId)
+		if err != nil {
+			return
+		}
+	}
+	if props.Timestamp != nil {
+		flags = flags | MaskTimestamp
+		err = WriteLonglong(writer, *props.Timestamp)
+		if err != nil {
+			return
+		}
+	}
+	if props.Type != nil {
+		flags = flags | MaskType
+		err = WriteShortstr(writer, *props.Type)
+		if err != nil {
+			return
+		}
+	}
+	if props.UserId != nil {
+		flags = flags | MaskUserId
+		err = WriteShortstr(writer, *props.UserId)
+		if err != nil {
+			return
+		}
+	}
+	if props.AppId != nil {
+		flags = flags | MaskAppId
+		err = WriteShortstr(writer, *props.AppId)
+		if err != nil {
+			return
+		}
+	}
+	if props.Reserved != nil {
+		flags = flags | MaskReserved
+		err = WriteShortstr(writer, *props.Reserved)
+		if err != nil {
+			return
+		}
+	}
+	return
 }

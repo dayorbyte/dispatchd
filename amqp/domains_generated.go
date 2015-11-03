@@ -1,4 +1,3 @@
-
 package amqp
 
 var ReadNoWait = ReadBit

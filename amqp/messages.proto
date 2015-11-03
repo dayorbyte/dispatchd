@@ -2,6 +2,8 @@
 package amqp;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+// import "amqp/amqp.proto";
+import "amqp/protocol_generated.proto";
 
 message WireFrame {
   option (gogoproto.goproto_unrecognized) = false;
@@ -11,3 +13,26 @@ message WireFrame {
   optional bytes payload    = 3 ;
 }
 
+
+message Message {
+  optional amqp.ContentHeaderFrame    header      = 1;
+  repeated WireFrame                  payload     = 2;
+  optional string                     exchange    = 3 [(gogoproto.nullable) = false];
+  optional string                     key         = 4 [(gogoproto.nullable) = false];
+  optional amqp.BasicPublish          method      = 5;
+  optional uint32                     redelivered = 6 [(gogoproto.nullable) = false];
+  optional int64                      local_id     = 7 [(gogoproto.nullable) = false];
+}
+
+message ContentHeaderFrame {
+  optional uint32  content_class      = 1 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional uint32  content_weight     = 2 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional uint64  content_body_size  = 3 [(gogoproto.nullable) = false];
+  optional uint32  property_flags     = 4 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
+  optional amqp.BasicContentHeaderProperties properties = 5;
+}
+
+message TxMessage {
+  optional Message msg = 1;
+  optional string queue_name = 2 [(gogoproto.nullable) = false];
+}

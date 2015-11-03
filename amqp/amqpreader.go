@@ -178,7 +178,7 @@ func ReadTable(reader io.Reader) (*Table, error) {
 		if err != nil {
 			return nil, errors.New("Error reading value for '" + key + "': " + err.Error())
 		}
-		table.Table = append(table.Table, &FieldValuePair{Key: &key, Value: value,})
+		table.Table = append(table.Table, &FieldValuePair{Key: &key, Value: value})
 		seen[key] = true
 	}
 	return table, nil

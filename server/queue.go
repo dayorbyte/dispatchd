@@ -10,41 +10,41 @@ import (
 	"time"
 )
 
-type TxMessage struct {
-	queueName string
-	msg       *Message
-}
+// type TxMessage struct {
+// 	queueName string
+// 	msg       *amqp.Message
+// }
 
-type Message struct {
-	header      *amqp.ContentHeaderFrame
-	payload     []*amqp.WireFrame
-	exchange    string
-	key         string
-	method      *amqp.BasicPublish
-	redelivered uint32
-	localId     int64
-}
+// type Message struct {
+// 	header      *amqp.ContentHeaderFrame
+// 	payload     []*amqp.WireFrame
+// 	exchange    string
+// 	key         string
+// 	method      *amqp.BasicPublish
+// 	redelivered uint32
+// 	localId     int64
+// }
 
-func NewMessage(method *amqp.BasicPublish, localId int64) *Message {
-	return &Message{
-		method:   method,
-		exchange: method.Exchange,
-		key:      method.RoutingKey,
-		payload:  make([]*amqp.WireFrame, 0, 1),
-		localId:  localId,
+func NewMessage(method *amqp.BasicPublish, localId int64) *amqp.Message {
+	return &amqp.Message{
+		Method:   method,
+		Exchange: method.Exchange,
+		Key:      method.RoutingKey,
+		Payload:  make([]*amqp.WireFrame, 0, 1),
+		LocalId:  localId,
 	}
 }
 
 type UnackedMessage struct {
 	consumer *Consumer
-	msg      *Message // what's the message?
-	queue    *Queue   // where do we return this on failure?
+	msg      *amqp.Message // what's the message?
+	queue    *Queue        // where do we return this on failure?
 }
 
-func (message *Message) size() uint32 {
+func messageSize(message *amqp.Message) uint32 {
 	// TODO: include header size
 	var size uint32 = 0
-	for _, frame := range message.payload {
+	for _, frame := range message.Payload {
 		size += uint32(len(frame.Payload))
 	}
 	return size
@@ -128,9 +128,9 @@ func (q *Queue) purgeNotThreadSafe() uint32 {
 	return uint32(length)
 }
 
-func (q *Queue) add(message *Message) {
+func (q *Queue) add(message *amqp.Message) {
 	// TODO: if there is a consumer available, dispatch
-	if message.method.Immediate {
+	if message.Method.Immediate {
 		panic("Queue.add cannot be called with an Immediate message!")
 	}
 
@@ -146,7 +146,7 @@ func (q *Queue) add(message *Message) {
 	q.queueLock.Unlock()
 }
 
-func (q *Queue) consumeImmediate(msg *Message) bool {
+func (q *Queue) consumeImmediate(msg *amqp.Message) bool {
 	// TODO: randomize or round-robin through consumers
 	q.consumerLock.RLock()
 	defer q.consumerLock.RUnlock()
@@ -180,14 +180,14 @@ func (q *Queue) delete(ifUnused bool, ifEmpty bool) (uint32, error) {
 	return q.purgeNotThreadSafe(), nil
 }
 
-func (q *Queue) readd(message *Message) {
+func (q *Queue) readd(message *amqp.Message) {
 	// TODO: if there is a consumer available, dispatch
 	fmt.Println("Re-adding queue message!")
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	// this method is only called when we get a nack or we shut down a channel,
 	// so it means the message was not acked.
-	message.redelivered += 1
+	message.Redelivered += 1
 	q.queue.PushFront(message)
 	q.maybeReady <- true
 }
@@ -308,16 +308,16 @@ func (q *Queue) processOne() {
 	}
 }
 
-func (q *Queue) getOneForced() *Message {
+func (q *Queue) getOneForced() *amqp.Message {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	if q.queue.Len() == 0 {
 		return nil
 	}
-	return q.queue.Remove(q.queue.Front()).(*Message)
+	return q.queue.Remove(q.queue.Front()).(*amqp.Message)
 }
 
-func (q *Queue) getOne(channel *Channel, consumer *Consumer) *Message {
+func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.Message {
 	// Get one message. If there is a message try to acquire the resources
 	// from the channel.
 	q.queueLock.Lock()
@@ -325,11 +325,11 @@ func (q *Queue) getOne(channel *Channel, consumer *Consumer) *Message {
 	if q.queue.Len() == 0 {
 		return nil
 	}
-	var msg = q.queue.Front().Value.(*Message)
-	if consumer.noLocal && msg.localId == consumer.localId {
+	var msg = q.queue.Front().Value.(*amqp.Message)
+	if consumer.noLocal && msg.LocalId == consumer.localId {
 		return nil
 	}
-	if channel.acquireResources(1, msg.size()) {
+	if channel.acquireResources(1, messageSize(msg)) {
 		q.queue.Remove(q.queue.Front())
 		return msg
 	}

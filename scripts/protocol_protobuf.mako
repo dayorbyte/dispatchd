@@ -3,14 +3,14 @@
 # Global State
 ALL_METHODS = []
 
-def field_str(field, index):
+def field_str(field, index, nullable=False):
   go_type = field['type'].go_type
   protobuf_type = field['type'].protobuf_type
   options = []
 
   if go_type != protobuf_type and protobuf_type != 'bytes':
     options.append('(gogoproto.casttype) = "{}"'.format(go_type))
-  if protobuf_type not in ['Table', 'bytes']:
+  if protobuf_type not in ['Table', 'bytes'] and not nullable:
     options.append('(gogoproto.nullable) = false')
   options_str = ''
   if options:
@@ -63,7 +63,7 @@ message ${normalize_struct(cls_name)}ContentHeaderProperties {
     type=type,
   )
 %>\
-  ${field_str(field, index+1)}
+  ${field_str(field, index+1, nullable=True)}
 % endfor
 }
 

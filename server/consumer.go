@@ -126,19 +126,19 @@ func (consumer *Consumer) consumeOne() {
 	var tag uint64 = 0
 	if !consumer.noAck {
 		tag = consumer.channel.addUnackedMessage(consumer, msg)
-		consumer.incrActive(1, msg.size())
+		consumer.incrActive(1, messageSize(msg))
 	}
 	consumer.channel.sendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
 		DeliveryTag: tag,
-		Redelivered: msg.redelivered > 0,
-		Exchange:    msg.exchange,
-		RoutingKey:  msg.key,
+		Redelivered: msg.Redelivered > 0,
+		Exchange:    msg.Exchange,
+		RoutingKey:  msg.Key,
 	}, msg)
 	consumer.statCount += 1
 }
 
-func (consumer *Consumer) consumeImmediate(msg *Message) bool {
+func (consumer *Consumer) consumeImmediate(msg *amqp.Message) bool {
 	consumer.consumeLock.Lock()
 	defer consumer.consumeLock.Unlock()
 	if !consumer.consumerReady() {
@@ -147,14 +147,14 @@ func (consumer *Consumer) consumeImmediate(msg *Message) bool {
 	var tag uint64 = 0
 	if !consumer.noAck {
 		tag = consumer.channel.addUnackedMessage(consumer, msg)
-		consumer.incrActive(1, msg.size())
+		consumer.incrActive(1, messageSize(msg))
 	}
 	consumer.channel.sendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
 		DeliveryTag: tag,
-		Redelivered: msg.redelivered > 0,
-		Exchange:    msg.exchange,
-		RoutingKey:  msg.key,
+		Redelivered: msg.Redelivered > 0,
+		Exchange:    msg.Exchange,
+		RoutingKey:  msg.Key,
 	}, msg)
 	consumer.statCount += 1
 	return true
@@ -162,12 +162,12 @@ func (consumer *Consumer) consumeImmediate(msg *Message) bool {
 
 // Send again, leave all stats the same since this consumer was already
 // dealing with this message
-func (consumer *Consumer) redeliver(tag uint64, msg *Message) {
+func (consumer *Consumer) redeliver(tag uint64, msg *amqp.Message) {
 	consumer.channel.sendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
 		DeliveryTag: tag,
-		Redelivered: msg.redelivered > 0,
-		Exchange:    msg.exchange,
-		RoutingKey:  msg.key,
+		Redelivered: msg.Redelivered > 0,
+		Exchange:    msg.Exchange,
+		RoutingKey:  msg.Key,
 	}, msg)
 }

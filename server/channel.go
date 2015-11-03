@@ -23,7 +23,7 @@ type Channel struct {
 	conn           *AMQPConnection
 	state          uint8
 	confirmMode    bool
-	currentMessage *Message
+	currentMessage *amqp.Message
 	consumers      map[string]*Consumer
 	consumerLock   sync.Mutex
 	sendLock       sync.Mutex
@@ -31,7 +31,7 @@ type Channel struct {
 	flow           bool
 	txMode         bool
 	txLock         sync.Mutex
-	txMessages     []*TxMessage
+	txMessages     []*amqp.TxMessage
 	txAcks         []*TxAck
 	// Consumers
 	msgIndex uint64
@@ -57,12 +57,12 @@ func (channel *Channel) commitTx() {
 	// messages
 	// todo: persist all messages to all queues once persistence exists
 	for _, msg := range channel.txMessages {
-		queue, found := channel.server.queues[msg.queueName]
+		queue, found := channel.server.queues[msg.QueueName]
 		// the
 		if !found {
 			continue
 		}
-		queue.add(msg.msg)
+		queue.add(msg.Msg)
 	}
 	// Acks
 	// todo: remove acked messages from persistent storage in a single
@@ -72,7 +72,7 @@ func (channel *Channel) commitTx() {
 	}
 
 	// Clear transaction
-	channel.txMessages = make([]*TxMessage, 0)
+	channel.txMessages = make([]*amqp.TxMessage, 0)
 	channel.txAcks = make([]*TxAck, 0)
 }
 
@@ -92,7 +92,7 @@ func (channel *Channel) txAckMessage(ack *TxAck) {
 func (channel *Channel) rollbackTx() {
 	channel.txLock.Lock()
 	defer channel.txLock.Unlock()
-	channel.txMessages = make([]*TxMessage, 0)
+	channel.txMessages = make([]*amqp.TxMessage, 0)
 	channel.txAcks = make([]*TxAck, 0)
 }
 
@@ -106,9 +106,9 @@ func (channel *Channel) recover(requeue bool) {
 		defer channel.ackLock.Unlock()
 		// Requeue. Make sure we update stats
 		for _, unacked := range channel.awaitingAcks {
-			unacked.msg.redelivered += 1
+			unacked.msg.Redelivered += 1
 			unacked.queue.readd(unacked.msg)
-			var size = unacked.msg.size()
+			var size = messageSize(unacked.msg)
 			channel.decrActive(1, size)
 			unacked.consumer.decrActive(1, size)
 		}
@@ -120,7 +120,7 @@ func (channel *Channel) recover(requeue bool) {
 		// blocking on sending to the network inside the consumer
 		go func() {
 			for tag, unacked := range channel.awaitingAcks {
-				unacked.msg.redelivered += 1
+				unacked.msg.Redelivered += 1
 				unacked.consumer.redeliver(tag, unacked.msg)
 			}
 		}()
@@ -166,7 +166,7 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) bool {
 	for k, unacked := range channel.awaitingAcks {
 		if k <= tag || tag == 0 {
 			delete(channel.awaitingAcks, k)
-			var size = unacked.msg.size()
+			var size = messageSize(unacked.msg)
 			unacked.consumer.decrActive(1, size)
 			channel.decrActive(1, size)
 			// TODO: select?
@@ -198,10 +198,9 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) bool {
 		return true
 	}
 	delete(channel.awaitingAcks, tag)
-	var size = unacked.msg.size()
+	var size = messageSize(unacked.msg)
 	unacked.consumer.decrActive(1, size)
 	channel.decrActive(1, size)
-	unacked.msg.size()
 	unacked.consumer.ping()
 	return true
 }
@@ -229,7 +228,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) bool 
 			if requeue {
 				unacked.consumer.queue.readd(unacked.msg)
 			}
-			var size = unacked.msg.size()
+			var size = messageSize(unacked.msg)
 			unacked.consumer.decrActive(1, size)
 			channel.decrActive(1, size)
 			// TODO: select?
@@ -264,7 +263,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
 	if requeue {
 		unacked.consumer.queue.readd(unacked.msg)
 	}
-	var size = unacked.msg.size()
+	var size = messageSize(unacked.msg)
 	unacked.consumer.decrActive(1, size)
 	channel.decrActive(1, size)
 	// TODO: select?
@@ -273,7 +272,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
 	return true
 }
 
-func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *Message) uint64 {
+func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *amqp.Message) uint64 {
 	var tag = channel.nextDeliveryTag()
 	var unacked = UnackedMessage{
 		consumer: consumer,
@@ -355,7 +354,7 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 		conn:         conn,
 		flow:         true,
 		state:        CH_STATE_INIT,
-		txMessages:   make([]*TxMessage, 0),
+		txMessages:   make([]*amqp.TxMessage, 0),
 		txAcks:       make([]*TxAck, 0),
 		consumers:    make(map[string]*Consumer),
 		awaitingAcks: make(map[uint64]UnackedMessage),
@@ -444,7 +443,7 @@ func (channel *Channel) shutdown() {
 		unacked.consumer.queue.readd(unacked.msg)
 		// this probably isn't needed, but for debugging purposes it's nice to
 		// ensure that all the active counts/sizes get back to 0
-		var size = unacked.msg.size()
+		var size = messageSize(unacked.msg)
 		unacked.consumer.decrActive(1, size)
 		channel.decrActive(1, size)
 	}
@@ -471,15 +470,27 @@ func (channel *Channel) sendMethod(method amqp.MethodFrame) {
 }
 
 // Send a method frame out to the client
-func (channel *Channel) sendContent(method amqp.MethodFrame, message *Message) {
+func (channel *Channel) sendContent(method amqp.MethodFrame, message *amqp.Message) {
 	channel.sendLock.Lock()
 	defer channel.sendLock.Unlock()
-	// deliver
+	// encode header
+	var buf = bytes.NewBuffer(make([]byte, 0, 20)) // todo: don't I know the size?
+	amqp.WriteShort(buf, message.Header.ContentClass)
+	amqp.WriteShort(buf, message.Header.ContentWeight)
+	amqp.WriteLonglong(buf, message.Header.ContentBodySize)
+	var propBuf = bytes.NewBuffer(make([]byte, 0, 20))
+	flags, err := message.Header.Properties.WriteProps(propBuf)
+	if err != nil {
+		panic("Error writing header!")
+	}
+	amqp.WriteShort(buf, flags)
+	buf.Write(propBuf.Bytes())
+	// Send method
 	channel.sendMethod(method)
-	// header
-	channel.outgoing <- &amqp.WireFrame{uint8(amqp.FrameHeader), channel.id, message.header.AsBytes}
-	// body
-	for _, b := range message.payload {
+	// Send header
+	channel.outgoing <- &amqp.WireFrame{uint8(amqp.FrameHeader), channel.id, buf.Bytes()}
+	// Send body
+	for _, b := range message.Payload {
 		b.Channel = channel.id
 		channel.outgoing <- b
 	}
@@ -491,19 +502,18 @@ func (channel *Channel) handleContentHeader(frame *amqp.WireFrame) {
 		fmt.Println("Unexpected content header frame!")
 		return
 	}
-	if channel.currentMessage.header != nil {
+	if channel.currentMessage.Header != nil {
 		// TODO: error
 		fmt.Println("Unexpected content header frame! Already saw header")
 	}
 	var headerFrame = &amqp.ContentHeaderFrame{}
 	var err = headerFrame.Read(bytes.NewReader(frame.Payload))
-	headerFrame.AsBytes = frame.Payload
 	if err != nil {
 		// TODO: error
 		fmt.Println("Error parsing header frame: " + err.Error())
 	}
 
-	channel.currentMessage.header = headerFrame
+	channel.currentMessage.Header = headerFrame
 }
 
 func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
@@ -511,17 +521,17 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
 		// TODO: error
 		fmt.Println("Unexpected content body frame. No method content-having method called yet!")
 	}
-	if channel.currentMessage.header == nil {
+	if channel.currentMessage.Header == nil {
 		// TODO: error
 		fmt.Println("Unexpected content body frame! No header yet")
 	}
-	channel.currentMessage.payload = append(channel.currentMessage.payload, frame)
+	channel.currentMessage.Payload = append(channel.currentMessage.Payload, frame)
 	// TODO: store this on message
 	var size = uint64(0)
-	for _, body := range channel.currentMessage.payload {
+	for _, body := range channel.currentMessage.Payload {
 		size += uint64(len(body.Payload))
 	}
-	if size < channel.currentMessage.header.ContentBodySize {
+	if size < channel.currentMessage.Header.ContentBodySize {
 		return
 	}
 
@@ -529,16 +539,16 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
 	var server = channel.server
 	var message = channel.currentMessage
 
-	exchange, _ := server.exchanges[message.method.Exchange]
+	exchange, _ := server.exchanges[message.Method.Exchange]
 
 	if channel.txMode {
 		// TxMode, add the messages to a list
 		queues := exchange.queuesForPublish(server, channel, channel.currentMessage)
 		channel.txLock.Lock()
 		for queueName, _ := range queues {
-			var txmsg = &TxMessage{
-				msg:       message,
-				queueName: queueName,
+			var txmsg = &amqp.TxMessage{
+				Msg:       message,
+				QueueName: queueName,
 			}
 			channel.txMessages = append(channel.txMessages, txmsg)
 		}

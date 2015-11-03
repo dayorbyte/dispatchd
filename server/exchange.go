@@ -95,12 +95,12 @@ func exchangeTypeToName(et extype) string {
 	}
 }
 
-func (exchange *Exchange) queuesForPublish(server *Server, channel *Channel, msg *Message) map[string]*Queue {
+func (exchange *Exchange) queuesForPublish(server *Server, channel *Channel, msg *amqp.Message) map[string]*Queue {
 	var queues = make(map[string]*Queue)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
-			if binding.matchDirect(msg.method) {
+			if binding.matchDirect(msg.Method) {
 				var _, alreadySeen = queues[binding.queueName]
 				if alreadySeen {
 					continue
@@ -114,7 +114,7 @@ func (exchange *Exchange) queuesForPublish(server *Server, channel *Channel, msg
 		}
 	case exchange.extype == EX_TYPE_FANOUT:
 		for _, binding := range exchange.bindings {
-			if binding.matchFanout(msg.method) {
+			if binding.matchFanout(msg.Method) {
 				var _, alreadySeen = queues[binding.queueName]
 				if alreadySeen {
 					continue
@@ -128,7 +128,7 @@ func (exchange *Exchange) queuesForPublish(server *Server, channel *Channel, msg
 		}
 	case exchange.extype == EX_TYPE_TOPIC:
 		for _, binding := range exchange.bindings {
-			if binding.matchTopic(msg.method) {
+			if binding.matchTopic(msg.Method) {
 				var _, alreadySeen = queues[binding.queueName]
 				if alreadySeen {
 					continue
@@ -150,12 +150,12 @@ func (exchange *Exchange) queuesForPublish(server *Server, channel *Channel, msg
 	return queues
 }
 
-func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message) {
+func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Message) {
 	// Concurrency note: Since there is no lock we can, technically, have messages
 	// published after the exchange has been closed. These couldn't be on the same
 	// channel as the close is happening on, so that seems justifiable.
 	if exchange.closed {
-		if msg.method.Mandatory || msg.method.Immediate {
+		if msg.Method.Mandatory || msg.Method.Immediate {
 			exchange.returnMessage(channel, msg, 313, "Exchange closed, cannot route to queues or consumers")
 		}
 		return
@@ -164,7 +164,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 
 	if len(queues) == 0 {
 		// If we got here the message was unroutable.
-		if msg.method.Mandatory || msg.method.Immediate {
+		if msg.Method.Mandatory || msg.Method.Immediate {
 			exchange.returnMessage(channel, msg, 313, "No queues available")
 		}
 	}
@@ -172,23 +172,23 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *Message
 	// iteration order.
 	var consumed = false
 	for _, queue := range queues {
-		if msg.method.Immediate {
+		if msg.Method.Immediate {
 			consumed = queue.consumeImmediate(msg) || consumed
 		} else {
 			queue.add(msg)
 		}
 	}
-	if !consumed && msg.method.Immediate {
+	if !consumed && msg.Method.Immediate {
 		fmt.Println("Returning message")
 		exchange.returnMessage(channel, msg, 313, "No consumers available for immediate message")
 	}
 
 }
 
-func (exchange *Exchange) returnMessage(channel *Channel, msg *Message, code uint16, text string) {
+func (exchange *Exchange) returnMessage(channel *Channel, msg *amqp.Message, code uint16, text string) {
 	channel.sendContent(&amqp.BasicReturn{
 		Exchange:   exchange.name,
-		RoutingKey: msg.method.RoutingKey,
+		RoutingKey: msg.Method.RoutingKey,
 		ReplyCode:  code,
 		ReplyText:  text,
 	}, msg)
