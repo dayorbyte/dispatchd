@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"sync"
 )
@@ -97,7 +96,6 @@ func (consumer *Consumer) ping() {
 }
 
 func (consumer *Consumer) consume(id uint16) {
-	fmt.Printf("[C:%s#%d]Starting consumer\n", consumer.consumerTag, id)
 	consumer.queue.maybeReady <- false
 	for _ = range consumer.incoming {
 		consumer.consumeOne()

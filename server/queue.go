@@ -161,7 +161,6 @@ func (q *Queue) delete(ifUnused bool, ifEmpty bool) (uint32, error) {
 
 func (q *Queue) readd(message *amqp.Message) {
 	// TODO: if there is a consumer available, dispatch
-	fmt.Println("Re-adding queue message!")
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	// this method is only called when we get a nack or we shut down a channel,
@@ -180,7 +179,6 @@ func (q *Queue) removeConsumer(consumerTag string) {
 	// remove from list
 	for i, c := range q.consumers {
 		if c.consumerTag == consumerTag {
-			fmt.Printf("Found consumer %s\n", consumerTag)
 			q.consumers = append(q.consumers[:i], q.consumers[i+1:]...)
 		}
 	}
@@ -225,7 +223,6 @@ func (q *Queue) cancelConsumers() {
 }
 
 func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16, error) {
-	fmt.Printf("Adding consumer\n")
 	if q.closed {
 		return 0, nil
 	}

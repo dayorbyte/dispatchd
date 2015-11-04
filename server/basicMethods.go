@@ -45,7 +45,6 @@ func (channel *Channel) basicRecover(method *amqp.BasicRecover) error {
 }
 
 func (channel *Channel) basicNack(method *amqp.BasicNack) error {
-	fmt.Println("Handling BasicNack")
 	var ok = false
 	if method.Multiple {
 		ok = channel.nackBelow(method.DeliveryTag, method.Requeue, false)
@@ -104,7 +103,6 @@ func (channel *Channel) basicCancel(method *amqp.BasicCancel) error {
 		return nil
 	}
 
-	fmt.Println("Handling BasicCancel")
 	if !method.NoWait {
 		channel.sendMethod(&amqp.BasicCancelOk{method.ConsumerTag})
 	}
@@ -116,7 +114,6 @@ func (channel *Channel) basicCancelOk(method *amqp.BasicCancelOk) error {
 	var classId, methodId = method.MethodIdentifier()
 	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
 
-	fmt.Println("Handling BasicCancelOk")
 	return nil
 }
 
@@ -156,7 +153,6 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) error {
 }
 
 func (channel *Channel) basicAck(method *amqp.BasicAck) error {
-	// fmt.Println("Handling BasicAck")
 	var ok = false
 	if method.Multiple {
 		ok = channel.ackBelow(method.DeliveryTag, false)
@@ -172,7 +168,6 @@ func (channel *Channel) basicAck(method *amqp.BasicAck) error {
 }
 
 func (channel *Channel) basicReject(method *amqp.BasicReject) error {
-	fmt.Printf("Handling BasicReject: %d\n", method.DeliveryTag)
 	if !channel.nackOne(method.DeliveryTag, method.Requeue, false) {
 		var classId, methodId = method.MethodIdentifier()
 		var msg = fmt.Sprintf("Precondition Failed: Delivery Tag not found: %d", method.DeliveryTag)
