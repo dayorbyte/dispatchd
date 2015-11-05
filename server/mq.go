@@ -7,6 +7,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"runtime"
 )
 
 func handleConnection(server *Server, conn net.Conn) {
@@ -14,6 +15,7 @@ func handleConnection(server *Server, conn net.Conn) {
 }
 
 func main() {
+	runtime.SetBlockProfileRate(1)
 	var server = NewServer("mq.db")
 	ln, err := net.Listen("tcp", ":1111")
 	if err != nil {
