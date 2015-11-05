@@ -112,7 +112,8 @@ func (q *Queue) add(message *amqp.Message) {
 	if message.Method.Immediate {
 		panic("Queue.add cannot be called with an Immediate message!")
 	}
-
+	// NOTE: I tried using consumeImmediate before adding things to the queue,
+	// but it caused a pretty significant slowdown.
 	q.queueLock.Lock()
 	if !q.closed {
 		q.statCount += 1
