@@ -19,7 +19,8 @@ import (
 type NodePointer struct {
 }
 
-type Queue struct {
+type ConcurrentQueue struct {
+  size int64
   head *Node
   tail *Node
 }
@@ -29,27 +30,47 @@ type Node struct {
   next *Node
 }
 
-func (q *Queue) PushBack(value interface{}) {
+func NewConcurrentQueue() *ConcurrentQueue {
+  q := ConcurrentQueue{}
+  node := &Node{}
+  q.head = node
+  q.tail = node
+  return &q
+}
+
+func (q *ConcurrentQueue) Len() int64 {
+  return q.size
+}
+
+func (q *ConcurrentQueue) RealLength() (l int64) {
+  // NOT THREAD SAFE
+  if q.tail == q.head {
+    return 0
+  }
+  for cur := q.tail; cur != nil; cur = cur.next {
+    l += 1
+  }
+  return
+}
+
+func (q *ConcurrentQueue) PushBack(value interface{}) {
   node := &Node{value: value}
-  node.next = nil
   var tail *Node =  nil
   for {
     tail = q.tail
     next := tail.next
     if tail == q.tail {
       if next == nil {
-        unsafePointer := unsafe.Pointer(tail.next)
         cas := atomic.CompareAndSwapPointer(
-          &unsafePointer,
+          (*unsafe.Pointer)(unsafe.Pointer(&tail.next)),
           unsafe.Pointer(next),
           unsafe.Pointer(node),
         )
         if cas {
           break
         } else {
-          unsafePointer := unsafe.Pointer(q.tail)
           atomic.CompareAndSwapPointer(
-            &unsafePointer,
+            (*unsafe.Pointer)(unsafe.Pointer(&q.tail)),
             unsafe.Pointer(tail),
             unsafe.Pointer(next),
           )
@@ -57,15 +78,15 @@ func (q *Queue) PushBack(value interface{}) {
       }
     }
   }
-  unsafePointer := unsafe.Pointer(q.tail)
   atomic.CompareAndSwapPointer(
-    &unsafePointer,
+    (*unsafe.Pointer)(unsafe.Pointer(&q.tail)),
     unsafe.Pointer(tail),
     unsafe.Pointer(node),
   )
+  atomic.AddInt64(&q.size, 1)
 }
 
-func (q *Queue) PopFront() (value interface{}, success bool) {
+func (q *ConcurrentQueue) PopFront() (value interface{}, success bool) {
   for {
     head := q.head
     tail := q.tail
@@ -75,25 +96,25 @@ func (q *Queue) PopFront() (value interface{}, success bool) {
         if next == nil {
           return nil, false
         }
-        unsafePointer := unsafe.Pointer(q.tail)
+        // unsafePointer := unsafe.Pointer(q.tail)
         atomic.CompareAndSwapPointer(
-          &unsafePointer,
+          (*unsafe.Pointer)(unsafe.Pointer(&q.tail)),
           unsafe.Pointer(tail),
           unsafe.Pointer(next),
         )
       } else {
         value = next.value
-        unsafePointer := unsafe.Pointer(q.head)
+        // unsafePointer := unsafe.Pointer(q.head)
         cas := atomic.CompareAndSwapPointer(
-          &unsafePointer,
+          (*unsafe.Pointer)(unsafe.Pointer(&q.head)),
           unsafe.Pointer(head),
           unsafe.Pointer(next),
         )
         if cas {
-          break
+          atomic.AddInt64(&q.size, -1)
+          return value, true
         }
       }
     }
   }
-  return
 }
