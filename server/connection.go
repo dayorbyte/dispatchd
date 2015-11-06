@@ -53,7 +53,7 @@ func (conn *AMQPConnection) MarshalJSON() ([]byte, error) {
 
 func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
 	return &AMQPConnection{
-		id:            server.nextConnId(),
+		id:            nextId(),
 		network:       network,
 		channels:      make(map[uint16]*Channel),
 		outgoing:      make(chan *amqp.WireFrame),

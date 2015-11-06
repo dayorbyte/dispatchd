@@ -19,7 +19,6 @@ type Server struct {
 	queues     map[string]*Queue
 	bindings   []*Binding
 	idLock     sync.Mutex
-	nextId     int64
 	conns      map[int64]*AMQPConnection
 	db         *bolt.DB
 	serverLock sync.Mutex
@@ -486,14 +485,6 @@ func (server *Server) deleteExchange(method *amqp.ExchangeDelete) (uint16, error
 	// associated with because they are stored on the exchange.
 	delete(server.exchanges, method.Exchange)
 	return 0, nil
-}
-
-func (server *Server) nextConnId() int64 {
-	server.idLock.Lock()
-	var id = server.nextId
-	server.nextId += 1
-	server.idLock.Unlock()
-	return id
 }
 
 func (server *Server) deregisterConnection(id int64) {
