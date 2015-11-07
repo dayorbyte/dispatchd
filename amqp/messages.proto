@@ -13,15 +13,23 @@ message WireFrame {
   optional bytes payload    = 3 ;
 }
 
+message IndexMessage {
+  // The ID of the underlying message
+  optional int64 id = 1;
+  // The number of outstanding references to the message
+  optional uint32 refs = 2;
+  optional bool durable = 3;
+}
 
 message Message {
-  optional amqp.ContentHeaderFrame    header      = 1;
-  repeated WireFrame                  payload     = 2;
-  optional string                     exchange    = 3 [(gogoproto.nullable) = false];
-  optional string                     key         = 4 [(gogoproto.nullable) = false];
-  optional amqp.BasicPublish          method      = 5;
-  optional uint32                     redelivered = 6 [(gogoproto.nullable) = false];
-  optional int64                      local_id     = 7 [(gogoproto.nullable) = false];
+  optional int64                      id          = 1;
+  optional amqp.ContentHeaderFrame    header      = 2;
+  repeated WireFrame                  payload     = 3;
+  optional string                     exchange    = 4 [(gogoproto.nullable) = false];
+  optional string                     key         = 5 [(gogoproto.nullable) = false];
+  optional amqp.BasicPublish          method      = 6;
+  optional uint32                     redelivered = 7 [(gogoproto.nullable) = false];
+  optional int64                      local_id    = 8 [(gogoproto.nullable) = false];
 }
 
 message ContentHeaderFrame {
@@ -38,10 +46,10 @@ message TxMessage {
 }
 
 message TxAck {
-  optional uint64 id             = 1 [(gogoproto.nullable) = false];
+  optional uint64 tag            = 1 [(gogoproto.nullable) = false];
   optional bool multiple         = 2 [(gogoproto.nullable) = false];
   optional bool nack             = 3 [(gogoproto.nullable) = false];
-  optional bool requeue_nack      = 4 [(gogoproto.nullable) = false];
+  optional bool requeue_nack     = 4 [(gogoproto.nullable) = false];
 }
 
 message UnackedMessage {

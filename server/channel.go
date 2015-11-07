@@ -79,13 +79,13 @@ func (channel *Channel) commitTx() {
 func (channel *Channel) txAckMessage(ack *amqp.TxAck) {
 	switch {
 	case ack.Multiple && !ack.Nack:
-		channel.ackBelow(ack.Id, true)
+		channel.ackBelow(ack.Tag, true)
 	case ack.Multiple && ack.Nack:
-		channel.nackBelow(ack.Id, ack.RequeueNack, true)
+		channel.nackBelow(ack.Tag, ack.RequeueNack, true)
 	case !ack.Multiple && !ack.Nack:
-		channel.ackOne(ack.Id, true)
+		channel.ackOne(ack.Tag, true)
 	case !ack.Multiple && ack.Nack:
-		channel.nackOne(ack.Id, ack.RequeueNack, true)
+		channel.nackOne(ack.Tag, ack.RequeueNack, true)
 	}
 }
 
@@ -170,7 +170,7 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) bool {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
 		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Id:          tag,
+			Tag:         tag,
 			Nack:        false,
 			RequeueNack: false,
 			Multiple:    true,
@@ -209,7 +209,7 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) bool {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
 		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Id:          tag,
+			Tag:         tag,
 			Nack:        false,
 			RequeueNack: false,
 			Multiple:    false,
@@ -235,7 +235,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) bool 
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
 		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Id:          tag,
+			Tag:         tag,
 			Nack:        true,
 			RequeueNack: requeue,
 			Multiple:    true,
@@ -277,7 +277,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
 		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Id:          tag,
+			Tag:         tag,
 			Nack:        true,
 			RequeueNack: requeue,
 			Multiple:    false,
