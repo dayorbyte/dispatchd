@@ -38,7 +38,7 @@ type Queue struct {
 	arguments       *amqp.Table
 	closed          bool
 	objLock         sync.RWMutex
-	queue           *list.List // *Message
+	queue           *list.List // int64
 	queueLock       sync.Mutex
 	consumerLock    sync.RWMutex
 	consumers       []*Consumer // *Consumer
@@ -108,18 +108,14 @@ func (q *Queue) purgeNotThreadSafe() uint32 {
 	return uint32(length)
 }
 
-func (q *Queue) add(message *amqp.Message) bool {
-	// TODO: if there is a consumer available, dispatch
-	if message.Method.Immediate {
-		panic("Queue.add cannot be called with an Immediate message!")
-	}
+func (q *Queue) add(msgId int64) bool {
 	// NOTE: I tried using consumeImmediate before adding things to the queue,
 	// but it caused a pretty significant slowdown.
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	if !q.closed {
 		q.statCount += 1
-		q.queue.PushBack(message)
+		q.queue.PushBack(msgId)
 		select {
 		case q.maybeReady <- true:
 		default:
@@ -164,14 +160,14 @@ func (q *Queue) delete(ifUnused bool, ifEmpty bool) (uint32, error) {
 	return q.purgeNotThreadSafe(), nil
 }
 
-func (q *Queue) readd(message *amqp.Message) {
+func (q *Queue) readd(msg *amqp.Message) {
 	// TODO: if there is a consumer available, dispatch
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	// this method is only called when we get a nack or we shut down a channel,
 	// so it means the message was not acked.
-	message.Redelivered += 1
-	q.queue.PushFront(message)
+	msg.Redelivered += 1
+	q.queue.PushFront(msg.Id)
 	q.maybeReady <- true
 }
 
@@ -295,7 +291,12 @@ func (q *Queue) getOneForced() *amqp.Message {
 	if q.queue.Len() == 0 {
 		return nil
 	}
-	return q.queue.Remove(q.queue.Front()).(*amqp.Message)
+	msgId := q.queue.Remove(q.queue.Front()).(int64)
+	msg, found := q.server.msgStore.messages[msgId]
+	if !found {
+		panic("Message not found!")
+	}
+	return msg
 }
 
 func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.Message {
@@ -306,7 +307,11 @@ func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.Message {
 	if q.queue.Len() == 0 {
 		return nil
 	}
-	var msg = q.queue.Front().Value.(*amqp.Message)
+	var msgId = q.queue.Front().Value.(int64)
+	msg, found := q.server.msgStore.messages[msgId]
+	if !found {
+		panic("Message not found!")
+	}
 	if consumer.noLocal && msg.LocalId == consumer.localId {
 		return nil
 	}

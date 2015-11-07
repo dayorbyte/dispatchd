@@ -9,13 +9,18 @@ import (
 )
 
 type MessageStore struct {
+	// TODO: locks
 	index    map[int64]*amqp.IndexMessage
 	messages map[int64]*amqp.Message
 	db       *bolt.DB
 }
 
 func isDurable(msg *amqp.Message) bool {
-	return *msg.Header.Properties.DeliveryMode == byte(2)
+	if msg == nil {
+		panic("Message is nil(!!!)")
+	}
+	dm := msg.Header.Properties.DeliveryMode
+	return dm != nil && *dm == byte(2)
 }
 
 func NewMessageStore(fileName string) (*MessageStore, error) {
@@ -54,6 +59,61 @@ func (ms *MessageStore) addMessage(msg *amqp.Message, queues []string) error {
 	}
 	ms.index[msg.Id] = im
 	ms.messages[msg.Id] = msg
+	return nil
+}
+
+func (ms *MessageStore) addTxMsg(msgs []*amqp.TxMessage) error {
+	// - Figure out of any messages are durable
+	// - Create IndexMessage instances for each message id
+	anyDurable := false
+	indexMessages := make(map[int64]*amqp.IndexMessage)
+	queuesNamesByMsg := make(map[int64][]string)
+	for _, msg := range msgs {
+		// calc any durable
+		anyDurable = anyDurable || isDurable(msg.Msg)
+
+		// calc index messages
+		im, found := indexMessages[msg.Msg.Id]
+		if !found {
+			im := &amqp.IndexMessage{
+				Id:      msg.Msg.Id,
+				Refs:    0,
+				Durable: isDurable(msg.Msg),
+			}
+			indexMessages[msg.Msg.Id] = im
+
+		}
+		im.Refs += 1
+
+		// calc queues
+		queues, found := queuesNamesByMsg[msg.Msg.Id]
+		if !found {
+			queues = make([]string, 0, 1)
+		}
+		queuesNamesByMsg[msg.Msg.Id] = append(queues, msg.QueueName)
+	}
+
+	// if any are durable, persist those ones
+	if anyDurable {
+		err := ms.db.Update(func(tx *bolt.Tx) error {
+			for _, msg := range msgs {
+				persistMessage(tx, msg.Msg)
+				persistIndexMessage(tx, indexMessages[msg.Msg.Id])
+				for _, q := range queuesNamesByMsg[msg.Msg.Id] {
+					persistQueueMessage(tx, q, msg.Msg.Id)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+	// Add to memory message store
+	for _, msg := range msgs {
+		ms.index[msg.Msg.Id] = indexMessages[msg.Msg.Id]
+		ms.messages[msg.Msg.Id] = msg.Msg
+	}
 	return nil
 }
 

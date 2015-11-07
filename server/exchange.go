@@ -191,7 +191,11 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 	server.msgStore.addMessage(msg, queueNames)
 
 	for name, queue := range queues {
-		if !queue.add(msg) {
+		if !queue.add(msg.Id) {
+			// If we couldn't add it means the queue is closed and we should
+			// remove the ref from the message store. The queue being closed means
+			// it is going away, so worst case if the server dies we have to process
+			// and discard the message on boot.
 			server.msgStore.removeRef(msg.Id, name)
 		}
 	}

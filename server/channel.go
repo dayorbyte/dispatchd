@@ -62,7 +62,7 @@ func (channel *Channel) commitTx() {
 		if !found {
 			continue
 		}
-		queue.add(msg.Msg)
+		queue.add(msg.Msg.Id)
 	}
 	// Acks
 	// todo: remove acked messages from persistent storage in a single
