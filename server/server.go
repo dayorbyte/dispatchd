@@ -22,6 +22,7 @@ type Server struct {
 	conns      map[int64]*AMQPConnection
 	db         *bolt.DB
 	serverLock sync.Mutex
+	msgStore   *MessageStore
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
@@ -42,7 +43,10 @@ func NewServer(dbPath string) *Server {
 		panic(err.Error())
 
 	}
-	// defer db.Close()
+	msgStore, err := NewMessageStore("msg_store.db")
+	if err != nil {
+		panic("Could not create message store!")
+	}
 
 	var server = &Server{
 		exchanges: make(map[string]*Exchange),
@@ -50,6 +54,7 @@ func NewServer(dbPath string) *Server {
 		bindings:  make([]*Binding, 0),
 		conns:     make(map[int64]*AMQPConnection),
 		db:        db,
+		msgStore:  msgStore,
 	}
 
 	server.init()

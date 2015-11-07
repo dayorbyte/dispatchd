@@ -14,6 +14,18 @@ type MessageStore struct {
 	db       *bolt.DB
 }
 
+func NewMessageStore(fileName string) (*MessageStore, error) {
+  db, err := bolt.Open(fileName, 0600, nil)
+  if err != nil {
+    return nil, err
+  }
+  return &MessageStore{
+    index:    make(map[int64]*amqp.IndexMessage),
+    messages: make(map[int64]*amqp.Message),
+    db:       db,
+  }, nil
+}
+
 func (ms *MessageStore) addMessage(msg *amqp.Message, queues []string) error {
 	// TODO: this is for testing durability, pull out the real value from
 	// the header field
