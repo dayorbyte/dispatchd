@@ -15,10 +15,11 @@ message WireFrame {
 
 message IndexMessage {
   // The ID of the underlying message
-  optional int64    id        = 1 [(gogoproto.nullable) = false];
+  optional int64    id              = 1 [(gogoproto.nullable) = false];
   // The number of outstanding references to the message
-  optional int32    refs      = 2 [(gogoproto.nullable) = false];
-  optional bool     durable   = 3 [(gogoproto.nullable) = false];
+  optional int32    refs            = 2 [(gogoproto.nullable) = false];
+  optional bool     durable         = 3 [(gogoproto.nullable) = false];
+  optional int32    deliveryCount   = 4 [(gogoproto.nullable) = false];
 }
 
 message Message {
