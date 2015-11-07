@@ -12,6 +12,7 @@ import (
 
 func NewMessage(method *amqp.BasicPublish, localId int64) *amqp.Message {
 	return &amqp.Message{
+		Id:       nextId(),
 		Method:   method,
 		Exchange: method.Exchange,
 		Key:      method.RoutingKey,
@@ -107,7 +108,7 @@ func (q *Queue) purgeNotThreadSafe() uint32 {
 	return uint32(length)
 }
 
-func (q *Queue) add(message *amqp.Message) {
+func (q *Queue) add(message *amqp.Message) bool {
 	// TODO: if there is a consumer available, dispatch
 	if message.Method.Immediate {
 		panic("Queue.add cannot be called with an Immediate message!")
@@ -115,6 +116,7 @@ func (q *Queue) add(message *amqp.Message) {
 	// NOTE: I tried using consumeImmediate before adding things to the queue,
 	// but it caused a pretty significant slowdown.
 	q.queueLock.Lock()
+	defer q.queueLock.Unlock()
 	if !q.closed {
 		q.statCount += 1
 		q.queue.PushBack(message)
@@ -122,8 +124,10 @@ func (q *Queue) add(message *amqp.Message) {
 		case q.maybeReady <- true:
 		default:
 		}
+		return true
+	} else {
+		return false
 	}
-	q.queueLock.Unlock()
 }
 
 func (q *Queue) consumeImmediate(msg *amqp.Message) bool {

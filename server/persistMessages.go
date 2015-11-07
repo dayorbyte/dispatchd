@@ -14,22 +14,26 @@ type MessageStore struct {
 	db       *bolt.DB
 }
 
+func isDurable(msg *amqp.Message) bool {
+	return *msg.Header.Properties.DeliveryMode == byte(2)
+}
+
 func NewMessageStore(fileName string) (*MessageStore, error) {
-  db, err := bolt.Open(fileName, 0600, nil)
-  if err != nil {
-    return nil, err
-  }
-  return &MessageStore{
-    index:    make(map[int64]*amqp.IndexMessage),
-    messages: make(map[int64]*amqp.Message),
-    db:       db,
-  }, nil
+	db, err := bolt.Open(fileName, 0600, nil)
+	if err != nil {
+		return nil, err
+	}
+	return &MessageStore{
+		index:    make(map[int64]*amqp.IndexMessage),
+		messages: make(map[int64]*amqp.Message),
+		db:       db,
+	}, nil
 }
 
 func (ms *MessageStore) addMessage(msg *amqp.Message, queues []string) error {
 	// TODO: this is for testing durability, pull out the real value from
 	// the header field
-	durable := true
+	durable := isDurable(msg)
 	im := &amqp.IndexMessage{
 		Id:      msg.Id,
 		Refs:    int32(len(queues)),

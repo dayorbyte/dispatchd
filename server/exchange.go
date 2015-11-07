@@ -168,21 +168,33 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 			exchange.returnMessage(channel, msg, 313, "No queues available")
 		}
 	}
-	// This dispatch order will be random because go randomizes map
-	// iteration order.
-	var consumed = false
-	for _, queue := range queues {
-		if msg.Method.Immediate {
+
+	// Immediate messages
+	if msg.Method.Immediate {
+		var consumed = false
+		for _, queue := range queues {
+			// This dispatch order will be random because go randomizes map
+			// iteration order.
 			consumed = queue.consumeImmediate(msg) || consumed
-		} else {
-			queue.add(msg)
 		}
-	}
-	if !consumed && msg.Method.Immediate {
-		fmt.Println("Returning message")
-		exchange.returnMessage(channel, msg, 313, "No consumers available for immediate message")
+		if !consumed {
+			exchange.returnMessage(channel, msg, 313, "No consumers available for immediate message")
+		}
+		return
 	}
 
+	// Add the message to the message store along with the queues we're about to add it to
+	queueNames := make([]string, len(queues))
+	for k, _ := range queues {
+		queueNames = append(queueNames, k)
+	}
+	server.msgStore.addMessage(msg, queueNames)
+
+	for name, queue := range queues {
+		if !queue.add(msg) {
+			server.msgStore.removeRef(msg.Id, name)
+		}
+	}
 }
 
 func (exchange *Exchange) returnMessage(channel *Channel, msg *amqp.Message, code uint16, text string) {
