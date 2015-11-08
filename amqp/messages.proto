@@ -33,6 +33,11 @@ message Message {
   optional int64                      local_id    = 8 [(gogoproto.nullable) = false];
 }
 
+message QueueMessage {
+  optional int64 id            = 1 [(gogoproto.nullable) = false];
+  optional int32 deliveryCount = 2 [(gogoproto.nullable) = false];
+}
+
 message ContentHeaderFrame {
   optional uint32  content_class      = 1 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
   optional uint32  content_weight     = 2 [(gogoproto.casttype) = "uint16", (gogoproto.nullable) = false];
