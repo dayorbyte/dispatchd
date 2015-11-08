@@ -35,39 +35,23 @@ func NewMessageStore(fileName string) (*MessageStore, error) {
 	}, nil
 }
 
-func (ms *MessageStore) addMessage(msg *amqp.Message, queues []string) error {
-	// TODO: this is for testing durability, pull out the real value from
-	// the header field
-	durable := isDurable(msg)
-	im := &amqp.IndexMessage{
-		Id:      msg.Id,
-		Refs:    int32(len(queues)),
-		Durable: durable,
+func (ms *MessageStore) addMessage(msg *amqp.Message, queues []string) (map[string][]*amqp.QueueMessage, error) {
+  msgs := make([]*amqp.TxMessage, 0, len(queues))
+	for _, q := range queues {
+		msgs = append(msgs, &amqp.TxMessage{
+      Msg: msg,
+      QueueName: q,
+    })
 	}
-	if durable {
-		err := ms.db.Update(func(tx *bolt.Tx) error {
-			persistMessage(tx, msg)
-			persistIndexMessage(tx, im)
-			for _, q := range queues {
-				persistQueueMessage(tx, q, msg.Id)
-			}
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-	}
-	ms.index[msg.Id] = im
-	ms.messages[msg.Id] = msg
-	return nil
+  return ms.addTxMsg(msgs)
 }
 
-func (ms *MessageStore) addTxMsg(msgs []*amqp.TxMessage) error {
+func (ms *MessageStore) addTxMsg(msgs []*amqp.TxMessage) (map[string][]*amqp.QueueMessage, error) {
 	// - Figure out of any messages are durable
 	// - Create IndexMessage instances for each message id
 	anyDurable := false
 	indexMessages := make(map[int64]*amqp.IndexMessage)
-	queuesNamesByMsg := make(map[int64][]string)
+	queueMessages := make(map[string][]*amqp.QueueMessage)
 	for _, msg := range msgs {
 		// calc any durable
 		anyDurable = anyDurable || isDurable(msg.Msg)
@@ -86,27 +70,35 @@ func (ms *MessageStore) addTxMsg(msgs []*amqp.TxMessage) error {
 		im.Refs += 1
 
 		// calc queues
-		queues, found := queuesNamesByMsg[msg.Msg.Id]
+		queues, found := queueMessages[msg.QueueName]
 		if !found {
-			queues = make([]string, 0, 1)
+			queues = make([]*amqp.QueueMessage, 0, 1)
 		}
-		queuesNamesByMsg[msg.Msg.Id] = append(queues, msg.QueueName)
+    qm := &amqp.QueueMessage{
+      Id: msg.Msg.Id,
+      DeliveryCount: 0,
+    }
+		queueMessages[msg.QueueName] = append(queues, qm)
 	}
 
 	// if any are durable, persist those ones
 	if anyDurable {
 		err := ms.db.Update(func(tx *bolt.Tx) error {
+      // Save messages to content/index stores
 			for _, msg := range msgs {
 				persistMessage(tx, msg.Msg)
 				persistIndexMessage(tx, indexMessages[msg.Msg.Id])
-				for _, q := range queuesNamesByMsg[msg.Msg.Id] {
-					persistQueueMessage(tx, q, msg.Msg.Id)
-				}
 			}
+      // Add messages to queues
+      for q, qms := range queueMessages {
+        for _, qm := range qms {
+          persistQueueMessage(tx, q, qm.Id)
+        }
+      }
 			return nil
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	// Add to memory message store
@@ -114,7 +106,7 @@ func (ms *MessageStore) addTxMsg(msgs []*amqp.TxMessage) error {
 		ms.index[msg.Msg.Id] = indexMessages[msg.Msg.Id]
 		ms.messages[msg.Msg.Id] = msg.Msg
 	}
-	return nil
+	return queueMessages, nil
 }
 
 func (ms *MessageStore) removeRef(msgId int64, queueName string) error {

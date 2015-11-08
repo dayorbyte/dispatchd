@@ -188,7 +188,11 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 	for k, _ := range queues {
 		queueNames = append(queueNames, k)
 	}
-	server.msgStore.addMessage(msg, queueNames)
+	_, err := server.msgStore.addMessage(msg, queueNames)
+	if err != nil {
+		channel.channelErrorWithMethod(500, err.Error(), 60, 40)
+		return
+	}
 
 	for name, queue := range queues {
 		if !queue.add(msg.Id) {
