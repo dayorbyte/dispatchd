@@ -137,14 +137,22 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) error {
 		var classId, methodId = method.MethodIdentifier()
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
-	var msg = queue.getOneForced()
-	if msg == nil {
+	var qm = queue.getOneForced()
+	if qm == nil {
 		channel.sendMethod(&amqp.BasicGetEmpty{})
 		return nil
 	}
+
+	msg, err := channel.server.msgStore.getAndDecrRef(qm.Id, queue.name)
+	if err != nil {
+		// TODO: return 500 error
+		channel.sendMethod(&amqp.BasicGetEmpty{})
+		return nil
+	}
+
 	channel.sendContent(&amqp.BasicGetOk{
 		DeliveryTag:  channel.nextDeliveryTag(),
-		Redelivered:  msg.Redelivered > 0,
+		Redelivered:  qm.DeliveryCount > 0,
 		Exchange:     msg.Exchange,
 		RoutingKey:   msg.Key,
 		MessageCount: 1,

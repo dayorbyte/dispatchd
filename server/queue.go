@@ -108,14 +108,14 @@ func (q *Queue) purgeNotThreadSafe() uint32 {
 	return uint32(length)
 }
 
-func (q *Queue) add(msgId int64) bool {
+func (q *Queue) add(qm *amqp.QueueMessage) bool {
 	// NOTE: I tried using consumeImmediate before adding things to the queue,
 	// but it caused a pretty significant slowdown.
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	if !q.closed {
 		q.statCount += 1
-		q.queue.PushBack(msgId)
+		q.queue.PushBack(qm)
 		select {
 		case q.maybeReady <- true:
 		default:
@@ -126,7 +126,7 @@ func (q *Queue) add(msgId int64) bool {
 	}
 }
 
-func (q *Queue) consumeImmediate(msg *amqp.Message) bool {
+func (q *Queue) consumeImmediate(msg *amqp.QueueMessage) bool {
 	// TODO: randomize or round-robin through consumers
 	q.consumerLock.RLock()
 	defer q.consumerLock.RUnlock()
@@ -160,14 +160,14 @@ func (q *Queue) delete(ifUnused bool, ifEmpty bool) (uint32, error) {
 	return q.purgeNotThreadSafe(), nil
 }
 
-func (q *Queue) readd(msg *amqp.Message) {
+func (q *Queue) readd(queueName string, msg *amqp.QueueMessage) {
 	// TODO: if there is a consumer available, dispatch
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	// this method is only called when we get a nack or we shut down a channel,
 	// so it means the message was not acked.
-	msg.Redelivered += 1
-	q.queue.PushFront(msg.Id)
+	q.server.msgStore.incrDeliveryCount(queueName, msg)
+	q.queue.PushFront(msg)
 	q.maybeReady <- true
 }
 
@@ -285,21 +285,17 @@ func (q *Queue) processOne() {
 	}
 }
 
-func (q *Queue) getOneForced() *amqp.Message {
+func (q *Queue) getOneForced() *amqp.QueueMessage {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	if q.queue.Len() == 0 {
 		return nil
 	}
-	msgId := q.queue.Remove(q.queue.Front()).(int64)
-	msg, found := q.server.msgStore.messages[msgId]
-	if !found {
-		panic("Message not found!")
-	}
-	return msg
+	qMsg := q.queue.Remove(q.queue.Front()).(*amqp.QueueMessage)
+	return qMsg
 }
 
-func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.Message {
+func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.QueueMessage {
 	// Get one message. If there is a message try to acquire the resources
 	// from the channel.
 	q.queueLock.Lock()
@@ -307,17 +303,24 @@ func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.Message {
 	if q.queue.Len() == 0 {
 		return nil
 	}
-	var msgId = q.queue.Front().Value.(int64)
-	msg, found := q.server.msgStore.messages[msgId]
+
+	var qm = q.queue.Front().Value.(*amqp.QueueMessage)
+	// Note: we get the message here, but we don't return it since we
+	// 			 aren't taking responsibility for it. The Consumer can
+	//       get it from the MessageStore later if it wants to keep it,
+	//       and if the server goes down in that time the message will
+	//       still be in the queue.
+	msg, found := q.server.msgStore.Get(qm.Id)
 	if !found {
 		panic("Message not found!")
 	}
+
 	if consumer.noLocal && msg.LocalId == consumer.localId {
 		return nil
 	}
 	if channel.acquireResources(1, messageSize(msg)) {
 		q.queue.Remove(q.queue.Front())
-		return msg
+		return qm
 	}
 	return nil
 }

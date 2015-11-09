@@ -10,7 +10,7 @@ message WireFrame {
   option (gogoproto.goproto_getters) = false;
   optional uint32 frameType = 1 [(gogoproto.nullable) = false, (gogoproto.casttype) = "uint8"];
   optional uint32 channel   = 2 [(gogoproto.nullable) = false, (gogoproto.casttype) = "uint16"];
-  optional bytes payload    = 3 ;
+  optional bytes  payload   = 3 ;
 }
 
 message IndexMessage {
@@ -36,6 +36,7 @@ message Message {
 message QueueMessage {
   optional int64 id            = 1 [(gogoproto.nullable) = false];
   optional int32 deliveryCount = 2 [(gogoproto.nullable) = false];
+  optional bool  durable       = 3 [(gogoproto.nullable) = false];
 }
 
 message ContentHeaderFrame {
@@ -47,19 +48,19 @@ message ContentHeaderFrame {
 }
 
 message TxMessage {
-  optional Message msg = 1;
-  optional string queue_name = 2 [(gogoproto.nullable) = false];
+  optional Message  msg = 1;
+  optional string   queue_name = 2 [(gogoproto.nullable) = false];
 }
 
 message TxAck {
   optional uint64 tag            = 1 [(gogoproto.nullable) = false];
-  optional bool multiple         = 2 [(gogoproto.nullable) = false];
-  optional bool nack             = 3 [(gogoproto.nullable) = false];
-  optional bool requeue_nack     = 4 [(gogoproto.nullable) = false];
+  optional bool   multiple         = 2 [(gogoproto.nullable) = false];
+  optional bool   nack             = 3 [(gogoproto.nullable) = false];
+  optional bool   requeue_nack     = 4 [(gogoproto.nullable) = false];
 }
 
 message UnackedMessage {
-  optional string  consumer_tag  = 1 [(gogoproto.nullable) = false];
-  optional Message msg           = 2;
-  optional string  queue_name    = 3 [(gogoproto.nullable) = false];
+  optional string       consumer_tag  = 1 [(gogoproto.nullable) = false];
+  optional QueueMessage msg      = 2;
+  optional string       queue_name    = 3 [(gogoproto.nullable) = false];
 }

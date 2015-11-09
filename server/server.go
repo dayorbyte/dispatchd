@@ -31,9 +31,11 @@ func (server *Server) MarshalJSON() ([]byte, error) {
 		conns[fmt.Sprintf("%d", id)] = value
 	}
 	return json.Marshal(map[string]interface{}{
-		"exchanges":   server.exchanges,
-		"queues":      server.queues,
-		"connections": conns,
+		"exchanges":     server.exchanges,
+		"queues":        server.queues,
+		"connections":   conns,
+		"msgCount":      len(server.msgStore.messages),
+		"msgIndexCount": len(server.msgStore.index),
 	})
 }
 

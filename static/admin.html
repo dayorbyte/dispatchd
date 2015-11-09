@@ -12,6 +12,9 @@
   </head>
   <body ng-app="adminApp">
     <div ng-controller="ServerController as sc" class="container-fluid">
+      <h2>Server</h2>
+      <div>Message Store Size: {{server.msgCount}}</div>
+      <div>Message Index Size: {{server.msgIndexCount}}</div>
       <h2>Exchanges</h2>
       <div class="panel panel-default" ng-repeat="(name, exchange) in server.exchanges">
         <div class="panel-heading">

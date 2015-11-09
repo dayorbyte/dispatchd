@@ -103,6 +103,7 @@ func (consumer *Consumer) consume(id uint16) {
 }
 
 func (consumer *Consumer) consumeOne() {
+	var err error
 	// Check local limit
 	consumer.consumeLock.Lock()
 	defer consumer.consumeLock.Unlock()
@@ -110,35 +111,60 @@ func (consumer *Consumer) consumeOne() {
 		return
 	}
 	// Try to get message/check channel limit
-	var msg = consumer.queue.getOne(consumer.channel, consumer)
-	if msg == nil {
+	var qm = consumer.queue.getOne(consumer.channel, consumer)
+	if qm == nil {
 		return
 	}
 	var tag uint64 = 0
+	var msg *amqp.Message
 	if !consumer.noAck {
-		tag = consumer.channel.addUnackedMessage(consumer, msg)
+		tag = consumer.channel.addUnackedMessage(consumer, qm)
+		// We get the message out without decrementing the ref because we're
+		// expecting an ack. The ack code will decrement.
+		msg, found := consumer.channel.server.msgStore.Get(qm.Id)
+		if !found {
+			panic("Integrity error, message id not found")
+		}
 		consumer.incrActive(1, messageSize(msg))
+	} else {
+		msg, err = consumer.channel.server.msgStore.getAndDecrRef(qm.Id, consumer.queue.name)
+		if err != nil {
+			panic("Error getting queue message")
+		}
 	}
 	consumer.channel.sendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
 		DeliveryTag: tag,
-		Redelivered: msg.Redelivered > 0,
+		Redelivered: qm.DeliveryCount > 0,
 		Exchange:    msg.Exchange,
 		RoutingKey:  msg.Key,
 	}, msg)
 	consumer.statCount += 1
 }
 
-func (consumer *Consumer) consumeImmediate(msg *amqp.Message) bool {
+func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage) bool {
+	var err error
 	consumer.consumeLock.Lock()
 	defer consumer.consumeLock.Unlock()
 	if !consumer.consumerReady() {
 		return false
 	}
 	var tag uint64 = 0
+	var msg *amqp.Message
 	if !consumer.noAck {
-		tag = consumer.channel.addUnackedMessage(consumer, msg)
+		tag = consumer.channel.addUnackedMessage(consumer, qm)
+		// We get the message out without decrementing the ref because we're
+		// expecting an ack. The ack code will decrement.
+		msg, found := consumer.channel.server.msgStore.Get(qm.Id)
+		if !found {
+			panic("Integrity error, message id not found")
+		}
 		consumer.incrActive(1, messageSize(msg))
+	} else {
+		msg, err = consumer.channel.server.msgStore.getAndDecrRef(qm.Id, consumer.queue.name)
+		if err != nil {
+			panic("Error getting queue message")
+		}
 	}
 	consumer.channel.sendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,

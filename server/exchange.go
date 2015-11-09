@@ -169,13 +169,30 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 		}
 	}
 
+	var queueNames = make([]string, 0, len(queues))
+	for k, _ := range queues {
+		queueNames = append(queueNames, k)
+	}
+
 	// Immediate messages
 	if msg.Method.Immediate {
 		var consumed = false
-		for _, queue := range queues {
-			// This dispatch order will be random because go randomizes map
-			// iteration order.
-			consumed = queue.consumeImmediate(msg) || consumed
+		// Add message to message store
+		queueMessagesByQueue, err := server.msgStore.addMessage(msg, queueNames)
+		if err != nil {
+			channel.channelErrorWithMethod(500, err.Error(), 60, 40)
+			return
+		}
+		// Try to immediately consumed it
+		for name, queue := range queues {
+			qms := queueMessagesByQueue[name]
+			for _, qm := range qms {
+				var oneConsumed = queue.consumeImmediate(qm)
+				if !oneConsumed {
+					server.msgStore.removeRef(qm.Id, name)
+				}
+				consumed = oneConsumed || consumed
+			}
 		}
 		if !consumed {
 			exchange.returnMessage(channel, msg, 313, "No consumers available for immediate message")
@@ -184,23 +201,22 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 	}
 
 	// Add the message to the message store along with the queues we're about to add it to
-	queueNames := make([]string, len(queues))
-	for k, _ := range queues {
-		queueNames = append(queueNames, k)
-	}
-	_, err := server.msgStore.addMessage(msg, queueNames)
+	queueMessagesByQueue, err := server.msgStore.addMessage(msg, queueNames)
 	if err != nil {
 		channel.channelErrorWithMethod(500, err.Error(), 60, 40)
 		return
 	}
 
 	for name, queue := range queues {
-		if !queue.add(msg.Id) {
-			// If we couldn't add it means the queue is closed and we should
-			// remove the ref from the message store. The queue being closed means
-			// it is going away, so worst case if the server dies we have to process
-			// and discard the message on boot.
-			server.msgStore.removeRef(msg.Id, name)
+		qms := queueMessagesByQueue[name]
+		for _, qm := range qms {
+			if !queue.add(qm) {
+				// If we couldn't add it means the queue is closed and we should
+				// remove the ref from the message store. The queue being closed means
+				// it is going away, so worst case if the server dies we have to process
+				// and discard the message on boot.
+				server.msgStore.removeRef(msg.Id, name)
+			}
 		}
 	}
 }
