@@ -330,7 +330,7 @@ func (props *BasicContentHeaderProperties) ReadProps(flags uint16, reader io.Rea
 	}
 	if MaskContentEncoding&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.ContentEncoding = v
+		props.ContentEncoding = &v
 		if err != nil {
 			return err
 		}
@@ -344,77 +344,77 @@ func (props *BasicContentHeaderProperties) ReadProps(flags uint16, reader io.Rea
 	}
 	if MaskDeliveryMode&flags != 0 {
 		v, err := ReadOctet(reader)
-		*props.DeliveryMode = v
+		props.DeliveryMode = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskPriority&flags != 0 {
 		v, err := ReadOctet(reader)
-		*props.Priority = v
+		props.Priority = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskCorrelationId&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.CorrelationId = v
+		props.CorrelationId = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskReplyTo&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.ReplyTo = v
+		props.ReplyTo = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskExpiration&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.Expiration = v
+		props.Expiration = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskMessageId&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.MessageId = v
+		props.MessageId = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskTimestamp&flags != 0 {
 		v, err := ReadLonglong(reader)
-		*props.Timestamp = v
+		props.Timestamp = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskType&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.Type = v
+		props.Type = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskUserId&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.UserId = v
+		props.UserId = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskAppId&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.AppId = v
+		props.AppId = &v
 		if err != nil {
 			return err
 		}
 	}
 	if MaskReserved&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.Reserved = v
+		props.Reserved = &v
 		if err != nil {
 			return err
 		}
