@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"github.com/boltdb/bolt"
@@ -160,8 +161,7 @@ func (ms *MessageStore) removeRef(msgId int64, queueName string) error {
 	// Update disk
 	if im.Durable {
 		err := ms.db.Update(func(tx *bolt.Tx) error {
-			bId := make([]byte, 8)
-			binary.PutVarint(bId, im.Id)
+			bId := binaryId(im.Id)
 			depersistQueueMessage(tx, queueName, bId)
 			remaining, err := decrIndexMessage(tx, bId)
 			if err != nil {
@@ -237,15 +237,23 @@ func depersistQueueMessage(tx *bolt.Tx, queueName string, bId []byte) error {
 	return content_bucket.Delete(bId)
 }
 
+func binaryId(id int64) []byte {
+	var buf = bytes.NewBuffer(make([]byte, 0, 8))
+	binary.Write(buf, binary.LittleEndian, id)
+	var ret = buf.Bytes()
+	if len(ret) != 8 {
+		panic("Bad bytes!")
+	}
+	return ret
+}
+
 func persistMessage(tx *bolt.Tx, msg *amqp.Message) error {
 	content_bucket, err := tx.CreateBucketIfNotExists([]byte("message_contents"))
 	b, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
-	bId := make([]byte, 8)
-	binary.PutVarint(bId, msg.Id)
-	return content_bucket.Put(bId, b)
+	return content_bucket.Put(binaryId(msg.Id), b)
 }
 
 func persistIndexMessage(tx *bolt.Tx, im *amqp.IndexMessage) error {
@@ -254,9 +262,7 @@ func persistIndexMessage(tx *bolt.Tx, im *amqp.IndexMessage) error {
 	if err != nil {
 		return err
 	}
-	bId := make([]byte, 8)
-	binary.PutVarint(bId, im.Id)
-	return content_bucket.Put(bId, b)
+	return content_bucket.Put(binaryId(im.Id), b)
 }
 
 func persistQueueMessage(tx *bolt.Tx, queueName string, qm *amqp.QueueMessage) error {
@@ -265,11 +271,9 @@ func persistQueueMessage(tx *bolt.Tx, queueName string, qm *amqp.QueueMessage) e
 	if err != nil {
 		return err
 	}
-	bId := make([]byte, 8)
-	binary.PutVarint(bId, qm.Id)
 	protoBytes, err := proto.Marshal(qm)
 	if err != nil {
 		return err
 	}
-	return content_bucket.Put(bId, protoBytes)
+	return content_bucket.Put(binaryId(qm.Id), protoBytes)
 }
