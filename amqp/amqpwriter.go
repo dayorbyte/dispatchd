@@ -103,10 +103,14 @@ func WriteTimestamp(buf io.Writer, timestamp uint64) error {
 }
 
 func WriteTable(writer io.Writer, table *Table) error {
-	var buf = bytes.NewBuffer([]byte{})
+	var buf = bytes.NewBuffer(make([]byte, 0))
 	for _, kv := range table.Table {
-		WriteShortstr(buf, *kv.Key)
-		writeValue(buf, kv.Value)
+		if err := WriteShortstr(buf, *kv.Key); err != nil {
+			return err
+		}
+		if err := writeValue(buf, kv.Value); err != nil {
+			return err
+		}
 	}
 	return WriteLongstr(writer, buf.Bytes())
 }
