@@ -300,7 +300,7 @@ func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.QueueMessage 
 	// from the channel.
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
-	if q.queue.Len() == 0 {
+	if q.queue.Len() == 0 || q.closed {
 		return nil
 	}
 
