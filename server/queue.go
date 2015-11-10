@@ -166,7 +166,7 @@ func (q *Queue) readd(queueName string, msg *amqp.QueueMessage) {
 	defer q.queueLock.Unlock()
 	// this method is only called when we get a nack or we shut down a channel,
 	// so it means the message was not acked.
-	q.server.msgStore.incrDeliveryCount(queueName, msg)
+	q.server.msgStore.IncrDeliveryCount(queueName, msg)
 	q.queue.PushFront(msg)
 	q.maybeReady <- true
 }

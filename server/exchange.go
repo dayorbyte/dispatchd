@@ -178,7 +178,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 	if msg.Method.Immediate {
 		var consumed = false
 		// Add message to message store
-		queueMessagesByQueue, err := server.msgStore.addMessage(msg, queueNames)
+		queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 		if err != nil {
 			channel.channelErrorWithMethod(500, err.Error(), 60, 40)
 			return
@@ -189,7 +189,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 			for _, qm := range qms {
 				var oneConsumed = queue.consumeImmediate(qm)
 				if !oneConsumed {
-					server.msgStore.removeRef(qm.Id, name)
+					server.msgStore.RemoveRef(qm.Id, name)
 				}
 				consumed = oneConsumed || consumed
 			}
@@ -201,7 +201,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 	}
 
 	// Add the message to the message store along with the queues we're about to add it to
-	queueMessagesByQueue, err := server.msgStore.addMessage(msg, queueNames)
+	queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 	if err != nil {
 		channel.channelErrorWithMethod(500, err.Error(), 60, 40)
 		return
@@ -215,7 +215,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 				// remove the ref from the message store. The queue being closed means
 				// it is going away, so worst case if the server dies we have to process
 				// and discard the message on boot.
-				server.msgStore.removeRef(msg.Id, name)
+				server.msgStore.RemoveRef(msg.Id, name)
 			}
 		}
 	}

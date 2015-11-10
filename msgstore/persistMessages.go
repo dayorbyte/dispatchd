@@ -1,4 +1,4 @@
-package main
+package msgstore
 
 import (
 	"bytes"
@@ -16,6 +16,14 @@ type MessageStore struct {
 	db        *bolt.DB
 	msgLock   sync.RWMutex
 	indexLock sync.RWMutex
+}
+
+func (ms *MessageStore) MessageCount() int {
+	return len(ms.messages)
+}
+
+func (ms *MessageStore) IndexCount() int {
+	return len(ms.index)
 }
 
 func isDurable(msg *amqp.Message) bool {
@@ -53,7 +61,7 @@ func (ms *MessageStore) GetIndex(id int64) (msg *amqp.IndexMessage, found bool) 
 
 }
 
-func (ms *MessageStore) addMessage(msg *amqp.Message, queues []string) (map[string][]*amqp.QueueMessage, error) {
+func (ms *MessageStore) AddMessage(msg *amqp.Message, queues []string) (map[string][]*amqp.QueueMessage, error) {
 	msgs := make([]*amqp.TxMessage, 0, len(queues))
 	for _, q := range queues {
 		msgs = append(msgs, &amqp.TxMessage{
@@ -61,10 +69,10 @@ func (ms *MessageStore) addMessage(msg *amqp.Message, queues []string) (map[stri
 			QueueName: q,
 		})
 	}
-	return ms.addTxMessages(msgs)
+	return ms.AddTxMessages(msgs)
 }
 
-func (ms *MessageStore) addTxMessages(msgs []*amqp.TxMessage) (map[string][]*amqp.QueueMessage, error) {
+func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amqp.QueueMessage, error) {
 	// - Figure out of any messages are durable
 	// - Create IndexMessage instances for each message id
 	anyDurable := false
@@ -131,7 +139,7 @@ func (ms *MessageStore) addTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 	return queueMessages, nil
 }
 
-func (ms *MessageStore) incrDeliveryCount(queueName string, qm *amqp.QueueMessage) (err error) {
+func (ms *MessageStore) IncrDeliveryCount(queueName string, qm *amqp.QueueMessage) (err error) {
 	qm.DeliveryCount += 1
 	if qm.Durable {
 		err = ms.db.Update(func(tx *bolt.Tx) error {
@@ -142,18 +150,18 @@ func (ms *MessageStore) incrDeliveryCount(queueName string, qm *amqp.QueueMessag
 	return
 }
 
-func (ms *MessageStore) getAndDecrRef(msgId int64, queueName string) (*amqp.Message, error) {
+func (ms *MessageStore) GetAndDecrRef(msgId int64, queueName string) (*amqp.Message, error) {
 	msg, found := ms.Get(msgId)
 	if !found {
 		panic("Integrity error!")
 	}
-	if err := ms.removeRef(msgId, queueName); err != nil {
+	if err := ms.RemoveRef(msgId, queueName); err != nil {
 		return nil, err
 	}
 	return msg, nil
 }
 
-func (ms *MessageStore) removeRef(msgId int64, queueName string) error {
+func (ms *MessageStore) RemoveRef(msgId int64, queueName string) error {
 	im, found := ms.GetIndex(msgId)
 	if !found {
 		panic("Integrity error: message in queue not in index")

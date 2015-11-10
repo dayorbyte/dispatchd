@@ -143,7 +143,7 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) error {
 		return nil
 	}
 
-	msg, err := channel.server.msgStore.getAndDecrRef(qm.Id, queue.name)
+	msg, err := channel.server.msgStore.GetAndDecrRef(qm.Id, queue.name)
 	if err != nil {
 		// TODO: return 500 error
 		channel.sendMethod(&amqp.BasicGetEmpty{})

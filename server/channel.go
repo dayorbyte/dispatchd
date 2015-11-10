@@ -56,7 +56,7 @@ func (channel *Channel) commitTx() {
 	channel.txLock.Lock()
 	defer channel.txLock.Unlock()
 	// messages
-	queueMessagesByQueue, err := channel.server.msgStore.addTxMessages(channel.txMessages)
+	queueMessagesByQueue, err := channel.server.msgStore.AddTxMessages(channel.txMessages)
 	if err != nil {
 		channel.channelErrorWithMethod(500, err.Error(), 60, 40)
 		return
@@ -74,7 +74,7 @@ func (channel *Channel) commitTx() {
 				// remove the ref from the message store. The queue being closed means
 				// it is going away, so worst case if the server dies we have to process
 				// and discard the message on boot.
-				channel.server.msgStore.removeRef(qm.Id, queueName)
+				channel.server.msgStore.RemoveRef(qm.Id, queueName)
 			}
 		}
 	}
@@ -158,11 +158,11 @@ func (channel *Channel) recover(requeue bool) {
 				var size = messageSize(msg)
 				if cFound {
 					// Consumer exists, try to delivery again
-					channel.server.msgStore.incrDeliveryCount(unacked.QueueName, unacked.Msg)
+					channel.server.msgStore.IncrDeliveryCount(unacked.QueueName, unacked.Msg)
 					consumer.redeliver(tag, msg)
 				} else {
 					// no consumer, drop message
-					channel.server.msgStore.removeRef(unacked.Msg.Id, unacked.QueueName)
+					channel.server.msgStore.RemoveRef(unacked.Msg.Id, unacked.QueueName)
 					consumer.decrActive(1, size)
 				}
 
@@ -209,7 +209,7 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) bool {
 	var count = 0
 	for k, unacked := range channel.awaitingAcks {
 		if k <= tag || tag == 0 {
-			msg, err := channel.server.msgStore.getAndDecrRef(unacked.Msg.Id, unacked.QueueName)
+			msg, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
 			if err != nil {
 				channel.channelErrorWithMethod(500, err.Error(), 0, 0)
 				return false
@@ -248,7 +248,7 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) bool {
 		})
 		return true
 	}
-	msg, err := channel.server.msgStore.getAndDecrRef(unacked.Msg.Id, unacked.QueueName)
+	msg, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
 	if err != nil {
 		channel.channelErrorWithMethod(500, err.Error(), 0, 0)
 		return false
@@ -283,7 +283,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) bool 
 	for k, unacked := range channel.awaitingAcks {
 		fmt.Printf("%d(%d), ", k, tag)
 		if k <= tag || tag == 0 {
-			msg, err := channel.server.msgStore.getAndDecrRef(unacked.Msg.Id, unacked.QueueName)
+			msg, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
 			if err != nil {
 				channel.channelErrorWithMethod(500, err.Error(), 0, 0)
 				return false
@@ -326,7 +326,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
 		})
 		return true
 	}
-	msg, err := channel.server.msgStore.getAndDecrRef(unacked.Msg.Id, unacked.QueueName)
+	msg, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
 	if err != nil {
 		channel.channelErrorWithMethod(500, err.Error(), 0, 0)
 		return false

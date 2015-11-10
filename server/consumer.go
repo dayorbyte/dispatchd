@@ -128,7 +128,7 @@ func (consumer *Consumer) consumeOne() {
 		}
 		consumer.incrActive(1, messageSize(msg))
 	} else {
-		msg, err = consumer.channel.server.msgStore.getAndDecrRef(qm.Id, consumer.queue.name)
+		msg, err = consumer.channel.server.msgStore.GetAndDecrRef(qm.Id, consumer.queue.name)
 		if err != nil {
 			panic("Error getting queue message")
 		}
@@ -162,7 +162,7 @@ func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage) bool {
 		}
 		consumer.incrActive(1, messageSize(msg))
 	} else {
-		msg, err = consumer.channel.server.msgStore.getAndDecrRef(qm.Id, consumer.queue.name)
+		msg, err = consumer.channel.server.msgStore.GetAndDecrRef(qm.Id, consumer.queue.name)
 		if err != nil {
 			panic("Error getting queue message")
 		}

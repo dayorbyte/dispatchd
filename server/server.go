@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/msgstore"
 	"net"
 	"strings"
 	"sync"
@@ -22,7 +23,7 @@ type Server struct {
 	conns      map[int64]*AMQPConnection
 	db         *bolt.DB
 	serverLock sync.Mutex
-	msgStore   *MessageStore
+	msgStore   *msgstore.MessageStore
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
@@ -34,8 +35,8 @@ func (server *Server) MarshalJSON() ([]byte, error) {
 		"exchanges":     server.exchanges,
 		"queues":        server.queues,
 		"connections":   conns,
-		"msgCount":      len(server.msgStore.messages),
-		"msgIndexCount": len(server.msgStore.index),
+		"msgCount":      server.msgStore.MessageCount(),
+		"msgIndexCount": server.msgStore.IndexCount(),
 	})
 }
 
@@ -45,7 +46,7 @@ func NewServer(dbPath string) *Server {
 		panic(err.Error())
 
 	}
-	msgStore, err := NewMessageStore("msg_store.db")
+	msgStore, err := msgstore.NewMessageStore("msg_store.db")
 	if err != nil {
 		panic("Could not create message store!")
 	}
