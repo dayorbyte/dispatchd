@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/interfaces"
 	"sync"
 )
 
@@ -51,31 +52,45 @@ func (consumer *Consumer) stop() {
 	}
 }
 
-func (consumer *Consumer) consumerReady() bool {
+func (consumer *Consumer) AcquireResources(qm *amqp.QueueMessage) bool {
+	consumer.limitLock.Lock()
+	defer consumer.limitLock.Unlock()
+
+	// If no-local was set on the consumer, reject messages
+	if consumer.noLocal && qm.LocalId == consumer.localId {
+		return false
+	}
+
+	// If the channel is in flow mode we don't consume
+	// TODO: If flow is mostly for producers, then maybe we
+	// should consume? I feel like the right answer here is for
+	// clients to not produce and consume on the same channel.
 	if !consumer.channel.flow {
 		return false
 	}
+	// If we aren't acking then there are no resource limits. Up the stats
+	// and return true
 	if consumer.noAck {
+		consumer.activeCount += 1
+		consumer.activeSize += qm.MsgSize
 		return true
 	}
-	consumer.limitLock.Lock()
-	defer consumer.limitLock.Unlock()
+
+	// Calculate whether we're over either of the size and count limits
 	var sizeOk = consumer.prefetchSize == 0 || consumer.activeSize < consumer.prefetchSize
-	var bytesOk = consumer.prefetchCount == 0 || consumer.activeCount < consumer.prefetchCount
-	return sizeOk && bytesOk
+	var countOk = consumer.prefetchCount == 0 || consumer.activeCount < consumer.prefetchCount
+	if sizeOk && countOk {
+		consumer.activeCount += 1
+		consumer.activeSize += qm.MsgSize
+		return true
+	}
+	return false
 }
 
-func (consumer *Consumer) incrActive(size uint16, bytes uint32) {
+func (consumer *Consumer) ReleaseResources(qm *amqp.QueueMessage) {
 	consumer.limitLock.Lock()
-	consumer.activeCount += size
-	consumer.activeSize += bytes
-	consumer.limitLock.Unlock()
-}
-
-func (consumer *Consumer) decrActive(size uint16, bytes uint32) {
-	consumer.limitLock.Lock()
-	consumer.activeCount -= size
-	consumer.activeSize -= bytes
+	consumer.activeCount -= 1
+	consumer.activeSize -= qm.MsgSize
 	consumer.limitLock.Unlock()
 }
 
@@ -107,30 +122,19 @@ func (consumer *Consumer) consumeOne() {
 	// Check local limit
 	consumer.consumeLock.Lock()
 	defer consumer.consumeLock.Unlock()
-	if !consumer.consumerReady() {
-		return
-	}
 	// Try to get message/check channel limit
-	var qm = consumer.queue.getOne(consumer.channel, consumer)
+	var qm, msg = consumer.queue.getOne(consumer.channel, consumer)
 	if qm == nil {
 		return
 	}
 	var tag uint64 = 0
-	var msg *amqp.Message
-	var found bool
 	if !consumer.noAck {
 		tag = consumer.channel.addUnackedMessage(consumer, qm)
-		// We get the message out without decrementing the ref because we're
-		// expecting an ack. The ack code will decrement.
-		msg, found = consumer.channel.server.msgStore.Get(qm.Id)
-		if !found {
-			panic("Integrity error, message id not found")
-		}
-		consumer.incrActive(1, qm.MsgSize)
 	} else {
 		// We aren't expecting an ack, so this is the last time the message
 		// will be referenced.
-		msg, err = consumer.channel.server.msgStore.GetAndDecrRef(qm.Id, consumer.queue.name)
+		var rhs = []interfaces.MessageResourceHolder{consumer.channel, consumer}
+		err = consumer.channel.server.msgStore.RemoveRef(qm, consumer.queue.name, rhs)
 		if err != nil {
 			panic("Error getting queue message")
 		}
@@ -145,23 +149,12 @@ func (consumer *Consumer) consumeOne() {
 	consumer.statCount += 1
 }
 
-func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage) bool {
-	var err error
+func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage, msg *amqp.Message) bool {
 	consumer.consumeLock.Lock()
 	defer consumer.consumeLock.Unlock()
-	if !consumer.consumerReady() {
-		return false
-	}
 	var tag uint64 = 0
-	var msg *amqp.Message
 	if !consumer.noAck {
 		tag = consumer.channel.addUnackedMessage(consumer, qm)
-		consumer.incrActive(1, qm.MsgSize)
-	} else {
-		msg, err = consumer.channel.server.msgStore.GetAndDecrRef(qm.Id, consumer.queue.name)
-		if err != nil {
-			panic("Error getting queue message")
-		}
 	}
 	consumer.channel.sendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
@@ -177,7 +170,7 @@ func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage) bool {
 // Send again, leave all stats the same since this consumer was already
 // dealing with this message
 func (consumer *Consumer) redeliver(tag uint64, qm *amqp.QueueMessage) {
-	msg, found := consumer.channel.server.msgStore.Get(qm.Id)
+	msg, found := consumer.channel.server.msgStore.GetNoChecks(qm.Id)
 	if !found {
 		panic("Integrity error, message not found in message store")
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/interfaces"
 )
 
 func (channel *Channel) basicRoute(methodFrame amqp.MethodFrame) error {
@@ -137,13 +138,15 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) error {
 		var classId, methodId = method.MethodIdentifier()
 		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
 	}
+	// TODO: have this release the resources
 	var qm = queue.getOneForced()
 	if qm == nil {
 		channel.sendMethod(&amqp.BasicGetEmpty{})
 		return nil
 	}
 
-	msg, err := channel.server.msgStore.GetAndDecrRef(qm.Id, queue.name)
+	var rhs = []interfaces.MessageResourceHolder{channel}
+	msg, err := channel.server.msgStore.GetAndDecrRef(qm, queue.name, rhs)
 	if err != nil {
 		// TODO: return 500 error
 		channel.sendMethod(&amqp.BasicGetEmpty{})

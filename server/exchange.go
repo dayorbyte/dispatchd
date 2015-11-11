@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/interfaces"
 	"sync"
 	"time"
 )
@@ -188,8 +189,9 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 			qms := queueMessagesByQueue[name]
 			for _, qm := range qms {
 				var oneConsumed = queue.consumeImmediate(qm)
+				var rhs = make([]interfaces.MessageResourceHolder, 0)
 				if !oneConsumed {
-					server.msgStore.RemoveRef(qm.Id, name)
+					server.msgStore.RemoveRef(qm, name, rhs)
 				}
 				consumed = oneConsumed || consumed
 			}
@@ -215,7 +217,8 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 				// remove the ref from the message store. The queue being closed means
 				// it is going away, so worst case if the server dies we have to process
 				// and discard the message on boot.
-				server.msgStore.RemoveRef(msg.Id, name)
+				var rhs = make([]interfaces.MessageResourceHolder, 0)
+				server.msgStore.RemoveRef(qm, name, rhs)
 			}
 		}
 	}

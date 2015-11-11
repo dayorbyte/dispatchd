@@ -7,6 +7,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/interfaces"
 	"sync"
 )
 
@@ -55,7 +56,35 @@ func NewMessageStore(fileName string) (*MessageStore, error) {
 	}, nil
 }
 
-func (ms *MessageStore) Get(id int64) (msg *amqp.Message, found bool) {
+func (ms *MessageStore) Get(qm *amqp.QueueMessage, rhs []interfaces.MessageResourceHolder) (*amqp.Message, bool) {
+	ms.msgLock.RLock()
+	defer ms.msgLock.RUnlock()
+	// Acquire resources
+	var acquired = make([]interfaces.MessageResourceHolder, 0, len(rhs))
+	for _, rh := range rhs {
+		if !rh.AcquireResources(qm) {
+			break
+		}
+		acquired = append(acquired, rh)
+	}
+
+	// Success! Return the message
+	if len(acquired) == len(rhs) {
+		var msg, found = ms.messages[qm.Id]
+		if !found {
+			panic("Integrity error! Message not found")
+		}
+		return msg, true
+	}
+
+	// Failure! Release the resources we already acquired
+	for _, rh := range acquired {
+		rh.ReleaseResources(qm)
+	}
+	return nil, false
+}
+
+func (ms *MessageStore) GetNoChecks(id int64) (msg *amqp.Message, found bool) {
 	ms.msgLock.RLock()
 	defer ms.msgLock.RUnlock()
 	msg, found = ms.messages[id]
@@ -163,19 +192,19 @@ func (ms *MessageStore) IncrDeliveryCount(queueName string, qm *amqp.QueueMessag
 	return
 }
 
-func (ms *MessageStore) GetAndDecrRef(msgId int64, queueName string) (*amqp.Message, error) {
-	msg, found := ms.Get(msgId)
+func (ms *MessageStore) GetAndDecrRef(qm *amqp.QueueMessage, queueName string, rhs []interfaces.MessageResourceHolder) (*amqp.Message, error) {
+	msg, found := ms.GetNoChecks(qm.Id)
 	if !found {
 		panic("Integrity error!")
 	}
-	if err := ms.RemoveRef(msgId, queueName); err != nil {
+	if err := ms.RemoveRef(qm, queueName, rhs); err != nil {
 		return nil, err
 	}
 	return msg, nil
 }
 
-func (ms *MessageStore) RemoveRef(msgId int64, queueName string) error {
-	im, found := ms.GetIndex(msgId)
+func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs []interfaces.MessageResourceHolder) error {
+	im, found := ms.GetIndex(qm.Id)
 	if !found {
 		panic("Integrity error: message in queue not in index")
 	}
@@ -204,8 +233,11 @@ func (ms *MessageStore) RemoveRef(msgId int64, queueName string) error {
 		defer ms.msgLock.Unlock()
 		ms.indexLock.Lock()
 		defer ms.indexLock.Unlock()
-		delete(ms.index, msgId)
-		delete(ms.messages, msgId)
+		delete(ms.index, qm.Id)
+		delete(ms.messages, qm.Id)
+		for _, rh := range rhs {
+			rh.ReleaseResources(qm)
+		}
 	}
 	return nil
 }

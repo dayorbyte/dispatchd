@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/interfaces"
 	"math"
 	"sync"
 )
@@ -74,7 +75,8 @@ func (channel *Channel) commitTx() {
 				// remove the ref from the message store. The queue being closed means
 				// it is going away, so worst case if the server dies we have to process
 				// and discard the message on boot.
-				channel.server.msgStore.RemoveRef(qm.Id, queueName)
+				var rhs = []interfaces.MessageResourceHolder{channel}
+				channel.server.msgStore.RemoveRef(qm, queueName, rhs)
 			}
 		}
 	}
@@ -131,11 +133,10 @@ func (channel *Channel) recover(requeue bool) {
 
 			consumer, cFound := channel.consumers[unacked.ConsumerTag]
 			// decr channel active
-			var size = unacked.Msg.MsgSize
-			channel.decrActive(1, size)
+			channel.ReleaseResources(unacked.Msg)
 			// decr consumer active
 			if cFound {
-				consumer.decrActive(1, size)
+				consumer.ReleaseResources(unacked.Msg)
 			}
 		}
 		// Clear awaiting acks
@@ -147,16 +148,17 @@ func (channel *Channel) recover(requeue bool) {
 		go func() {
 			for tag, unacked := range channel.awaitingAcks {
 				consumer, cFound := channel.consumers[unacked.ConsumerTag]
-				var size = unacked.Msg.MsgSize
 				if cFound {
 					// Consumer exists, try to deliver again
 					channel.server.msgStore.IncrDeliveryCount(unacked.QueueName, unacked.Msg)
 					consumer.redeliver(tag, unacked.Msg)
 				} else {
 					// no consumer, drop message
-					channel.server.msgStore.RemoveRef(unacked.Msg.Id, unacked.QueueName)
-					channel.decrActive(1, size)
-					consumer.decrActive(1, size)
+					var rhs = []interfaces.MessageResourceHolder{
+						consumer.channel,
+						consumer,
+					}
+					channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
 				}
 
 			}
@@ -185,7 +187,7 @@ func (channel *Channel) channelErrorWithMethod(code uint16, message string, clas
 	channel.sendMethod(&amqp.ChannelClose{code, message, classId, methodId})
 }
 
-func (channel *Channel) ackBelow(tag uint64, commitTx bool) bool {
+func (channel *Channel) ackBelow(tag uint64, commitTx bool) (success bool) {
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
@@ -199,107 +201,147 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) bool {
 	}
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
-	var count = 0
+	success = true
 	for k, unacked := range channel.awaitingAcks {
 		if k <= tag || tag == 0 {
-			delete(channel.awaitingAcks, k)
-			// TODO: release the message from the MessageStore
-			var size = unacked.Msg.MsgSize
-			channel.decrActive(1, size)
 			consumer, cFound := channel.consumers[unacked.ConsumerTag]
+			// Initialize resource holders array
+			var rhs = []interfaces.MessageResourceHolder{channel}
 			if cFound {
-				consumer.decrActive(1, size)
+				rhs = append(rhs, consumer)
 			}
-			consumer.ping()
-			count += 1
-		}
-	}
-	// TODO: should this be false if nothing was actually deleted and tag != 0?
-	return true
-}
-
-func (channel *Channel) ackOne(tag uint64, commitTx bool) bool {
-	channel.ackLock.Lock()
-	defer channel.ackLock.Unlock()
-
-	var unacked, found = channel.awaitingAcks[tag]
-	if !found {
-		return false
-	}
-	if channel.txMode && !commitTx {
-		channel.txLock.Lock()
-		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Tag:         tag,
-			Nack:        false,
-			RequeueNack: false,
-			Multiple:    false,
-		})
-		return true
-	}
-	delete(channel.awaitingAcks, tag)
-	// TODO: remove the message from the message store
-	var size = unacked.Msg.MsgSize
-	channel.decrActive(1, size)
-	consumer, cFound := channel.consumers[unacked.ConsumerTag]
-	if cFound {
-		consumer.decrActive(1, size)
-		consumer.ping()
-	}
-	return true
-}
-
-func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) bool {
-	// fmt.Println("Nack below")
-	channel.ackLock.Lock()
-	defer channel.ackLock.Unlock()
-	if channel.txMode && !commitTx {
-		channel.txLock.Lock()
-		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Tag:         tag,
-			Nack:        true,
-			RequeueNack: requeue,
-			Multiple:    true,
-		})
-		return true
-	}
-	var count = 0
-	for k, unacked := range channel.awaitingAcks {
-		fmt.Printf("%d(%d), ", k, tag)
-		if k <= tag || tag == 0 {
-			_, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
+			err := channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
 			if err != nil {
 				channel.channelErrorWithMethod(500, err.Error(), 0, 0)
-				return false
+				success = false
 			}
 			delete(channel.awaitingAcks, k)
-			consumer, cFound := channel.consumers[unacked.ConsumerTag]
-			if requeue && cFound {
-				consumer.queue.readd(unacked.QueueName, unacked.Msg)
-			}
-			var size = unacked.Msg.MsgSize
-			channel.decrActive(1, size)
+
 			if cFound {
-				consumer.decrActive(1, size)
 				consumer.ping()
 			}
-			count += 1
 		}
 	}
-	// fmt.Println()
-	// fmt.Printf("Nacked %d messages\n", count)
 	// TODO: should this be false if nothing was actually deleted and tag != 0?
-	return true
+	return
 }
 
-func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
+func (channel *Channel) ackOne(tag uint64, commitTx bool) (success bool) {
+	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
+
+	var unacked, found = channel.awaitingAcks[tag]
+	if !found {
+		return false
+	}
+	// Tx mode
+	if channel.txMode && !commitTx {
+		channel.txLock.Lock()
+		defer channel.txLock.Unlock()
+		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
+			Tag:         tag,
+			Nack:        false,
+			RequeueNack: false,
+			Multiple:    false,
+		})
+		return true
+	}
+	// Normal mode
+	// Init
+	success = true
+	consumer, cFound := channel.consumers[unacked.ConsumerTag]
+
+	// Initialize resource holders array
+	var rhs = []interfaces.MessageResourceHolder{channel}
+	if cFound {
+		rhs = append(rhs, consumer)
+	}
+	err := channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
+	if err != nil {
+		channel.channelErrorWithMethod(500, err.Error(), 0, 0)
+		success = false
+	}
+	delete(channel.awaitingAcks, tag)
+
+	if cFound {
+		consumer.ping()
+	}
+	return
+}
+
+func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) (success bool) {
+	// fmt.Println("Nack below")
+	success = true
+	channel.ackLock.Lock()
+	defer channel.ackLock.Unlock()
+
+	// Transaction mode
+	if channel.txMode && !commitTx {
+		channel.txLock.Lock()
+		defer channel.txLock.Unlock()
+		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
+			Tag:         tag,
+			Nack:        true,
+			RequeueNack: requeue,
+			Multiple:    true,
+		})
+		return true
+	}
+
+	// Non-transaction mode
+	var count = 0
+	for k, unacked := range channel.awaitingAcks {
+		if k <= tag || tag == 0 {
+			count += 1
+			// Init
+			consumer, cFound := channel.consumers[unacked.ConsumerTag]
+			queue, qFound := channel.server.queues[unacked.QueueName]
+
+			// Initialize resource holders array
+			var rhs = []interfaces.MessageResourceHolder{channel}
+			if cFound {
+				rhs = append(rhs, consumer)
+			}
+
+			// requeue and release the approriate resources
+			if requeue && qFound {
+				// If we're requeueing we release the resources but don't remove the
+				// reference.
+				queue.readd(unacked.QueueName, unacked.Msg)
+				for _, rh := range rhs {
+					rh.ReleaseResources(unacked.Msg)
+				}
+			} else {
+				// If we aren't re-adding, remove the ref and all associated
+				// resources
+				err := channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
+				if err != nil {
+					channel.channelErrorWithMethod(500, err.Error(), 0, 0)
+					success = false
+				}
+			}
+
+			// Remove this unacked message from the ones
+			// we're waiting for acks on and ping the consumer
+			// since there might be a message available now
+			delete(channel.awaitingAcks, k)
+			if cFound {
+				consumer.ping()
+			}
+		}
+	}
+	fmt.Printf("Nacking %d messages below %d\n", count, tag)
+	return
+}
+
+func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) (success bool) {
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
 	var unacked, found = channel.awaitingAcks[tag]
 	if !found {
 		return false
 	}
+	// Transaction mode
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
@@ -311,23 +353,45 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
 		})
 		return true
 	}
-	_, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
-	if err != nil {
-		channel.channelErrorWithMethod(500, err.Error(), 0, 0)
-		return false
-	}
+	// Non-transaction mode
+	// Init
+	success = true
 	consumer, cFound := channel.consumers[unacked.ConsumerTag]
-	if requeue && cFound {
-		consumer.queue.readd(unacked.QueueName, unacked.Msg)
-	}
-	var size = unacked.Msg.MsgSize
-	channel.decrActive(1, size)
+	queue, qFound := channel.server.queues[unacked.QueueName]
+
+	// Initialize resource holders array
+	var rhs = []interfaces.MessageResourceHolder{channel}
 	if cFound {
-		consumer.decrActive(1, size)
+		rhs = append(rhs, consumer)
+	}
+
+	// requeue and release the approriate resources
+	if requeue && qFound {
+		// If we're requeueing we release the resources but don't remove the
+		// reference.
+		queue.readd(unacked.QueueName, unacked.Msg)
+		for _, rh := range rhs {
+			rh.ReleaseResources(unacked.Msg)
+		}
+	} else {
+		// If we aren't re-adding, remove the ref and all associated
+		// resources
+		err := channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
+		if err != nil {
+			channel.channelErrorWithMethod(500, err.Error(), 0, 0)
+			success = false
+		}
+	}
+
+	// Remove this unacked message from the ones
+	// we're waiting for acks on and ping the consumer
+	// since there might be a message available now
+	delete(channel.awaitingAcks, tag)
+	if cFound {
 		consumer.ping()
 	}
-	delete(channel.awaitingAcks, tag)
-	return true
+
+	return
 }
 
 func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *amqp.QueueMessage) uint64 {
@@ -359,22 +423,22 @@ func (channel *Channel) addConsumer(consumer *Consumer) error {
 	return nil
 }
 
-func (channel *Channel) decrActive(count uint16, size uint32) {
+func (channel *Channel) ReleaseResources(qm *amqp.QueueMessage) {
 	channel.limitLock.Lock()
-	channel.activeCount -= count
-	channel.activeSize -= size
+	channel.activeCount -= 1
+	channel.activeSize -= qm.MsgSize
 	channel.limitLock.Unlock()
 }
 
-func (channel *Channel) acquireResources(count uint16, size uint32) bool {
+func (channel *Channel) AcquireResources(qm *amqp.QueueMessage) bool {
 	channel.limitLock.Lock()
 	defer channel.limitLock.Unlock()
 	var sizeOk = channel.prefetchSize == 0 || channel.activeSize < channel.prefetchSize
 	var countOk = channel.prefetchCount == 0 || channel.activeCount < channel.prefetchCount
 	// If we're OK on size and count, acquire the resources
 	if sizeOk && countOk {
-		channel.activeCount += count
-		channel.activeSize += size
+		channel.activeCount += 1
+		channel.activeSize += qm.MsgSize
 		return true
 	}
 	return false
@@ -505,9 +569,9 @@ func (channel *Channel) shutdown() {
 	// // this probably isn't needed, but for debugging purposes it's nice to
 	// // ensure that all the active counts/sizes get back to 0
 	// var size = messageSize(unacked.Msg)
-	// channel.decrActive(1, size)
+	// channel.ReleaseResources(1, size)
 	// if cFound {
-	// 	consumer.decrActive(1, size)
+	// 	consumer.ReleaseResources(unacked.Msg)
 	// }
 	// }
 }

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/interfaces"
 	"sync"
 	"time"
 )
@@ -117,12 +118,18 @@ func (q *Queue) add(qm *amqp.QueueMessage) bool {
 	}
 }
 
-func (q *Queue) consumeImmediate(msg *amqp.QueueMessage) bool {
+func (q *Queue) consumeImmediate(qm *amqp.QueueMessage) bool {
 	// TODO: randomize or round-robin through consumers
 	q.consumerLock.RLock()
 	defer q.consumerLock.RUnlock()
 	for _, consumer := range q.consumers {
-		if consumer.consumeImmediate(msg) {
+		var rhs = []interfaces.MessageResourceHolder{
+			consumer.channel,
+			consumer,
+		}
+		var msg, acquired = q.server.msgStore.Get(qm, rhs)
+		if acquired {
+			consumer.consumeImmediate(qm, msg)
 			return true
 		}
 	}
@@ -286,22 +293,26 @@ func (q *Queue) getOneForced() *amqp.QueueMessage {
 	return qMsg
 }
 
-func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.QueueMessage {
-	// Get one message. If there is a message try to acquire the resources
-	// from the channel.
+func (q *Queue) getOne(channel *Channel, consumer *Consumer) (*amqp.QueueMessage, *amqp.Message) {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
+	// Empty check
 	if q.queue.Len() == 0 || q.closed {
-		return nil
+		return nil, nil
 	}
 
+	// Get one message. If there is a message try to acquire the resources
+	// from the channel.
 	var qm = q.queue.Front().Value.(*amqp.QueueMessage)
-	if consumer.noLocal && qm.LocalId == consumer.localId {
-		return nil
+
+	var rhs = []interfaces.MessageResourceHolder{
+		channel,
+		consumer,
 	}
-	if channel.acquireResources(1, qm.MsgSize) {
+	var msg, acquired = channel.server.msgStore.Get(qm, rhs)
+	if acquired {
 		q.queue.Remove(q.queue.Front())
-		return qm
+		return qm, msg
 	}
-	return nil
+	return nil, nil
 }
