@@ -153,7 +153,7 @@ func (channel *Channel) recover(requeue bool) {
 				}
 				var size = unacked.Msg.MsgSize
 				if cFound {
-					// Consumer exists, try to delivery again
+					// Consumer exists, try to deliver again
 					channel.server.msgStore.IncrDeliveryCount(unacked.QueueName, unacked.Msg)
 					consumer.redeliver(tag, msg)
 				} else {
