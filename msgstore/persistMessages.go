@@ -113,7 +113,9 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 			DeliveryCount: 0,
 			Durable:       msgDurable,
 			MsgSize:       messageSize(msg.Msg),
-			LocalId:       msg.Msg.LocalId,
+			// NOTE: When loading this from disk later we should zero it out. This is the ID
+			//       of the publishing channel, which isn't relevant on server boot.
+			LocalId: msg.Msg.LocalId,
 		}
 		queueMessages[msg.QueueName] = append(queues, qm)
 	}

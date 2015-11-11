@@ -176,7 +176,11 @@ func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage) bool {
 
 // Send again, leave all stats the same since this consumer was already
 // dealing with this message
-func (consumer *Consumer) redeliver(tag uint64, msg *amqp.Message) {
+func (consumer *Consumer) redeliver(tag uint64, qm *amqp.QueueMessage) {
+	msg, found := consumer.channel.server.msgStore.Get(qm.Id)
+	if !found {
+		panic("Integrity error, message not found in message store")
+	}
 	consumer.channel.sendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
 		DeliveryTag: tag,

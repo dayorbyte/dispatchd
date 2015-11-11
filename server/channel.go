@@ -147,18 +147,15 @@ func (channel *Channel) recover(requeue bool) {
 		go func() {
 			for tag, unacked := range channel.awaitingAcks {
 				consumer, cFound := channel.consumers[unacked.ConsumerTag]
-				msg, found := channel.server.msgStore.Get(unacked.Msg.Id)
-				if !found {
-					panic("Integrity error, message not found in message store")
-				}
 				var size = unacked.Msg.MsgSize
 				if cFound {
 					// Consumer exists, try to deliver again
 					channel.server.msgStore.IncrDeliveryCount(unacked.QueueName, unacked.Msg)
-					consumer.redeliver(tag, msg)
+					consumer.redeliver(tag, unacked.Msg)
 				} else {
 					// no consumer, drop message
 					channel.server.msgStore.RemoveRef(unacked.Msg.Id, unacked.QueueName)
+					channel.decrActive(1, size)
 					consumer.decrActive(1, size)
 				}
 
