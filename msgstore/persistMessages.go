@@ -26,6 +26,15 @@ func (ms *MessageStore) IndexCount() int {
 	return len(ms.index)
 }
 
+func messageSize(message *amqp.Message) uint32 {
+	// TODO: include header size
+	var size uint32 = 0
+	for _, frame := range message.Payload {
+		size += uint32(len(frame.Payload))
+	}
+	return size
+}
+
 func isDurable(msg *amqp.Message) bool {
 	if msg == nil {
 		panic("Message is nil(!!!)")
@@ -103,6 +112,7 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 			Id:            msg.Msg.Id,
 			DeliveryCount: 0,
 			Durable:       msgDurable,
+			MsgSize:       messageSize(msg.Msg),
 		}
 		queueMessages[msg.QueueName] = append(queues, qm)
 	}
