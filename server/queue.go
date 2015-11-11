@@ -21,15 +21,6 @@ func NewMessage(method *amqp.BasicPublish, localId int64) *amqp.Message {
 	}
 }
 
-func messageSize(message *amqp.Message) uint32 {
-	// TODO: include header size
-	var size uint32 = 0
-	for _, frame := range message.Payload {
-		size += uint32(len(frame.Payload))
-	}
-	return size
-}
-
 type Queue struct {
 	name            string
 	durable         bool
@@ -318,7 +309,7 @@ func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.QueueMessage 
 	if consumer.noLocal && msg.LocalId == consumer.localId {
 		return nil
 	}
-	if channel.acquireResources(1, messageSize(msg)) {
+	if channel.acquireResources(1, qm.MsgSize) {
 		q.queue.Remove(q.queue.Front())
 		return qm
 	}

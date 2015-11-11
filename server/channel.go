@@ -130,12 +130,8 @@ func (channel *Channel) recover(requeue bool) {
 			//       then so we don't remove it now in an else clause
 
 			consumer, cFound := channel.consumers[unacked.ConsumerTag]
-			msg, found := channel.server.msgStore.Get(unacked.Msg.Id)
-			if !found {
-				panic("Integrity error, message not found in message store")
-			}
 			// decr channel active
-			var size = messageSize(msg)
+			var size = unacked.Msg.MsgSize
 			channel.decrActive(1, size)
 			// decr consumer active
 			if cFound {
@@ -155,7 +151,7 @@ func (channel *Channel) recover(requeue bool) {
 				if !found {
 					panic("Integrity error, message not found in message store")
 				}
-				var size = messageSize(msg)
+				var size = unacked.Msg.MsgSize
 				if cFound {
 					// Consumer exists, try to delivery again
 					channel.server.msgStore.IncrDeliveryCount(unacked.QueueName, unacked.Msg)
@@ -209,13 +205,9 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) bool {
 	var count = 0
 	for k, unacked := range channel.awaitingAcks {
 		if k <= tag || tag == 0 {
-			msg, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
-			if err != nil {
-				channel.channelErrorWithMethod(500, err.Error(), 0, 0)
-				return false
-			}
 			delete(channel.awaitingAcks, k)
-			var size = messageSize(msg)
+			// TODO: release the message from the MessageStore
+			var size = unacked.Msg.MsgSize
 			channel.decrActive(1, size)
 			consumer, cFound := channel.consumers[unacked.ConsumerTag]
 			if cFound {
@@ -248,13 +240,9 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) bool {
 		})
 		return true
 	}
-	msg, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
-	if err != nil {
-		channel.channelErrorWithMethod(500, err.Error(), 0, 0)
-		return false
-	}
 	delete(channel.awaitingAcks, tag)
-	var size = messageSize(msg)
+	// TODO: remove the message from the message store
+	var size = unacked.Msg.MsgSize
 	channel.decrActive(1, size)
 	consumer, cFound := channel.consumers[unacked.ConsumerTag]
 	if cFound {
@@ -283,7 +271,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) bool 
 	for k, unacked := range channel.awaitingAcks {
 		fmt.Printf("%d(%d), ", k, tag)
 		if k <= tag || tag == 0 {
-			msg, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
+			_, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
 			if err != nil {
 				channel.channelErrorWithMethod(500, err.Error(), 0, 0)
 				return false
@@ -293,7 +281,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) bool 
 			if requeue && cFound {
 				consumer.queue.readd(unacked.QueueName, unacked.Msg)
 			}
-			var size = messageSize(msg)
+			var size = unacked.Msg.MsgSize
 			channel.decrActive(1, size)
 			if cFound {
 				consumer.decrActive(1, size)
@@ -326,7 +314,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
 		})
 		return true
 	}
-	msg, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
+	_, err := channel.server.msgStore.GetAndDecrRef(unacked.Msg.Id, unacked.QueueName)
 	if err != nil {
 		channel.channelErrorWithMethod(500, err.Error(), 0, 0)
 		return false
@@ -335,7 +323,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) bool {
 	if requeue && cFound {
 		consumer.queue.readd(unacked.QueueName, unacked.Msg)
 	}
-	var size = messageSize(msg)
+	var size = unacked.Msg.MsgSize
 	channel.decrActive(1, size)
 	if cFound {
 		consumer.decrActive(1, size)

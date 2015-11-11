@@ -126,7 +126,7 @@ func (consumer *Consumer) consumeOne() {
 		if !found {
 			panic("Integrity error, message id not found")
 		}
-		consumer.incrActive(1, messageSize(msg))
+		consumer.incrActive(1, qm.MsgSize)
 	} else {
 		msg, err = consumer.channel.server.msgStore.GetAndDecrRef(qm.Id, consumer.queue.name)
 		if err != nil {
@@ -154,13 +154,7 @@ func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage) bool {
 	var msg *amqp.Message
 	if !consumer.noAck {
 		tag = consumer.channel.addUnackedMessage(consumer, qm)
-		// We get the message out without decrementing the ref because we're
-		// expecting an ack. The ack code will decrement.
-		msg, found := consumer.channel.server.msgStore.Get(qm.Id)
-		if !found {
-			panic("Integrity error, message id not found")
-		}
-		consumer.incrActive(1, messageSize(msg))
+		consumer.incrActive(1, qm.MsgSize)
 	} else {
 		msg, err = consumer.channel.server.msgStore.GetAndDecrRef(qm.Id, consumer.queue.name)
 		if err != nil {
