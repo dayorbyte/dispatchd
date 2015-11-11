@@ -38,6 +38,7 @@ message QueueMessage {
   optional int32  deliveryCount = 2 [(gogoproto.nullable) = false];
   optional bool   durable       = 3 [(gogoproto.nullable) = false];
   optional uint32 msgSize       = 4 [(gogoproto.nullable) = false];
+  optional int64  localId       = 5 [(gogoproto.nullable) = false];
 }
 
 message ContentHeaderFrame {

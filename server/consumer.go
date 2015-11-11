@@ -128,6 +128,8 @@ func (consumer *Consumer) consumeOne() {
 		}
 		consumer.incrActive(1, qm.MsgSize)
 	} else {
+		// We aren't expecting an ack, so this is the last time the message
+		// will be referenced.
 		msg, err = consumer.channel.server.msgStore.GetAndDecrRef(qm.Id, consumer.queue.name)
 		if err != nil {
 			panic("Error getting queue message")

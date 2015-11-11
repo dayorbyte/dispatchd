@@ -113,6 +113,7 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 			DeliveryCount: 0,
 			Durable:       msgDurable,
 			MsgSize:       messageSize(msg.Msg),
+			LocalId:       msg.Msg.LocalId,
 		}
 		queueMessages[msg.QueueName] = append(queues, qm)
 	}

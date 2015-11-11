@@ -296,17 +296,7 @@ func (q *Queue) getOne(channel *Channel, consumer *Consumer) *amqp.QueueMessage 
 	}
 
 	var qm = q.queue.Front().Value.(*amqp.QueueMessage)
-	// Note: we get the message here, but we don't return it since we
-	// 			 aren't taking responsibility for it. The Consumer can
-	//       get it from the MessageStore later if it wants to keep it,
-	//       and if the server goes down in that time the message will
-	//       still be in the queue.
-	msg, found := q.server.msgStore.Get(qm.Id)
-	if !found {
-		panic("Message not found!")
-	}
-
-	if consumer.noLocal && msg.LocalId == consumer.localId {
+	if consumer.noLocal && qm.LocalId == consumer.localId {
 		return nil
 	}
 	if channel.acquireResources(1, qm.MsgSize) {
