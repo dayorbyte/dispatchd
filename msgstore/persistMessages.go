@@ -2,6 +2,7 @@ package msgstore
 
 import (
 	"bytes"
+	"container/list"
 	"encoding/binary"
 	"fmt"
 	"github.com/boltdb/bolt"
@@ -54,6 +55,62 @@ func NewMessageStore(fileName string) (*MessageStore, error) {
 		messages: make(map[int64]*amqp.Message),
 		db:       db,
 	}, nil
+}
+
+func (ms *MessageStore) LoadQueueFromDisk(queueName string) (*list.List, error) { // list[amqp.QueueMessage]
+	var ret = list.New()
+	var err = ms.db.View(func(tx *bolt.Tx) error {
+		bucket_index := tx.Bucket([]byte("message_index"))
+		bucket_contents := tx.Bucket([]byte("message_contents"))
+		bucket_queue := tx.Bucket([]byte(fmt.Sprintf("queue_%s", queueName)))
+		if bucket_index == nil || bucket_contents == nil || bucket_queue == nil {
+			return nil
+		}
+		cursor_queue := bucket_queue.Cursor()
+
+		for k, v := cursor_queue.First(); k != nil; k, v = cursor_queue.Next() {
+			// Load QM
+			qm := &amqp.QueueMessage{}
+			if err := proto.Unmarshal(v, qm); err != nil {
+				return err
+			}
+			ret.PushFront(qm)
+			// Load Index
+			var bId = binaryId(qm.Id)
+			var iBytes = bucket_index.Get(bId)
+			if iBytes == nil {
+				panic("Integrity error! Couldn't find an index message")
+			}
+			var im = &amqp.IndexMessage{}
+			if err := proto.Unmarshal(v, im); err != nil {
+				panic(err.Error())
+			}
+			ms.index[qm.Id] = im
+
+			// Load content
+			// TODO: make it possible to only partially load content
+			var cBytes = bucket_contents.Get(bId)
+			if cBytes == nil {
+				panic("Integrity error! Couldn't find an index message")
+			}
+			var cm = &amqp.Message{}
+			if err := proto.Unmarshal(v, im); err != nil {
+				panic(err.Error())
+			}
+			ms.messages[qm.Id] = cm
+
+		}
+		return nil
+	})
+	if err != nil {
+		return list.New(), err
+	}
+	return ret, nil
+}
+
+func (ms *MessageStore) Fsck() ([]int64, []int64) {
+	// TODO: make a function to find dangling or missing messages
+	return make([]int64, 0), make([]int64, 0)
 }
 
 func (ms *MessageStore) Get(qm *amqp.QueueMessage, rhs []interfaces.MessageResourceHolder) (*amqp.Message, bool) {

@@ -122,7 +122,7 @@ func (server *Server) initQueues() {
 			if err != nil {
 				panic(fmt.Sprintf("Failed to read queue '%s': %s", name, err.Error()))
 			}
-			// fmt.Printf("Got queue from disk: %s\n", method.Queue)
+			fmt.Printf("Got queue from disk: %s\n", method.Queue)
 			_, err = server.declareQueue(method, -1, true)
 			if err != nil {
 				return err
@@ -133,6 +133,15 @@ func (server *Server) initQueues() {
 	if err != nil {
 		panic("********** FAILED TO LOAD QUEUES: " + err.Error())
 	}
+	for name, queue := range server.queues {
+		fmt.Printf("Loading persistent messages for queue%s\n", name)
+		queueList, err := server.msgStore.LoadQueueFromDisk(string(name))
+		if err != nil {
+			panic("Integrity error reading queue from disk! " + err.Error())
+		}
+		queue.queue = queueList
+	}
+
 }
 
 func (server *Server) initExchanges() {
