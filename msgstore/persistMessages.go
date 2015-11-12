@@ -68,10 +68,10 @@ func (ms *MessageStore) LoadQueueFromDisk(queueName string) (*list.List, error) 
 		}
 		cursor_queue := bucket_queue.Cursor()
 
-		for k, v := cursor_queue.First(); k != nil; k, v = cursor_queue.Next() {
+		for k, qmBytes := cursor_queue.First(); k != nil; k, qmBytes = cursor_queue.Next() {
 			// Load QM
 			qm := &amqp.QueueMessage{}
-			if err := proto.Unmarshal(v, qm); err != nil {
+			if err := proto.Unmarshal(qmBytes, qm); err != nil {
 				return err
 			}
 			ret.PushFront(qm)
@@ -79,10 +79,10 @@ func (ms *MessageStore) LoadQueueFromDisk(queueName string) (*list.List, error) 
 			var bId = binaryId(qm.Id)
 			var iBytes = bucket_index.Get(bId)
 			if iBytes == nil {
-				panic("Integrity error! Couldn't find an index message")
+				panic(fmt.Sprintf("Integrity error! Couldn't find an index message: %d", qm.Id))
 			}
 			var im = &amqp.IndexMessage{}
-			if err := proto.Unmarshal(v, im); err != nil {
+			if err := proto.Unmarshal(iBytes, im); err != nil {
 				panic(err.Error())
 			}
 			ms.index[qm.Id] = im
@@ -91,10 +91,10 @@ func (ms *MessageStore) LoadQueueFromDisk(queueName string) (*list.List, error) 
 			// TODO: make it possible to only partially load content
 			var cBytes = bucket_contents.Get(bId)
 			if cBytes == nil {
-				panic("Integrity error! Couldn't find an index message")
+				panic(fmt.Sprintf("Integrity error! Couldn't find message content for: %d", qm.Id))
 			}
 			var cm = &amqp.Message{}
-			if err := proto.Unmarshal(v, im); err != nil {
+			if err := proto.Unmarshal(cBytes, cm); err != nil {
 				panic(err.Error())
 			}
 			ms.messages[qm.Id] = cm
@@ -268,14 +268,13 @@ func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs [
 	// Update disk
 	if im.Durable {
 		err := ms.db.Update(func(tx *bolt.Tx) error {
-			bId := binaryId(im.Id)
-			depersistQueueMessage(tx, queueName, bId)
-			remaining, err := decrIndexMessage(tx, bId)
+			depersistQueueMessage(tx, queueName, qm.Id)
+			remaining, err := decrIndexMessage(tx, qm.Id)
 			if err != nil {
 				return err
 			}
 			if remaining == 0 {
-				return depersistMessage(tx, bId)
+				return depersistMessage(tx, qm.Id)
 			}
 			return nil
 		})
@@ -299,22 +298,23 @@ func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs [
 	return nil
 }
 
-func depersistMessage(tx *bolt.Tx, bId []byte) error {
+func depersistMessage(tx *bolt.Tx, id int64) error {
 	content_bucket, err := tx.CreateBucketIfNotExists([]byte("message_contents"))
 	if err != nil {
 		return err
 	}
-	return content_bucket.Delete(bId)
+	return content_bucket.Delete(binaryId(id))
 }
 
-func decrIndexMessage(tx *bolt.Tx, bId []byte) (int32, error) {
+func decrIndexMessage(tx *bolt.Tx, id int64) (int32, error) {
 	// bucket
-	content_bucket, err := tx.CreateBucketIfNotExists([]byte("message_index"))
+	index_bucket, err := tx.CreateBucketIfNotExists([]byte("message_index"))
 	if err != nil {
 		return -1, err
 	}
+	var bId = binaryId(id)
 	// get
-	protoBytes := content_bucket.Get(bId)
+	protoBytes := index_bucket.Get(bId)
 	im := &amqp.IndexMessage{}
 	err = proto.Unmarshal(protoBytes, im)
 	if err != nil {
@@ -322,29 +322,30 @@ func decrIndexMessage(tx *bolt.Tx, bId []byte) (int32, error) {
 	}
 	// decr then save or delete
 	if im.Refs <= 1 {
-		content_bucket.Delete(bId)
+		// TODO: isn't this a data integrity error?
+		index_bucket.Delete(bId)
 		return 0, nil
 	}
 	im.Refs -= 1
 	// TODO: panic on <0
 	if im.Refs < 0 {
-		return 0, content_bucket.Delete(bId)
+		return 0, index_bucket.Delete(bId)
 	}
 	newBytes, err := proto.Marshal(im)
 	if err != nil {
 		return -1, err
 	}
-	return im.Refs, content_bucket.Put(bId, newBytes)
+	return im.Refs, index_bucket.Put(bId, newBytes)
 
 }
 
-func depersistQueueMessage(tx *bolt.Tx, queueName string, bId []byte) error {
+func depersistQueueMessage(tx *bolt.Tx, queueName string, id int64) error {
 	bucketName := fmt.Sprintf("queue_%s", queueName)
 	content_bucket, err := tx.CreateBucketIfNotExists([]byte(bucketName))
 	if err != nil {
 		return err
 	}
-	return content_bucket.Delete(bId)
+	return content_bucket.Delete(binaryId(id))
 }
 
 func binaryId(id int64) []byte {

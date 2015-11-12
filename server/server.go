@@ -134,12 +134,13 @@ func (server *Server) initQueues() {
 		panic("********** FAILED TO LOAD QUEUES: " + err.Error())
 	}
 	for name, queue := range server.queues {
-		fmt.Printf("Loading persistent messages for queue%s\n", name)
+		fmt.Printf("Loading persistent messages for queue '%s'\n", name)
 		queueList, err := server.msgStore.LoadQueueFromDisk(string(name))
 		if err != nil {
 			panic("Integrity error reading queue from disk! " + err.Error())
 		}
 		queue.queue = queueList
+		fmt.Printf("Loaded %d messages from queue\n", queueList.Len())
 	}
 
 }
