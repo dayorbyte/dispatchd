@@ -38,6 +38,7 @@ import "amqp/amqp.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
 
 % for cls_node in iter_tag(root, 'class'):
 <%

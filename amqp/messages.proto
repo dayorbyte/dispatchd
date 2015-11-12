@@ -6,6 +6,7 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "amqp/protocol_generated.proto";
 
 option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.sizer_all) = true;
 
 message WireFrame {
