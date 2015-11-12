@@ -36,6 +36,9 @@ def iter_tag(node, name):
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "amqp/amqp.proto";
 
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+
 % for cls_node in iter_tag(root, 'class'):
 <%
   cls_name = normalize_struct(cls_node.attrib['name'])

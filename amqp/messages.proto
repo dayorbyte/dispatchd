@@ -5,6 +5,9 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 // import "amqp/amqp.proto";
 import "amqp/protocol_generated.proto";
 
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+
 message WireFrame {
   option (gogoproto.goproto_unrecognized) = false;
   option (gogoproto.goproto_getters) = false;

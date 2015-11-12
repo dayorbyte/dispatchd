@@ -3,6 +3,9 @@ package amqp;
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "amqp/amqp.proto";
 
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+
 
 
 
