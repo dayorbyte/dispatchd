@@ -22,10 +22,12 @@
 * There is a simple admin page that can show basic info about what's
   happening in the server
 * Transactions are supported
+* Durability of messages is supported, although currently buggy
 
-## Soon
+## Next
 
-* Durability of messages
+* Tests
+* Refactors to increase testability and isolation of components
 
 ## Later
 
@@ -33,4 +35,4 @@
 * Tests, and probably refactoring to make testing more tractible
 * Add flow control so an overactive producer can't swamp the server
 * Come up with a real project name
-* Performance tuning. The server can do ~20k messages per second
+* Performance tuning. The server can do ~20k messages per second with persistence turned off.
