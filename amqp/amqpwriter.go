@@ -49,7 +49,6 @@ func WriteMethodPayloadHeader(buf io.Writer, classId uint16, methodId uint16) (e
 // Fields
 
 func WriteBit(buf io.Writer, b bool) error {
-	// TODO: pack these properly
 	if b {
 		return binary.Write(buf, binary.BigEndian, byte(1))
 	}

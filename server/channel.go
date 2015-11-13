@@ -562,18 +562,6 @@ func (channel *Channel) shutdown() {
 	// provide a way to have both options. Maybe a message header?
 	// TODO(MUST): Is it safe to treat these as nacks?
 	channel.nackBelow(math.MaxUint64, true, false)
-	// consumer, cFound := channel.consumers[unacked.ConsumerTag]
-	// if cFound {
-	// 	consumer.queue.readd(unacked.Msg)
-	// }
-	// // this probably isn't needed, but for debugging purposes it's nice to
-	// // ensure that all the active counts/sizes get back to 0
-	// var size = messageSize(unacked.Msg)
-	// channel.ReleaseResources(1, size)
-	// if cFound {
-	// 	consumer.ReleaseResources(unacked.Msg)
-	// }
-	// }
 }
 
 func (channel *Channel) removeConsumer(consumerTag string) error {
