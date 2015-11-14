@@ -315,7 +315,6 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) (succ
 			}
 		}
 	}
-	fmt.Printf("Nacking %d messages below %d\n", count, tag)
 	return
 }
 
