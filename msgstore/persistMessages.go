@@ -74,6 +74,8 @@ func (ms *MessageStore) LoadQueueFromDisk(queueName string) (*list.List, error) 
 			if err := proto.Unmarshal(qmBytes, qm); err != nil {
 				return err
 			}
+			// -1 won't ever be a valid LocalId since they're based on unix timestamps
+			qm.LocalId = -1
 			ret.PushFront(qm)
 			// Load Index
 			var bId = binaryId(qm.Id)
@@ -187,15 +189,13 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 		if !found {
 			queues = make([]*amqp.QueueMessage, 0, 1)
 		}
-		qm := &amqp.QueueMessage{
-			Id:            msg.Msg.Id,
-			DeliveryCount: 0,
-			Durable:       msgDurable,
-			MsgSize:       messageSize(msg.Msg),
-			// NOTE: When loading this from disk later we should zero it out. This is the ID
-			//       of the publishing channel, which isn't relevant on server boot.
-			LocalId: msg.Msg.LocalId,
-		}
+		qm := amqp.NewQueueMessage(
+			msg.Msg.Id,
+			0,
+			msgDurable,
+			messageSize(msg.Msg),
+			msg.Msg.LocalId,
+		)
 		queueMessages[msg.QueueName] = append(queues, qm)
 	}
 

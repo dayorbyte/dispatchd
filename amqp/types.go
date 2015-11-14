@@ -36,6 +36,18 @@ func NewIndexMessage(id int64, refCount int32, durable bool, deliveryCount int32
 	}
 }
 
+func NewQueueMessage(id int64, deliveryCount int32, durable bool, msgSize uint32, localId int64) *QueueMessage {
+	return &QueueMessage{
+		Id:            id,
+		DeliveryCount: deliveryCount,
+		Durable:       durable,
+		MsgSize:       msgSize,
+		LocalId:       localId,
+		// NOTE: When loading this from disk later we should zero localId out. This is the ID
+		//       of the publishing channel, which isn't relevant on server boot.
+	}
+}
+
 func (frame *ContentHeaderFrame) FrameType() byte {
 	return 2
 }
