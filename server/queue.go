@@ -225,6 +225,10 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 	if q.closed {
 		return 0, nil
 	}
+	// Reset auto-delete
+	q.deleteActive = time.Unix(0, 0)
+
+	// Add consumer
 	var consumer = &Consumer{
 		arguments:   method.Arguments,
 		channel:     channel,
