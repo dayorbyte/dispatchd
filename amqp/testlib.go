@@ -1,6 +1,7 @@
 package amqp
 
 import (
+	// "fmt"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -55,9 +56,11 @@ func RandomPayload() (uint64, []*WireFrame) {
 func RandomHeader(size uint64, persistent bool) *ContentHeaderFrame {
 	var props = BasicContentHeaderProperties{}
 	if persistent {
-		*props.DeliveryMode = byte(2)
+		var b = byte(2)
+		props.DeliveryMode = &b
 	} else {
-		*props.DeliveryMode = byte(1)
+		var b = byte(1)
+		props.DeliveryMode = &b
 	}
 	return &ContentHeaderFrame{
 		ContentClass:    60,

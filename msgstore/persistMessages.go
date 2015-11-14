@@ -212,6 +212,7 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 			// Save messages to content/index stores
 			for _, msg := range msgs {
 				persistMessage(tx, msg.Msg)
+				// fmt.Printf("Persisting: %d\n", msg.Msg.Id)
 				persistIndexMessage(tx, indexMessages[msg.Msg.Id])
 			}
 			// Add messages to queues
@@ -232,6 +233,7 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 	ms.indexLock.Lock()
 	defer ms.indexLock.Unlock()
 	for _, msg := range msgs {
+		// fmt.Printf("Adding to index: %d\n", msg.Msg.Id)
 		ms.index[msg.Msg.Id] = indexMessages[msg.Msg.Id]
 		ms.messages[msg.Msg.Id] = msg.Msg
 	}
@@ -265,11 +267,19 @@ func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs [
 	if !found {
 		panic("Integrity error: message in queue not in index")
 	}
+	if len(queueName) == 0 {
+		panic("Bad queue name!")
+	}
 	// Update disk
 	if im.Durable {
 		err := ms.db.Update(func(tx *bolt.Tx) error {
-			depersistQueueMessage(tx, queueName, qm.Id)
+			// fmt.Printf("Remove from queue: %d '%s'\n", qm.Id, queueName)
+			var err = depersistQueueMessage(tx, queueName, qm.Id)
+			if err != nil {
+				return err
+			}
 			remaining, err := decrIndexMessage(tx, qm.Id)
+			// fmt.Printf("Remaining: %d\n", remaining)
 			if err != nil {
 				return err
 			}
@@ -321,14 +331,16 @@ func decrIndexMessage(tx *bolt.Tx, id int64) (int32, error) {
 		return -1, err
 	}
 	// decr then save or delete
-	if im.Refs <= 1 {
+	if im.Refs < 1 {
+		panic("Index message would have gone negative!")
 		// TODO: isn't this a data integrity error?
 		index_bucket.Delete(bId)
 		return 0, nil
 	}
 	im.Refs -= 1
 	// TODO: panic on <0
-	if im.Refs < 0 {
+	if im.Refs == 0 {
+		// fmt.Printf("Delete from Index: %d\n", id)
 		return 0, index_bucket.Delete(bId)
 	}
 	newBytes, err := proto.Marshal(im)
@@ -345,7 +357,12 @@ func depersistQueueMessage(tx *bolt.Tx, queueName string, id int64) error {
 	if err != nil {
 		return err
 	}
-	return content_bucket.Delete(binaryId(id))
+	var key = binaryId(id)
+	var got = content_bucket.Get(key)
+	if got == nil {
+		return fmt.Errorf("Could not find '%d' in queue '%s'", id, queueName)
+	}
+	return content_bucket.Delete(key)
 }
 
 func binaryId(id int64) []byte {
@@ -356,6 +373,13 @@ func binaryId(id int64) []byte {
 		panic("Bad bytes!")
 	}
 	return ret
+}
+
+func bytesToInt64(bId []byte) int64 {
+	var id int64
+	buf := bytes.NewBuffer(bId)
+	binary.Read(buf, binary.LittleEndian, &id)
+	return id
 }
 
 func persistMessage(tx *bolt.Tx, msg *amqp.Message) error {
