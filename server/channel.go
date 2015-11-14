@@ -394,11 +394,12 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) (succes
 	return
 }
 
-func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *amqp.QueueMessage) uint64 {
+func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *amqp.QueueMessage, queueName string) uint64 {
 	var tag = channel.nextDeliveryTag()
 	var unacked = amqp.UnackedMessage{
 		ConsumerTag: consumer.consumerTag,
 		Msg:         msg,
+		QueueName:   queueName,
 	}
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()

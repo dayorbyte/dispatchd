@@ -130,7 +130,7 @@ func (consumer *Consumer) consumeOne() {
 	}
 	var tag uint64 = 0
 	if !consumer.noAck {
-		tag = consumer.channel.addUnackedMessage(consumer, qm)
+		tag = consumer.channel.addUnackedMessage(consumer, qm, consumer.queue.name)
 	} else {
 		// We aren't expecting an ack, so this is the last time the message
 		// will be referenced.
@@ -155,7 +155,7 @@ func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage, msg *amqp.Mess
 	defer consumer.consumeLock.Unlock()
 	var tag uint64 = 0
 	if !consumer.noAck {
-		tag = consumer.channel.addUnackedMessage(consumer, qm)
+		tag = consumer.channel.addUnackedMessage(consumer, qm, consumer.queue.name)
 	}
 	consumer.channel.sendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
