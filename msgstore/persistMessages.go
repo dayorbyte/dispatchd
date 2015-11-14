@@ -159,10 +159,7 @@ func (ms *MessageStore) GetIndex(id int64) (msg *amqp.IndexMessage, found bool) 
 func (ms *MessageStore) AddMessage(msg *amqp.Message, queues []string) (map[string][]*amqp.QueueMessage, error) {
 	msgs := make([]*amqp.TxMessage, 0, len(queues))
 	for _, q := range queues {
-		msgs = append(msgs, &amqp.TxMessage{
-			Msg:       msg,
-			QueueName: q,
-		})
+		msgs = append(msgs, amqp.NewTxMessage(msg, q))
 	}
 	return ms.AddTxMessages(msgs)
 }

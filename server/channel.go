@@ -662,10 +662,7 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
 		queues := exchange.queuesForPublish(server, channel, channel.currentMessage)
 		channel.txLock.Lock()
 		for queueName, _ := range queues {
-			var txmsg = &amqp.TxMessage{
-				Msg:       message,
-				QueueName: queueName,
-			}
+			var txmsg = amqp.NewTxMessage(message, queueName)
 			channel.txMessages = append(channel.txMessages, txmsg)
 		}
 		channel.txLock.Unlock()
