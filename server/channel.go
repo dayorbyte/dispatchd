@@ -376,11 +376,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) (succes
 
 func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *amqp.QueueMessage, queueName string) uint64 {
 	var tag = channel.nextDeliveryTag()
-	var unacked = amqp.UnackedMessage{
-		ConsumerTag: consumer.consumerTag,
-		Msg:         msg,
-		QueueName:   queueName,
-	}
+	var unacked = amqp.NewUnackedMessage(consumer.consumerTag, msg, queueName)
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
 
@@ -388,7 +384,7 @@ func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *amqp.QueueMes
 	if found {
 		panic(fmt.Sprintf("Already found tag: %s", tag))
 	}
-	channel.awaitingAcks[tag] = unacked
+	channel.awaitingAcks[tag] = *unacked
 	// fmt.Printf("Adding tag: %d\n", tag)
 	return tag
 }

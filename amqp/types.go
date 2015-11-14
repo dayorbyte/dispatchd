@@ -27,6 +27,14 @@ func NewTruncatedBodyFrame(channel uint16) WireFrame {
 	}
 }
 
+func NewUnackedMessage(tag string, qm *QueueMessage, queueName string) *UnackedMessage {
+	return &UnackedMessage{
+		ConsumerTag: tag,
+		Msg:         qm,
+		QueueName:   queueName,
+	}
+}
+
 func NewIndexMessage(id int64, refCount int32, durable bool, deliveryCount int32) *IndexMessage {
 	return &IndexMessage{
 		Id:            id,
