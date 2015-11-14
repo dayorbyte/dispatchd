@@ -233,12 +233,12 @@ func (exchange *Exchange) returnMessage(channel *Channel, msg *amqp.Message, cod
 	}, msg)
 }
 
-func (exchange *Exchange) addBinding(method *amqp.QueueBind, connId int64, fromDisk bool) (uint16, error) {
+func (exchange *Exchange) addBinding(server *Server, method *amqp.QueueBind, connId int64, fromDisk bool) (uint16, error) {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 
 	// Check queue
-	var queue, foundQueue = exchange.server.queues[method.Queue]
+	var queue, foundQueue = server.queues[method.Queue]
 	if !foundQueue || queue.closed {
 		return 404, fmt.Errorf("Queue not found: %s", method.Queue)
 	}
@@ -255,7 +255,7 @@ func (exchange *Exchange) addBinding(method *amqp.QueueBind, connId int64, fromD
 		}
 	}
 	if exchange.durable && queue.durable && !fromDisk {
-		var err = exchange.server.persistBinding(method)
+		var err = server.persistBinding(method)
 		if err != nil {
 			return 500, err
 		}
@@ -296,7 +296,7 @@ func (exchange *Exchange) removeBinding(server *Server, queue *Queue, binding *B
 	defer exchange.bindingsLock.Unlock()
 	// First de-persist
 	if queue.durable && exchange.durable {
-		err := exchange.server.depersistBinding(binding)
+		err := server.depersistBinding(binding)
 		if err != nil {
 			return err
 		}

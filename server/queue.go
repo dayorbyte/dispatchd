@@ -230,6 +230,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 
 	// Add consumer
 	var consumer = &Consumer{
+		msgStore:    channel.server.msgStore,
 		arguments:   method.Arguments,
 		channel:     channel,
 		consumerTag: method.ConsumerTag,

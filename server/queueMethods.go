@@ -82,7 +82,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 		return nil
 	}
 
-	errCode, err := exchange.addBinding(method, channel.conn.id, false)
+	errCode, err := exchange.addBinding(channel.server, method, channel.conn.id, false)
 	if err != nil {
 		channel.channelErrorWithMethod(errCode, err.Error(), classId, methodId)
 		return nil

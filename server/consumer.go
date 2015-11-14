@@ -2,13 +2,14 @@ package main
 
 import (
 	"encoding/json"
-	// "fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
+	"github.com/jeffjenkins/mq/msgstore"
 	"sync"
 )
 
 type Consumer struct {
+	msgStore      *msgstore.MessageStore
 	arguments     *amqp.Table
 	channel       *Channel
 	consumerTag   string
@@ -135,7 +136,7 @@ func (consumer *Consumer) consumeOne() {
 		// We aren't expecting an ack, so this is the last time the message
 		// will be referenced.
 		var rhs = []interfaces.MessageResourceHolder{consumer.channel, consumer}
-		err = consumer.channel.server.msgStore.RemoveRef(qm, consumer.queue.name, rhs)
+		err = consumer.msgStore.RemoveRef(qm, consumer.queue.name, rhs)
 		if err != nil {
 			panic("Error getting queue message")
 		}
@@ -171,7 +172,7 @@ func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage, msg *amqp.Mess
 // Send again, leave all stats the same since this consumer was already
 // dealing with this message
 func (consumer *Consumer) redeliver(tag uint64, qm *amqp.QueueMessage) {
-	msg, found := consumer.channel.server.msgStore.GetNoChecks(qm.Id)
+	msg, found := consumer.msgStore.GetNoChecks(qm.Id)
 	if !found {
 		panic("Integrity error, message not found in message store")
 	}
