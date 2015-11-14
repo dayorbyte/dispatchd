@@ -191,12 +191,7 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) (success bool) {
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Tag:         tag,
-			Nack:        false,
-			RequeueNack: false,
-			Multiple:    true,
-		})
+		channel.txAcks = append(channel.txAcks, amqp.NewTxAck(tag, false, false, true))
 		return true
 	}
 	channel.ackLock.Lock()
@@ -238,12 +233,7 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) (success bool) {
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Tag:         tag,
-			Nack:        false,
-			RequeueNack: false,
-			Multiple:    false,
-		})
+		channel.txAcks = append(channel.txAcks, amqp.NewTxAck(tag, false, false, false))
 		return true
 	}
 	// Normal mode
@@ -279,12 +269,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) (succ
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Tag:         tag,
-			Nack:        true,
-			RequeueNack: requeue,
-			Multiple:    true,
-		})
+		channel.txAcks = append(channel.txAcks, amqp.NewTxAck(tag, true, requeue, true))
 		return true
 	}
 
@@ -345,12 +330,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) (succes
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
-		channel.txAcks = append(channel.txAcks, &amqp.TxAck{
-			Tag:         tag,
-			Nack:        true,
-			RequeueNack: requeue,
-			Multiple:    false,
-		})
+		channel.txAcks = append(channel.txAcks, amqp.NewTxAck(tag, true, requeue, false))
 		return true
 	}
 	// Non-transaction mode

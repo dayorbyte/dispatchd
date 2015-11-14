@@ -6,3 +6,12 @@ func NewTxMessage(msg *Message, queueName string) *TxMessage {
 		Msg:       msg,
 	}
 }
+
+func NewTxAck(tag uint64, nack bool, requeueNack bool, multiple bool) *TxAck {
+	return &TxAck{
+		Tag:         tag,
+		Nack:        nack,
+		RequeueNack: requeueNack,
+		Multiple:    multiple,
+	}
+}
