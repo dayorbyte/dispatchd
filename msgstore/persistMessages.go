@@ -177,11 +177,7 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 		// calc index messages
 		var im, found = indexMessages[msg.Msg.Id]
 		if !found {
-			im = &amqp.IndexMessage{
-				Id:      msg.Msg.Id,
-				Refs:    0,
-				Durable: isDurable(msg.Msg),
-			}
+			im = amqp.NewIndexMessage(msg.Msg.Id, 0, isDurable(msg.Msg), 0)
 			indexMessages[msg.Msg.Id] = im
 		}
 		im.Refs += 1

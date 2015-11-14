@@ -27,6 +27,15 @@ func NewTruncatedBodyFrame(channel uint16) WireFrame {
 	}
 }
 
+func NewIndexMessage(id int64, refCount int32, durable bool, deliveryCount int32) *IndexMessage {
+	return &IndexMessage{
+		Id:            id,
+		Refs:          refCount,
+		Durable:       durable,
+		DeliveryCount: deliveryCount,
+	}
+}
+
 func (frame *ContentHeaderFrame) FrameType() byte {
 	return 2
 }
