@@ -5,6 +5,7 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
+	"github.com/jeffjenkins/mq/stats"
 	"sync"
 )
 
@@ -29,6 +30,11 @@ type Consumer struct {
 	stopped       bool
 	statCount     uint64
 	localId       int64
+	// stats
+	statConsumeOneGetOne stats.Histogram
+	statConsumeOne       stats.Histogram
+	statConsumeOneAck    stats.Histogram
+	statConsumeOneSend   stats.Histogram
 }
 
 func (consumer *Consumer) MarshalJSON() ([]byte, error) {
@@ -120,16 +126,21 @@ func (consumer *Consumer) consume(id uint16) {
 }
 
 func (consumer *Consumer) consumeOne() {
+	defer stats.RecordHisto(consumer.statConsumeOne, stats.Start())
 	var err error
 	// Check local limit
 	consumer.consumeLock.Lock()
 	defer consumer.consumeLock.Unlock()
 	// Try to get message/check channel limit
+
+	var start = stats.Start()
 	var qm, msg = consumer.queue.getOne(consumer.channel, consumer)
+	stats.RecordHisto(consumer.statConsumeOneGetOne, start)
 	if qm == nil {
 		return
 	}
 	var tag uint64 = 0
+	start = stats.Start()
 	if !consumer.noAck {
 		tag = consumer.channel.addUnackedMessage(consumer, qm, consumer.queue.name)
 	} else {
@@ -141,6 +152,8 @@ func (consumer *Consumer) consumeOne() {
 			panic("Error getting queue message")
 		}
 	}
+	stats.RecordHisto(consumer.statConsumeOneAck, start)
+	start = stats.Start()
 	consumer.channel.sendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
 		DeliveryTag: tag,
@@ -148,6 +161,7 @@ func (consumer *Consumer) consumeOne() {
 		Exchange:    msg.Exchange,
 		RoutingKey:  msg.Key,
 	}, msg)
+	stats.RecordHisto(consumer.statConsumeOneSend, start)
 	consumer.statCount += 1
 }
 

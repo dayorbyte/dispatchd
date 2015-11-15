@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
+	"github.com/jeffjenkins/mq/stats"
 )
 
 func (channel *Channel) basicRoute(methodFrame amqp.MethodFrame) error {
@@ -119,6 +120,7 @@ func (channel *Channel) basicCancelOk(method *amqp.BasicCancelOk) error {
 }
 
 func (channel *Channel) basicPublish(method *amqp.BasicPublish) error {
+	defer stats.RecordHisto(channel.statPublish, stats.Start())
 	var _, found = channel.server.exchanges[method.Exchange]
 	if !found {
 		var classId, methodId = method.MethodIdentifier()

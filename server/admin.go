@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/rcrowley/go-metrics"
 	"net/http"
 	"os"
 	"sort"
@@ -10,6 +11,15 @@ import (
 
 func homeJSON(w http.ResponseWriter, r *http.Request, server *Server) {
 	var b, err = json.MarshalIndent(server, "", "    ")
+	if err != nil {
+		w.Write([]byte(err.Error()))
+	}
+	w.Write(b)
+}
+
+func statsJSON(w http.ResponseWriter, r *http.Request, server *Server) {
+	// fmt.Println(metrics.DefaultRegistry)
+	var b, err = json.MarshalIndent(metrics.DefaultRegistry, "", "    ")
 	if err != nil {
 		w.Write([]byte(err.Error()))
 	}
@@ -78,6 +88,10 @@ func startAdminServer(server *Server) {
 	// API
 	http.HandleFunc("/api/server", func(w http.ResponseWriter, r *http.Request) {
 		homeJSON(w, r, server)
+	})
+
+	http.HandleFunc("/api/stats", func(w http.ResponseWriter, r *http.Request) {
+		statsJSON(w, r, server)
 	})
 
 	// Boot admin server

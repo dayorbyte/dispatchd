@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/stats"
 	"net"
 	"sync"
 	"time"
@@ -40,6 +41,9 @@ type AMQPConnection struct {
 	maxChannels              uint16
 	maxFrameSize             uint32
 	clientProperties         *amqp.Table
+	// stats
+	statOutBlocked stats.Histogram
+	statOutNetwork stats.Histogram
 }
 
 func (conn *AMQPConnection) MarshalJSON() ([]byte, error) {
@@ -53,15 +57,20 @@ func (conn *AMQPConnection) MarshalJSON() ([]byte, error) {
 
 func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
 	return &AMQPConnection{
+		// If outgoing has a buffer the server performs better. I'm not adding one
+		// in until I fully understand why that is
 		id:            nextId(),
 		network:       network,
 		channels:      make(map[uint16]*Channel),
-		outgoing:      make(chan *amqp.WireFrame),
+		outgoing:      make(chan *amqp.WireFrame, 1000),
 		connectStatus: ConnectStatus{},
 		server:        server,
 		receiveHeartbeatInterval: 10 * time.Second,
 		maxChannels:              4096,
 		maxFrameSize:             65536,
+		// stats
+		statOutBlocked: stats.MakeHistogram("statOutBlocked"),
+		statOutNetwork: stats.MakeHistogram("statOutNetwork"),
 	}
 }
 
@@ -159,12 +168,16 @@ func (conn *AMQPConnection) handleOutgoing() {
 			if conn.connectStatus.closed {
 				break
 			}
+			var start = stats.Start()
 			var frame = <-conn.outgoing
+			stats.RecordHisto(conn.statOutBlocked, start)
+
 			// fmt.Printf("Sending outgoing message. type: %d\n", frame.FrameType)
 			// TODO(MUST): Hard close on irrecoverable errors, retry on recoverable
 			// ones some number of times.
-
+			start = stats.Start()
 			amqp.WriteFrame(conn.network, frame)
+			stats.RecordHisto(conn.statOutNetwork, start)
 			// for wire protocol debugging:
 			// for _, b := range frame.Payload {
 			// 	fmt.Printf("%d,", b)

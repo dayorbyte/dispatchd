@@ -9,15 +9,35 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
+	"github.com/jeffjenkins/mq/stats"
 	"sync"
 )
 
 type MessageStore struct {
-	index     map[int64]*amqp.IndexMessage
-	messages  map[int64]*amqp.Message
-	db        *bolt.DB
-	msgLock   sync.RWMutex
-	indexLock sync.RWMutex
+	index         map[int64]*amqp.IndexMessage
+	messages      map[int64]*amqp.Message
+	db            *bolt.DB
+	msgLock       sync.RWMutex
+	indexLock     sync.RWMutex
+	statAdd       stats.Histogram
+	statRemoveRef stats.Histogram
+}
+
+func NewMessageStore(fileName string) (*MessageStore, error) {
+	db, err := bolt.Open(fileName, 0600, nil)
+	if err != nil {
+		return nil, err
+	}
+	ms := &MessageStore{
+		index:    make(map[int64]*amqp.IndexMessage),
+		messages: make(map[int64]*amqp.Message),
+		db:       db,
+	}
+	// Stats
+	ms.statAdd = stats.MakeHistogram("add-message")
+	ms.statRemoveRef = stats.MakeHistogram("remove-ref")
+
+	return ms, nil
 }
 
 func (ms *MessageStore) MessageCount() int {
@@ -43,18 +63,6 @@ func isDurable(msg *amqp.Message) bool {
 	}
 	dm := msg.Header.Properties.DeliveryMode
 	return dm != nil && *dm == byte(2)
-}
-
-func NewMessageStore(fileName string) (*MessageStore, error) {
-	db, err := bolt.Open(fileName, 0600, nil)
-	if err != nil {
-		return nil, err
-	}
-	return &MessageStore{
-		index:    make(map[int64]*amqp.IndexMessage),
-		messages: make(map[int64]*amqp.Message),
-		db:       db,
-	}, nil
 }
 
 func (ms *MessageStore) LoadQueueFromDisk(queueName string) (*list.List, error) { // list[amqp.QueueMessage]
@@ -167,6 +175,8 @@ func (ms *MessageStore) AddMessage(msg *amqp.Message, queues []string) (map[stri
 }
 
 func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amqp.QueueMessage, error) {
+	defer stats.RecordHisto(ms.statAdd, stats.Start())
+
 	// - Figure out of any messages are durable
 	// - Create IndexMessage instances for each message id
 	anyDurable := false
@@ -256,6 +266,7 @@ func (ms *MessageStore) GetAndDecrRef(qm *amqp.QueueMessage, queueName string, r
 }
 
 func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs []interfaces.MessageResourceHolder) error {
+	defer stats.RecordHisto(ms.statRemoveRef, stats.Start())
 	im, found := ms.GetIndex(qm.Id)
 	if !found {
 		panic("Integrity error: message in queue not in index")
@@ -288,12 +299,15 @@ func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs [
 	// Update memory
 	im.Refs -= 1
 	if im.Refs == 0 {
+
 		ms.msgLock.Lock()
-		defer ms.msgLock.Unlock()
-		ms.indexLock.Lock()
-		defer ms.indexLock.Unlock()
 		delete(ms.index, qm.Id)
+		ms.msgLock.Unlock()
+
+		ms.indexLock.Lock()
 		delete(ms.messages, qm.Id)
+		ms.indexLock.Unlock()
+
 		for _, rh := range rhs {
 			rh.ReleaseResources(qm)
 		}

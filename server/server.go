@@ -10,6 +10,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/msgstore"
+	"github.com/jeffjenkins/mq/stats"
 	"net"
 	"strings"
 	"sync"
@@ -371,16 +372,17 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 		connId = -1
 	}
 	var queue = &Queue{
-		name:       method.Queue,
-		durable:    method.Durable,
-		exclusive:  method.Exclusive,
-		autoDelete: method.AutoDelete,
-		arguments:  method.Arguments,
-		queue:      list.New(),
-		consumers:  make([]*Consumer, 0, 1),
-		maybeReady: make(chan bool, 1),
-		connId:     connId,
-		server:     server,
+		name:        method.Queue,
+		durable:     method.Durable,
+		exclusive:   method.Exclusive,
+		autoDelete:  method.AutoDelete,
+		arguments:   method.Arguments,
+		queue:       list.New(),
+		consumers:   make([]*Consumer, 0, 1),
+		maybeReady:  make(chan bool, 1),
+		connId:      connId,
+		server:      server,
+		statProcOne: stats.MakeHistogram("queue-proc-one"),
 	}
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()

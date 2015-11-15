@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
+	"github.com/jeffjenkins/mq/stats"
 	"math"
 	"sync"
 )
@@ -51,6 +52,35 @@ type Channel struct {
 	// Consumer default QOS limits
 	defaultPrefetchSize  uint32
 	defaultPrefetchCount uint16
+	// Stats
+	statPublish    stats.Histogram
+	statRoute      stats.Histogram
+	statSendChan   stats.Histogram
+	statSendEncode stats.Histogram
+}
+
+func NewChannel(id uint16, conn *AMQPConnection) *Channel {
+	// Perf note: The server is significantly more performant if there's a
+	// buffer for incoming, but until there are metrics available to see
+	// what in particular is slow I'm leaving it as-is
+	return &Channel{
+		id:           id,
+		server:       conn.server,
+		incoming:     make(chan *amqp.WireFrame),
+		outgoing:     conn.outgoing,
+		conn:         conn,
+		flow:         true,
+		state:        CH_STATE_INIT,
+		txMessages:   make([]*amqp.TxMessage, 0),
+		txAcks:       make([]*amqp.TxAck, 0),
+		consumers:    make(map[string]*Consumer),
+		awaitingAcks: make(map[uint64]amqp.UnackedMessage),
+		// Stats
+		statPublish:    stats.MakeHistogram("statPublish"),
+		statRoute:      stats.MakeHistogram("statRoute"),
+		statSendChan:   stats.MakeHistogram("statSendChan"),
+		statSendEncode: stats.MakeHistogram("statSendEncode"),
+	}
 }
 
 func (channel *Channel) commitTx() {
@@ -443,25 +473,6 @@ func (channel *Channel) startPublish(method *amqp.BasicPublish) error {
 	return nil
 }
 
-func NewChannel(id uint16, conn *AMQPConnection) *Channel {
-	// Perf note: The server is significantly more performant if there's a
-	// buffer for incoming, but until there are metrics available to see
-	// what in particular is slow I'm leaving it as-is
-	return &Channel{
-		id:           id,
-		server:       conn.server,
-		incoming:     make(chan *amqp.WireFrame),
-		outgoing:     conn.outgoing,
-		conn:         conn,
-		flow:         true,
-		state:        CH_STATE_INIT,
-		txMessages:   make([]*amqp.TxMessage, 0),
-		txAcks:       make([]*amqp.TxAck, 0),
-		consumers:    make(map[string]*Consumer),
-		awaitingAcks: make(map[uint64]amqp.UnackedMessage),
-	}
-}
-
 func (channel *Channel) nextConfirmId() uint64 {
 	channel.msgIndex++
 	return channel.msgIndex
@@ -565,6 +576,7 @@ func (channel *Channel) sendMethod(method amqp.MethodFrame) {
 
 // Send a method frame out to the client
 func (channel *Channel) sendContent(method amqp.MethodFrame, message *amqp.Message) {
+	var start = stats.Start()
 	channel.sendLock.Lock()
 	defer channel.sendLock.Unlock()
 	// encode header
@@ -579,6 +591,8 @@ func (channel *Channel) sendContent(method amqp.MethodFrame, message *amqp.Messa
 	}
 	amqp.WriteShort(buf, flags)
 	buf.Write(propBuf.Bytes())
+	stats.RecordHisto(channel.statSendEncode, start)
+	start = stats.Start()
 	// Send method
 	channel.sendMethod(method)
 	// Send header
@@ -588,6 +602,7 @@ func (channel *Channel) sendContent(method amqp.MethodFrame, message *amqp.Messa
 		b.Channel = channel.id
 		channel.outgoing <- b
 	}
+	stats.RecordHisto(channel.statSendChan, start)
 }
 
 func (channel *Channel) handleContentHeader(frame *amqp.WireFrame) {
@@ -630,6 +645,7 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
 	}
 
 	// We have the whole contents, let's publish!
+	defer stats.RecordHisto(channel.statRoute, stats.Start())
 	var server = channel.server
 	var message = channel.currentMessage
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
+	"github.com/jeffjenkins/mq/stats"
 	"sync"
 	"time"
 )
@@ -42,6 +43,7 @@ type Queue struct {
 	deleteActive    time.Time
 	hasHadConsumers bool
 	server          *Server
+	statProcOne     stats.Histogram
 }
 
 func equivalentQueues(q1 *Queue, q2 *Queue) bool {
@@ -244,6 +246,11 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 		prefetchSize:  channel.defaultPrefetchSize,
 		prefetchCount: channel.defaultPrefetchCount,
 		localId:       channel.conn.id,
+		// stats
+		statConsumeOneGetOne: stats.MakeHistogram("Consume-One-Get-One"),
+		statConsumeOne:       stats.MakeHistogram("Consume-One-"),
+		statConsumeOneAck:    stats.MakeHistogram("Consume-One-Ack"),
+		statConsumeOneSend:   stats.MakeHistogram("Consume-One-Send"),
 	}
 	q.consumerLock.Lock()
 	if method.Exclusive {
@@ -275,6 +282,7 @@ func (q *Queue) start() {
 }
 
 func (q *Queue) processOne() {
+	defer stats.RecordHisto(q.statProcOne, stats.Start())
 	q.consumerLock.RLock()
 	defer q.consumerLock.RUnlock()
 	var size = len(q.consumers)
