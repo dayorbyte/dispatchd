@@ -444,6 +444,9 @@ func (channel *Channel) startPublish(method *amqp.BasicPublish) error {
 }
 
 func NewChannel(id uint16, conn *AMQPConnection) *Channel {
+	// Perf note: The server is significantly more performant if there's a
+	// buffer for incoming, but until there are metrics available to see
+	// what in particular is slow I'm leaving it as-is
 	return &Channel{
 		id:           id,
 		server:       conn.server,
