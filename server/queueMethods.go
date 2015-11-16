@@ -5,7 +5,7 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 )
 
-func (channel *Channel) queueRoute(methodFrame amqp.MethodFrame) error {
+func (channel *Channel) queueRoute(methodFrame amqp.MethodFrame) *AMQPError {
 	switch method := methodFrame.(type) {
 	case *amqp.QueueDeclare:
 		return channel.queueDeclare(method)
@@ -19,11 +19,10 @@ func (channel *Channel) queueRoute(methodFrame amqp.MethodFrame) error {
 		return channel.queueUnbind(method)
 	}
 	var classId, methodId = methodFrame.MethodIdentifier()
-	channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
-	return nil
+	return NewHardError(540, "Not implemented", classId, methodId)
 }
 
-func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
+func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *AMQPError {
 	var classId, methodId = method.MethodIdentifier()
 	// No name means generate a name
 	if len(method.Queue) == 0 {
@@ -33,8 +32,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 	// Check the name format
 	var err = amqp.CheckExchangeOrQueueName(method.Queue)
 	if err != nil {
-		channel.channelErrorWithMethod(406, err.Error(), classId, methodId)
-		return nil
+		return NewSoftError(406, err.Error(), classId, methodId)
 	}
 
 	if method.Passive {
@@ -48,13 +46,12 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 			channel.lastQueueName = method.Queue
 			return nil
 		}
-		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
+		return NewSoftError(404, "Queue not found", classId, methodId)
 	}
 
 	name, err := channel.conn.server.declareQueue(method, channel.conn.id, false)
 	if err != nil {
-		channel.channelErrorWithMethod(500, "Error creating queue", classId, methodId)
-		return nil
+		return NewSoftError(500, "Error creating queue", classId, methodId)
 	}
 	channel.lastQueueName = method.Queue
 	if !method.NoWait {
@@ -63,13 +60,12 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) error {
 	return nil
 }
 
-func (channel *Channel) queueBind(method *amqp.QueueBind) error {
+func (channel *Channel) queueBind(method *amqp.QueueBind) *AMQPError {
 	var classId, methodId = method.MethodIdentifier()
 
 	if len(method.Queue) == 0 {
 		if len(channel.lastQueueName) == 0 {
-			channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
-			return nil
+			return NewSoftError(404, "Queue not found", classId, methodId)
 		} else {
 			method.Queue = channel.lastQueueName
 		}
@@ -78,14 +74,12 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 	// Check exchange
 	var exchange, foundExchange = channel.server.exchanges[method.Exchange]
 	if !foundExchange {
-		channel.channelErrorWithMethod(404, "Exchange not found", classId, methodId)
-		return nil
+		return NewSoftError(404, "Exchange not found", classId, methodId)
 	}
 
 	errCode, err := exchange.addBinding(channel.server, method, channel.conn.id, false)
 	if err != nil {
-		channel.channelErrorWithMethod(errCode, err.Error(), classId, methodId)
-		return nil
+		return NewSoftError(errCode, err.Error(), classId, methodId)
 	}
 
 	if !method.NoWait {
@@ -94,15 +88,14 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) error {
 	return nil
 }
 
-func (channel *Channel) queuePurge(method *amqp.QueuePurge) error {
+func (channel *Channel) queuePurge(method *amqp.QueuePurge) *AMQPError {
 	fmt.Println("Got queuePurge")
 	var classId, methodId = method.MethodIdentifier()
 
 	// Check queue
 	if len(method.Queue) == 0 {
 		if len(channel.lastQueueName) == 0 {
-			channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
-			return nil
+			return NewSoftError(404, "Queue not found", classId, methodId)
 		} else {
 			method.Queue = channel.lastQueueName
 		}
@@ -110,13 +103,11 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) error {
 
 	var queue, foundQueue = channel.server.queues[method.Queue]
 	if !foundQueue {
-		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
-		return nil
+		return NewSoftError(404, "Queue not found", classId, methodId)
 	}
 
 	if queue.connId != -1 && queue.connId != channel.conn.id {
-		channel.channelErrorWithMethod(405, "Queue is locked to another connection", classId, methodId)
-		return nil
+		return NewSoftError(405, "Queue is locked to another connection", classId, methodId)
 	}
 
 	numPurged := queue.purge()
@@ -126,15 +117,14 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) error {
 	return nil
 }
 
-func (channel *Channel) queueDelete(method *amqp.QueueDelete) error {
+func (channel *Channel) queueDelete(method *amqp.QueueDelete) *AMQPError {
 	fmt.Println("Got queueDelete")
 	var classId, methodId = method.MethodIdentifier()
 
 	// Check queue
 	if len(method.Queue) == 0 {
 		if len(channel.lastQueueName) == 0 {
-			channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
-			return nil
+			return NewSoftError(404, "Queue not found", classId, methodId)
 		} else {
 			method.Queue = channel.lastQueueName
 		}
@@ -142,8 +132,7 @@ func (channel *Channel) queueDelete(method *amqp.QueueDelete) error {
 
 	numPurged, errCode, err := channel.server.deleteQueue(method, channel.conn.id)
 	if err != nil {
-		channel.channelErrorWithMethod(errCode, err.Error(), classId, methodId)
-		return nil
+		return NewSoftError(errCode, err.Error(), classId, methodId)
 	}
 
 	if !method.NoWait {
@@ -152,14 +141,13 @@ func (channel *Channel) queueDelete(method *amqp.QueueDelete) error {
 	return nil
 }
 
-func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) error {
+func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *AMQPError {
 	var classId, methodId = method.MethodIdentifier()
 
 	// Check queue
 	if len(method.Queue) == 0 {
 		if len(channel.lastQueueName) == 0 {
-			channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
-			return nil
+			return NewSoftError(404, "Queue not found", classId, methodId)
 		} else {
 			method.Queue = channel.lastQueueName
 		}
@@ -167,26 +155,23 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) error {
 
 	var queue, foundQueue = channel.server.queues[method.Queue]
 	if !foundQueue {
-		channel.channelErrorWithMethod(404, "Queue not found", classId, methodId)
-		return nil
+		return NewSoftError(404, "Queue not found", classId, methodId)
 	}
 
 	if queue.connId != -1 && queue.connId != channel.conn.id {
-		channel.channelErrorWithMethod(405, "Queue is locked to another connection", classId, methodId)
-		return nil
+		return NewSoftError(405, "Queue is locked to another connection", classId, methodId)
 	}
 
 	// Check exchange
 	var exchange, foundExchange = channel.server.exchanges[method.Exchange]
 	if !foundExchange {
-		channel.channelErrorWithMethod(404, "Exchange not found", classId, methodId)
-		return nil
+		return NewSoftError(404, "Exchange not found", classId, methodId)
 	}
 
 	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
 
 	if err := exchange.removeBinding(channel.server, queue, binding); err != nil {
-		channel.channelErrorWithMethod(500, err.Error(), classId, methodId)
+		return NewSoftError(500, err.Error(), classId, methodId)
 	}
 	channel.sendMethod(&amqp.QueueUnbindOk{})
 	return nil
