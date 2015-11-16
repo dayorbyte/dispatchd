@@ -262,7 +262,6 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		incoming:   make(chan amqp.Frame),
 		bindings:   make([]*Binding, 0),
 		system:     system,
-		server:     server,
 	}
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()

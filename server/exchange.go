@@ -29,7 +29,6 @@ type Exchange struct {
 	bindings     []*Binding
 	bindingsLock sync.Mutex
 	incoming     chan amqp.Frame
-	server       *Server
 	closed       bool
 	deleteActive time.Time
 }
