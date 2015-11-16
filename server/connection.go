@@ -44,6 +44,8 @@ type AMQPConnection struct {
 	// stats
 	statOutBlocked stats.Histogram
 	statOutNetwork stats.Histogram
+	statInBlocked  stats.Histogram
+	statInNetwork  stats.Histogram
 }
 
 func (conn *AMQPConnection) MarshalJSON() ([]byte, error) {
@@ -62,15 +64,17 @@ func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
 		id:            nextId(),
 		network:       network,
 		channels:      make(map[uint16]*Channel),
-		outgoing:      make(chan *amqp.WireFrame, 1000),
+		outgoing:      make(chan *amqp.WireFrame, 100),
 		connectStatus: ConnectStatus{},
 		server:        server,
 		receiveHeartbeatInterval: 10 * time.Second,
 		maxChannels:              4096,
 		maxFrameSize:             65536,
 		// stats
-		statOutBlocked: stats.MakeHistogram("statOutBlocked"),
-		statOutNetwork: stats.MakeHistogram("statOutNetwork"),
+		statOutBlocked: stats.MakeHistogram("Connection.Out.Blocked"),
+		statOutNetwork: stats.MakeHistogram("Connection.Out.Network"),
+		statInBlocked:  stats.MakeHistogram("Connection.In.Blocked"),
+		statInNetwork:  stats.MakeHistogram("Connection.In.Network"),
 	}
 }
 
@@ -207,12 +211,14 @@ func (conn *AMQPConnection) handleIncoming() {
 		// TODO(MUST): Add a timeout to the read, esp. if there is no heartbeat
 		// TODO(MUST): Hard close on unrecoverable errors, retry (with backoff?)
 		// for recoverable ones
+		var start = stats.Start()
 		frame, err := amqp.ReadFrame(conn.network)
 		if err != nil {
 			fmt.Println("Error reading frame: " + err.Error())
 			conn.hardClose()
 			break
 		}
+		stats.RecordHisto(conn.statInNetwork, start)
 
 		// Upkeep. Remove things which have expired, etc
 		conn.cleanUp()
@@ -237,6 +243,8 @@ func (conn *AMQPConnection) handleIncoming() {
 			conn.channels[frame.Channel].start()
 		}
 		// Dispatch
+		start = stats.Start()
 		channel.incoming <- frame
+		stats.RecordHisto(conn.statInBlocked, start)
 	}
 }

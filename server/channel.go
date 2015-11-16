@@ -66,7 +66,7 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 	return &Channel{
 		id:           id,
 		server:       conn.server,
-		incoming:     make(chan *amqp.WireFrame),
+		incoming:     make(chan *amqp.WireFrame, 100),
 		outgoing:     conn.outgoing,
 		conn:         conn,
 		flow:         true,
