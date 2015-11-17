@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/consumer"
 	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/stats"
 	"math"
@@ -27,7 +28,7 @@ type Channel struct {
 	state          uint8
 	confirmMode    bool
 	currentMessage *amqp.Message
-	consumers      map[string]*Consumer
+	consumers      map[string]*consumer.Consumer
 	consumerLock   sync.Mutex
 	sendLock       sync.Mutex
 	lastQueueName  string
@@ -73,7 +74,7 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 		state:        CH_STATE_INIT,
 		txMessages:   make([]*amqp.TxMessage, 0),
 		txAcks:       make([]*amqp.TxAck, 0),
-		consumers:    make(map[string]*Consumer),
+		consumers:    make(map[string]*consumer.Consumer),
 		awaitingAcks: make(map[uint64]amqp.UnackedMessage),
 		// Stats
 		statPublish:    stats.MakeHistogram("statPublish"),
@@ -181,11 +182,11 @@ func (channel *Channel) recover(requeue bool) {
 				if cFound {
 					// Consumer exists, try to deliver again
 					channel.server.msgStore.IncrDeliveryCount(unacked.QueueName, unacked.Msg)
-					consumer.redeliver(tag, unacked.Msg)
+					consumer.Redeliver(tag, unacked.Msg)
 				} else {
 					// no consumer, drop message
 					var rhs = []interfaces.MessageResourceHolder{
-						consumer.cchannel,
+						channel,
 						consumer,
 					}
 					channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
@@ -206,7 +207,7 @@ func (channel *Channel) changeFlow(active bool) {
 	// work again.
 	if channel.flow {
 		for _, consumer := range channel.consumers {
-			consumer.ping()
+			consumer.Ping()
 		}
 	}
 }
@@ -237,7 +238,7 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) *AMQPError {
 			delete(channel.awaitingAcks, k)
 
 			if cFound {
-				consumer.ping()
+				consumer.Ping()
 			}
 		}
 	}
@@ -279,7 +280,7 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) *AMQPError {
 	delete(channel.awaitingAcks, tag)
 
 	if cFound {
-		consumer.ping()
+		consumer.Ping()
 	}
 	return nil
 }
@@ -333,7 +334,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) *AMQP
 			// since there might be a message available now
 			delete(channel.awaitingAcks, k)
 			if cFound {
-				consumer.ping()
+				consumer.Ping()
 			}
 		}
 	}
@@ -388,7 +389,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) *AMQPEr
 	// since there might be a message available now
 	delete(channel.awaitingAcks, tag)
 	if cFound {
-		consumer.ping()
+		consumer.Ping()
 	}
 
 	return nil
@@ -413,14 +414,14 @@ func (channel *Channel) AddUnackedMessage(consumerTag string, msg *amqp.QueueMes
 	return tag
 }
 
-func (channel *Channel) addConsumer(consumer *Consumer) error {
+func (channel *Channel) addConsumer(consumer *consumer.Consumer) error {
 	channel.consumerLock.Lock()
 	defer channel.consumerLock.Unlock()
-	_, found := channel.consumers[consumer.consumerTag]
+	_, found := channel.consumers[consumer.ConsumerTag]
 	if found {
-		return fmt.Errorf("Consumer tag already exists: %s", consumer.consumerTag)
+		return fmt.Errorf("Consumer tag already exists: %s", consumer.ConsumerTag)
 	}
-	channel.consumers[consumer.consumerTag] = consumer
+	channel.consumers[consumer.ConsumerTag] = consumer
 	return nil
 }
 
@@ -557,7 +558,7 @@ func (channel *Channel) shutdown() {
 	channel.conn.deregisterChannel(channel.id)
 	// remove any consumers associated with this channel
 	for _, consumer := range channel.consumers {
-		consumer.stop()
+		channel.removeConsumer(consumer.ConsumerTag)
 	}
 	// Any unacked messages should be re-added
 	// for tag, unacked := range channel.awaitingAcks {
@@ -574,7 +575,7 @@ func (channel *Channel) removeConsumer(consumerTag string) error {
 	if !found {
 		return errors.New("Consumer not found")
 	}
-	consumer.stop()
+	consumer.Stop()
 	delete(channel.consumers, consumerTag)
 	return nil
 }

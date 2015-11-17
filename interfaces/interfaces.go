@@ -20,3 +20,11 @@ type ConsumerChannel interface {
 	FlowActive() bool
 	AddUnackedMessage(consumerTag string, qm *amqp.QueueMessage, queueName string) uint64
 }
+
+type ConsumerQueue interface {
+	GetOne(
+		channel MessageResourceHolder,
+		consumer MessageResourceHolder,
+	) (*amqp.QueueMessage, *amqp.Message)
+	MaybeReady() chan bool
+}

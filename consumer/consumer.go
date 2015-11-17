@@ -1,4 +1,4 @@
-package main
+package consumer
 
 import (
 	"encoding/json"
@@ -13,13 +13,14 @@ type Consumer struct {
 	msgStore      *msgstore.MessageStore
 	arguments     *amqp.Table
 	cchannel      interfaces.ConsumerChannel
-	consumerTag   string
+	ConsumerTag   string
 	exclusive     bool
 	incoming      chan bool
 	noAck         bool
 	noLocal       bool
 	qos           uint16
-	queue         *Queue
+	cqueue        interfaces.ConsumerQueue
+	queueName     string
 	consumeLock   sync.Mutex
 	limitLock     sync.Mutex
 	prefetchSize  uint32
@@ -28,7 +29,7 @@ type Consumer struct {
 	activeCount   uint16
 	stopLock      sync.Mutex
 	stopped       bool
-	statCount     uint64
+	StatCount     uint64
 	localId       int64
 	// stats
 	statConsumeOneGetOne stats.Histogram
@@ -37,11 +38,49 @@ type Consumer struct {
 	statConsumeOneSend   stats.Histogram
 }
 
+func NewConsumer(
+	msgStore *msgstore.MessageStore,
+	arguments *amqp.Table,
+	cchannel interfaces.ConsumerChannel,
+	consumerTag string,
+	exclusive bool,
+	noAck bool,
+	noLocal bool,
+	qos uint16,
+	cqueue interfaces.ConsumerQueue,
+	queueName string,
+	prefetchSize uint32,
+	prefetchCount uint16,
+	localId int64,
+) *Consumer {
+	return &Consumer{
+		msgStore:      msgStore,
+		arguments:     arguments,
+		cchannel:      cchannel,
+		ConsumerTag:   consumerTag,
+		exclusive:     exclusive,
+		incoming:      make(chan bool, 1),
+		noAck:         noAck,
+		noLocal:       noLocal,
+		qos:           qos,
+		cqueue:        cqueue,
+		queueName:     queueName,
+		prefetchSize:  prefetchSize,
+		prefetchCount: prefetchCount,
+		localId:       localId,
+		// stats
+		statConsumeOneGetOne: stats.MakeHistogram("Consume-One-Get-One"),
+		statConsumeOne:       stats.MakeHistogram("Consume-One-"),
+		statConsumeOneAck:    stats.MakeHistogram("Consume-One-Ack"),
+		statConsumeOneSend:   stats.MakeHistogram("Consume-One-Send"),
+	}
+}
+
 func (consumer *Consumer) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"tag": consumer.consumerTag,
+		"tag": consumer.ConsumerTag,
 		"stats": map[string]interface{}{
-			"total":             consumer.statCount,
+			"total":             consumer.StatCount,
 			"qos":               consumer.qos,
 			"active_size_bytes": consumer.activeSize,
 			"active_count":      consumer.activeCount,
@@ -50,13 +89,17 @@ func (consumer *Consumer) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func (consumer *Consumer) stop() {
+// TODO: make this a field that we construct on init
+func (consumer *Consumer) MessageResourceHolders() []interfaces.MessageResourceHolder {
+	return []interfaces.MessageResourceHolder{consumer, consumer.cchannel}
+}
+
+func (consumer *Consumer) Stop() {
 	if !consumer.stopped {
 		consumer.stopLock.Lock()
 		consumer.stopped = true
 		close(consumer.incoming)
 		consumer.stopLock.Unlock()
-		consumer.queue.removeConsumer(consumer.consumerTag)
 	}
 }
 
@@ -102,11 +145,11 @@ func (consumer *Consumer) ReleaseResources(qm *amqp.QueueMessage) {
 	consumer.limitLock.Unlock()
 }
 
-func (consumer *Consumer) start() {
+func (consumer *Consumer) Start() {
 	go consumer.consume(0)
 }
 
-func (consumer *Consumer) ping() {
+func (consumer *Consumer) Ping() {
 	consumer.stopLock.Lock()
 	defer consumer.stopLock.Unlock()
 	if !consumer.stopped {
@@ -119,7 +162,8 @@ func (consumer *Consumer) ping() {
 }
 
 func (consumer *Consumer) consume(id uint16) {
-	consumer.queue.maybeReady <- false
+	// TODO: what is this doing?
+	consumer.cqueue.MaybeReady() <- false
 	for _ = range consumer.incoming {
 		consumer.consumeOne()
 	}
@@ -134,7 +178,7 @@ func (consumer *Consumer) consumeOne() {
 	// Try to get message/check channel limit
 
 	var start = stats.Start()
-	var qm, msg = consumer.queue.getOne(consumer.cchannel, consumer)
+	var qm, msg = consumer.cqueue.GetOne(consumer.cchannel, consumer)
 	stats.RecordHisto(consumer.statConsumeOneGetOne, start)
 	if qm == nil {
 		return
@@ -142,12 +186,12 @@ func (consumer *Consumer) consumeOne() {
 	var tag uint64 = 0
 	start = stats.Start()
 	if !consumer.noAck {
-		tag = consumer.cchannel.AddUnackedMessage(consumer.consumerTag, qm, consumer.queue.name)
+		tag = consumer.cchannel.AddUnackedMessage(consumer.ConsumerTag, qm, consumer.queueName)
 	} else {
 		// We aren't expecting an ack, so this is the last time the message
 		// will be referenced.
 		var rhs = []interfaces.MessageResourceHolder{consumer.cchannel, consumer}
-		err = consumer.msgStore.RemoveRef(qm, consumer.queue.name, rhs)
+		err = consumer.msgStore.RemoveRef(qm, consumer.queueName, rhs)
 		if err != nil {
 			panic("Error getting queue message")
 		}
@@ -155,43 +199,47 @@ func (consumer *Consumer) consumeOne() {
 	stats.RecordHisto(consumer.statConsumeOneAck, start)
 	start = stats.Start()
 	consumer.cchannel.SendContent(&amqp.BasicDeliver{
-		ConsumerTag: consumer.consumerTag,
+		ConsumerTag: consumer.ConsumerTag,
 		DeliveryTag: tag,
 		Redelivered: qm.DeliveryCount > 0,
 		Exchange:    msg.Exchange,
 		RoutingKey:  msg.Key,
 	}, msg)
 	stats.RecordHisto(consumer.statConsumeOneSend, start)
-	consumer.statCount += 1
+	consumer.StatCount += 1
 }
 
-func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage, msg *amqp.Message) bool {
+func (consumer *Consumer) SendCancel() {
+	consumer.cchannel.SendMethod(&amqp.BasicCancel{consumer.ConsumerTag, true})
+}
+
+func (consumer *Consumer) ConsumeImmediate(qm *amqp.QueueMessage, msg *amqp.Message) bool {
 	consumer.consumeLock.Lock()
 	defer consumer.consumeLock.Unlock()
 	var tag uint64 = 0
 	if !consumer.noAck {
-		tag = consumer.cchannel.AddUnackedMessage(consumer.consumerTag, qm, consumer.queue.name)
+		tag = consumer.cchannel.AddUnackedMessage(consumer.ConsumerTag, qm, consumer.queueName)
 	}
 	consumer.cchannel.SendContent(&amqp.BasicDeliver{
-		ConsumerTag: consumer.consumerTag,
+		ConsumerTag: consumer.ConsumerTag,
 		DeliveryTag: tag,
 		Redelivered: msg.Redelivered > 0,
 		Exchange:    msg.Exchange,
 		RoutingKey:  msg.Key,
 	}, msg)
-	consumer.statCount += 1
+	consumer.StatCount += 1
 	return true
 }
 
 // Send again, leave all stats the same since this consumer was already
 // dealing with this message
-func (consumer *Consumer) redeliver(tag uint64, qm *amqp.QueueMessage) {
+func (consumer *Consumer) Redeliver(tag uint64, qm *amqp.QueueMessage) {
 	msg, found := consumer.msgStore.GetNoChecks(qm.Id)
 	if !found {
 		panic("Integrity error, message not found in message store")
 	}
 	consumer.cchannel.SendContent(&amqp.BasicDeliver{
-		ConsumerTag: consumer.consumerTag,
+		ConsumerTag: consumer.ConsumerTag,
 		DeliveryTag: tag,
 		Redelivered: msg.Redelivered > 0,
 		Exchange:    msg.Exchange,

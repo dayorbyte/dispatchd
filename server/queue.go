@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/consumer"
 	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/stats"
@@ -35,11 +36,11 @@ type Queue struct {
 	queue           *list.List // int64
 	queueLock       sync.Mutex
 	consumerLock    sync.RWMutex
-	consumers       []*Consumer // *Consumer
+	consumers       []*consumer.Consumer // *Consumer
 	currentConsumer int
 	statCount       uint64
 	maybeReady      chan bool
-	soleConsumer    *Consumer
+	soleConsumer    *consumer.Consumer
 	connId          int64
 	deleteActive    time.Time
 	hasHadConsumers bool
@@ -127,13 +128,9 @@ func (q *Queue) consumeImmediate(qm *amqp.QueueMessage) bool {
 	q.consumerLock.RLock()
 	defer q.consumerLock.RUnlock()
 	for _, consumer := range q.consumers {
-		var rhs = []interfaces.MessageResourceHolder{
-			consumer.cchannel,
-			consumer,
-		}
-		var msg, acquired = q.msgStore.Get(qm, rhs)
+		var msg, acquired = q.msgStore.Get(qm, consumer.MessageResourceHolders())
 		if acquired {
-			consumer.consumeImmediate(qm, msg)
+			consumer.ConsumeImmediate(qm, msg)
 			return true
 		}
 	}
@@ -176,12 +173,12 @@ func (q *Queue) readd(queueName string, msg *amqp.QueueMessage) {
 func (q *Queue) removeConsumer(consumerTag string) {
 	q.consumerLock.Lock()
 	defer q.consumerLock.Unlock()
-	if q.soleConsumer != nil && q.soleConsumer.consumerTag == consumerTag {
+	if q.soleConsumer != nil && q.soleConsumer.ConsumerTag == consumerTag {
 		q.soleConsumer = nil
 	}
 	// remove from list
 	for i, c := range q.consumers {
-		if c.consumerTag == consumerTag {
+		if c.ConsumerTag == consumerTag {
 			q.consumers = append(q.consumers[:i], q.consumers[i+1:]...)
 		}
 	}
@@ -215,10 +212,10 @@ func (q *Queue) cancelConsumers() {
 	q.soleConsumer = nil
 	// Send cancel to each consumer
 	for _, c := range q.consumers {
-		c.cchannel.SendMethod(&amqp.BasicCancel{c.consumerTag, true})
-		c.stop()
+		c.SendCancel()
+		c.Stop()
 	}
-	q.consumers = make([]*Consumer, 0, 1)
+	q.consumers = make([]*consumer.Consumer, 0, 1)
 }
 
 func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16, error) {
@@ -229,27 +226,21 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 	q.deleteActive = time.Unix(0, 0)
 
 	// Add consumer
-	var consumer = &Consumer{
-		msgStore:    q.msgStore,
-		arguments:   method.Arguments,
-		cchannel:    channel,
-		consumerTag: method.ConsumerTag,
-		exclusive:   method.Exclusive,
-		incoming:    make(chan bool, 1),
-		noAck:       method.NoAck,
-		noLocal:     method.NoLocal,
-		// TODO: size QOS
-		qos:           channel.defaultPrefetchCount,
-		queue:         q,
-		prefetchSize:  channel.defaultPrefetchSize,
-		prefetchCount: channel.defaultPrefetchCount,
-		localId:       channel.conn.id,
-		// stats
-		statConsumeOneGetOne: stats.MakeHistogram("Consume-One-Get-One"),
-		statConsumeOne:       stats.MakeHistogram("Consume-One-"),
-		statConsumeOneAck:    stats.MakeHistogram("Consume-One-Ack"),
-		statConsumeOneSend:   stats.MakeHistogram("Consume-One-Send"),
-	}
+	var consumer = consumer.NewConsumer(
+		q.msgStore,
+		method.Arguments,
+		channel,
+		method.ConsumerTag,
+		method.Exclusive,
+		method.NoAck,
+		method.NoLocal,
+		channel.defaultPrefetchCount,
+		q,
+		q.name,
+		channel.defaultPrefetchSize,
+		channel.defaultPrefetchCount,
+		channel.conn.id,
+	)
 	q.consumerLock.Lock()
 	if method.Exclusive {
 		if len(q.consumers) == 0 {
@@ -262,7 +253,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 	q.consumers = append(q.consumers, consumer)
 	q.hasHadConsumers = true
 	q.consumerLock.Unlock()
-	consumer.start()
+	consumer.Start()
 	return 0, nil
 }
 
@@ -279,6 +270,10 @@ func (q *Queue) start() {
 	}()
 }
 
+func (q *Queue) MaybeReady() chan bool {
+	return q.maybeReady
+}
+
 func (q *Queue) processOne() {
 	defer stats.RecordHisto(q.statProcOne, stats.Start())
 	q.consumerLock.RLock()
@@ -290,7 +285,7 @@ func (q *Queue) processOne() {
 	for count := 0; count < size; count++ {
 		q.currentConsumer = (q.currentConsumer + 1) % size
 		var c = q.consumers[q.currentConsumer]
-		c.ping()
+		c.Ping()
 	}
 }
 
@@ -304,7 +299,7 @@ func (q *Queue) getOneForced() *amqp.QueueMessage {
 	return qMsg
 }
 
-func (q *Queue) getOne(channel interfaces.MessageResourceHolder, consumer *Consumer) (*amqp.QueueMessage, *amqp.Message) {
+func (q *Queue) GetOne(channel interfaces.MessageResourceHolder, consumer interfaces.MessageResourceHolder) (*amqp.QueueMessage, *amqp.Message) {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	// Empty check

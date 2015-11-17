@@ -63,7 +63,7 @@ func home(w http.ResponseWriter, r *http.Request, server *Server) {
 		)
 		fmt.Fprintf(w, "<h3>Consumers</h3>")
 		for _, consumer := range queue.consumers {
-			fmt.Fprintf(w, "'%s': %d\n", consumer.consumerTag, consumer.statCount)
+			fmt.Fprintf(w, "'%s': %d\n", consumer.ConsumerTag, consumer.StatCount)
 		}
 	}
 	fmt.Fprintf(w, "</pre>")

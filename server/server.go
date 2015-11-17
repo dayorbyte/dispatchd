@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/consumer"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/stats"
 	"net"
@@ -404,7 +405,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 		autoDelete:  method.AutoDelete,
 		arguments:   method.Arguments,
 		queue:       list.New(),
-		consumers:   make([]*Consumer, 0, 1),
+		consumers:   make([]*consumer.Consumer, 0, 1),
 		maybeReady:  make(chan bool, 1),
 		connId:      connId,
 		msgStore:    server.msgStore,
