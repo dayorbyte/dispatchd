@@ -17,14 +17,16 @@ import (
 )
 
 type Server struct {
-	exchanges  map[string]*Exchange
-	queues     map[string]*Queue
-	bindings   []*Binding
-	idLock     sync.Mutex
-	conns      map[int64]*AMQPConnection
-	db         *bolt.DB
-	serverLock sync.Mutex
-	msgStore   *msgstore.MessageStore
+	exchanges       map[string]*Exchange
+	queues          map[string]*Queue
+	bindings        []*Binding
+	idLock          sync.Mutex
+	conns           map[int64]*AMQPConnection
+	db              *bolt.DB
+	serverLock      sync.Mutex
+	msgStore        *msgstore.MessageStore
+	exchangeDeleter chan *Exchange
+	queueDeleter    chan *Queue
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
@@ -53,12 +55,14 @@ func NewServer(dbPath string) *Server {
 	}
 
 	var server = &Server{
-		exchanges: make(map[string]*Exchange),
-		queues:    make(map[string]*Queue),
-		bindings:  make([]*Binding, 0),
-		conns:     make(map[int64]*AMQPConnection),
-		db:        db,
-		msgStore:  msgStore,
+		exchanges:       make(map[string]*Exchange),
+		queues:          make(map[string]*Queue),
+		bindings:        make([]*Binding, 0),
+		conns:           make(map[int64]*AMQPConnection),
+		db:              db,
+		msgStore:        msgStore,
+		exchangeDeleter: make(chan *Exchange),
+		queueDeleter:    make(chan *Queue),
 	}
 
 	server.init()
@@ -69,6 +73,28 @@ func (server *Server) init() {
 	server.initExchanges()
 	server.initQueues()
 	server.initBindings()
+	go server.exchangeDeleteMonitor()
+	go server.queueDeleteMonitor()
+}
+
+func (server *Server) exchangeDeleteMonitor() {
+	for e := range server.exchangeDeleter {
+		var dele = &amqp.ExchangeDelete{
+			Exchange: e.name,
+			NoWait:   true,
+		}
+		server.deleteExchange(dele)
+	}
+}
+
+func (server *Server) queueDeleteMonitor() {
+	for q := range server.queueDeleter {
+		var delq = &amqp.QueueDelete{
+			Queue:  q.name,
+			NoWait: true,
+		}
+		server.deleteQueue(delq, -1)
+	}
 }
 
 func (server *Server) initBindings() {
@@ -262,6 +288,7 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		incoming:   make(chan amqp.Frame),
 		bindings:   make([]*Binding, 0),
 		system:     system,
+		deleteChan: server.exchangeDeleter,
 	}
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()
@@ -382,6 +409,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 		connId:      connId,
 		server:      server,
 		statProcOne: stats.MakeHistogram("queue-proc-one"),
+		deleteChan:  server.queueDeleter,
 	}
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()

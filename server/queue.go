@@ -44,6 +44,7 @@ type Queue struct {
 	hasHadConsumers bool
 	server          *Server
 	statProcOne     stats.Histogram
+	deleteChan      chan *Queue
 }
 
 func equivalentQueues(q1 *Queue, q2 *Queue) bool {

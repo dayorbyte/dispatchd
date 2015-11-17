@@ -31,6 +31,7 @@ type Exchange struct {
 	incoming     chan amqp.Frame
 	closed       bool
 	deleteActive time.Time
+	deleteChan   chan *Exchange
 }
 
 func (exchange *Exchange) close() {
