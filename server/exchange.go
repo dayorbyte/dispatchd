@@ -234,38 +234,23 @@ func (exchange *Exchange) returnMessage(msg *amqp.Message, code uint16, text str
 	}
 }
 
-func (exchange *Exchange) addBinding(server *Server, method *amqp.QueueBind, connId int64, fromDisk bool) (uint16, error) {
+func (exchange *Exchange) addBinding(server *Server, method *amqp.QueueBind, connId int64, fromDisk bool) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
-
-	// Check queue
-	var queue, foundQueue = server.queues[method.Queue]
-	if !foundQueue || queue.closed {
-		return 404, fmt.Errorf("Queue not found: %s", method.Queue)
-	}
-
-	if queue.connId != -1 && queue.connId != connId {
-		return 405, fmt.Errorf("Queue is locked to another connection")
-	}
 
 	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
 
 	for _, b := range exchange.bindings {
 		if binding.Equals(b) {
-			return 0, nil
+			return nil
 		}
 	}
-	if exchange.durable && queue.durable && !fromDisk {
-		var err = server.persistBinding(method)
-		if err != nil {
-			return 500, err
-		}
-	}
+
 	if exchange.autodelete {
 		exchange.deleteActive = time.Unix(0, 0)
 	}
 	exchange.bindings = append(exchange.bindings, binding)
-	return 0, nil
+	return nil
 }
 
 func (exchange *Exchange) bindingsForQueue(queueName string) []*Binding {

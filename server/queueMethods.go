@@ -77,9 +77,28 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *AMQPError {
 		return NewSoftError(404, "Exchange not found", classId, methodId)
 	}
 
-	errCode, err := exchange.addBinding(channel.server, method, channel.conn.id, false)
+	// Check queue
+	var queue, foundQueue = channel.server.queues[method.Queue]
+	if !foundQueue || queue.closed {
+		return NewSoftError(404, fmt.Sprintf("Queue not found: %s", method.Queue), classId, methodId)
+	}
+
+	if queue.connId != -1 && queue.connId != channel.conn.id {
+		return NewSoftError(405, fmt.Sprintf("Queue is locked to another connection"), classId, methodId)
+	}
+
+	// Add binding
+	err := exchange.addBinding(channel.server, method, channel.conn.id, false)
 	if err != nil {
-		return NewSoftError(errCode, err.Error(), classId, methodId)
+		return NewSoftError(500, err.Error(), classId, methodId)
+	}
+
+	// Persist durable bindings
+	if exchange.durable && queue.durable {
+		var err = channel.server.persistBinding(method)
+		if err != nil {
+			return NewSoftError(500, err.Error(), classId, methodId)
+		}
 	}
 
 	if !method.NoWait {
