@@ -18,7 +18,6 @@ type Consumer struct {
 	incoming      chan bool
 	noAck         bool
 	noLocal       bool
-	qos           uint16
 	cqueue        interfaces.ConsumerQueue
 	queueName     string
 	consumeLock   sync.Mutex
@@ -46,7 +45,6 @@ func NewConsumer(
 	exclusive bool,
 	noAck bool,
 	noLocal bool,
-	qos uint16,
 	cqueue interfaces.ConsumerQueue,
 	queueName string,
 	prefetchSize uint32,
@@ -62,7 +60,6 @@ func NewConsumer(
 		incoming:      make(chan bool, 1),
 		noAck:         noAck,
 		noLocal:       noLocal,
-		qos:           qos,
 		cqueue:        cqueue,
 		queueName:     queueName,
 		prefetchSize:  prefetchSize,
@@ -81,7 +78,6 @@ func (consumer *Consumer) MarshalJSON() ([]byte, error) {
 		"tag": consumer.ConsumerTag,
 		"stats": map[string]interface{}{
 			"total":             consumer.StatCount,
-			"qos":               consumer.qos,
 			"active_size_bytes": consumer.activeSize,
 			"active_count":      consumer.activeCount,
 		},

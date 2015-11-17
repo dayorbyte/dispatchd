@@ -234,7 +234,6 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 		method.Exclusive,
 		method.NoAck,
 		method.NoLocal,
-		channel.defaultPrefetchCount,
 		q,
 		q.name,
 		channel.defaultPrefetchSize,
