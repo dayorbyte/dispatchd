@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"math/rand"
@@ -22,7 +22,7 @@ func init() {
 
 var chars = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
-func randomId() string {
+func RandomId() string {
 	var size = 32
 	var numChars = len(chars)
 	id := make([]rune, size)
@@ -32,6 +32,6 @@ func randomId() string {
 	return string(id)
 }
 
-func nextId() int64 {
+func NextId() int64 {
 	return atomic.AddInt64(&counter, 1)
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/stats"
+	"github.com/jeffjenkins/mq/util"
 	"net"
 	"sync"
 	"time"
@@ -61,7 +62,7 @@ func NewAMQPConnection(server *Server, network net.Conn) *AMQPConnection {
 	return &AMQPConnection{
 		// If outgoing has a buffer the server performs better. I'm not adding one
 		// in until I fully understand why that is
-		id:            nextId(),
+		id:            util.NextId(),
 		network:       network,
 		channels:      make(map[uint16]*Channel),
 		outgoing:      make(chan *amqp.WireFrame, 100),

@@ -4,6 +4,7 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/stats"
+	"github.com/jeffjenkins/mq/util"
 )
 
 func (channel *Channel) basicRoute(methodFrame amqp.MethodFrame) *AMQPError {
@@ -69,7 +70,7 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) *AMQPError {
 		return NewSoftError(404, "Queue not found", classId, methodId)
 	}
 	if len(method.ConsumerTag) == 0 {
-		method.ConsumerTag = randomId()
+		method.ConsumerTag = util.RandomId()
 	}
 	errCode, err := queue.addConsumer(channel, method)
 	if err != nil {

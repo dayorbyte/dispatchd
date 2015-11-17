@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/util"
 )
 
 func (channel *Channel) queueRoute(methodFrame amqp.MethodFrame) *AMQPError {
@@ -26,7 +27,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *AMQPError {
 	var classId, methodId = method.MethodIdentifier()
 	// No name means generate a name
 	if len(method.Queue) == 0 {
-		method.Queue = randomId()
+		method.Queue = util.RandomId()
 	}
 
 	// Check the name format

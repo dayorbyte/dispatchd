@@ -10,13 +10,14 @@ import (
 	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/stats"
+	"github.com/jeffjenkins/mq/util"
 	"sync"
 	"time"
 )
 
 func NewMessage(method *amqp.BasicPublish, localId int64) *amqp.Message {
 	return &amqp.Message{
-		Id:       nextId(),
+		Id:       util.NextId(),
 		Method:   method,
 		Exchange: method.Exchange,
 		Key:      method.RoutingKey,
