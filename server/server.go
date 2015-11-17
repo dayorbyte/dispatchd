@@ -123,7 +123,7 @@ func (server *Server) initBindings() {
 			}
 
 			// Add Binding
-			exchange.addBinding(server, method, -1, true)
+			exchange.addBinding(method, -1, true)
 		}
 		return nil
 	})
@@ -425,7 +425,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 		RoutingKey: queue.name,
 		Arguments:  amqp.NewTable(),
 	}
-	defaultExchange.addBinding(server, defaultBinding, connId, fromDisk)
+	defaultExchange.addBinding(defaultBinding, connId, fromDisk)
 	// TODO: queue should store bindings too?
 	if method.Durable && !fromDisk {
 		server.persistQueue(method)

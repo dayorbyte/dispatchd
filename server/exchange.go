@@ -235,7 +235,7 @@ func (exchange *Exchange) returnMessage(msg *amqp.Message, code uint16, text str
 	}
 }
 
-func (exchange *Exchange) addBinding(server *Server, method *amqp.QueueBind, connId int64, fromDisk bool) error {
+func (exchange *Exchange) addBinding(method *amqp.QueueBind, connId int64, fromDisk bool) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 
@@ -294,7 +294,7 @@ func (exchange *Exchange) removeBinding(server *Server, queue *Queue, binding *B
 		if binding.Equals(b) {
 			exchange.bindings = append(exchange.bindings[:i], exchange.bindings[i+1:]...)
 			if exchange.autodelete && len(exchange.bindings) == 0 {
-				go exchange.autodeleteTimeout(server)
+				go exchange.autodeleteTimeout()
 			}
 			return nil
 		}
@@ -302,7 +302,7 @@ func (exchange *Exchange) removeBinding(server *Server, queue *Queue, binding *B
 	return nil
 }
 
-func (exchange *Exchange) autodeleteTimeout(server *Server) {
+func (exchange *Exchange) autodeleteTimeout() {
 	// There's technically a race condition here where a new binding could be
 	// added right as we check this, but after a 5 second wait with no activity
 	// I think this is probably safe enough.
@@ -310,8 +310,6 @@ func (exchange *Exchange) autodeleteTimeout(server *Server) {
 	exchange.deleteActive = now
 	time.Sleep(5 * time.Second)
 	if exchange.deleteActive == now {
-		server.deleteExchange(&amqp.ExchangeDelete{
-			Exchange: exchange.name,
-		})
+		exchange.deleteChan <- exchange
 	}
 }
