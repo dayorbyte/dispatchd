@@ -204,11 +204,7 @@ func (q *Queue) autodeleteTimeout() {
 	q.deleteActive = now
 	time.Sleep(5 * time.Second)
 	if q.deleteActive == now {
-		// Note: we can send -1 as the connection id because this isn't coming
-		// from a client.
-		q.server.deleteQueue(&amqp.QueueDelete{
-			Queue: q.name,
-		}, -1)
+		q.deleteChan <- q
 	}
 }
 
