@@ -95,7 +95,7 @@ func exchangeTypeToName(et extype) string {
 	}
 }
 
-func (exchange *Exchange) queuesForPublish(server *Server, channel *Channel, msg *amqp.Message) map[string]*Queue {
+func (exchange *Exchange) queuesForPublish(server *Server, msg *amqp.Message) map[string]*Queue {
 	var queues = make(map[string]*Queue)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
@@ -150,22 +150,24 @@ func (exchange *Exchange) queuesForPublish(server *Server, channel *Channel, msg
 	return queues
 }
 
-func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Message) *AMQPError {
+func (exchange *Exchange) publish(server *Server, msg *amqp.Message) (*amqp.BasicReturn, *AMQPError) {
 	// Concurrency note: Since there is no lock we can, technically, have messages
 	// published after the exchange has been closed. These couldn't be on the same
 	// channel as the close is happening on, so that seems justifiable.
 	if exchange.closed {
 		if msg.Method.Mandatory || msg.Method.Immediate {
-			exchange.returnMessage(channel, msg, 313, "Exchange closed, cannot route to queues or consumers")
+			var rm = exchange.returnMessage(msg, 313, "Exchange closed, cannot route to queues or consumers")
+			return rm, nil
 		}
-		return nil
+		return nil, nil
 	}
-	queues := exchange.queuesForPublish(server, channel, msg)
+	queues := exchange.queuesForPublish(server, msg)
 
 	if len(queues) == 0 {
 		// If we got here the message was unroutable.
 		if msg.Method.Mandatory || msg.Method.Immediate {
-			exchange.returnMessage(channel, msg, 313, "No queues available")
+			var rm = exchange.returnMessage(msg, 313, "No queues available")
+			return rm, nil
 		}
 	}
 
@@ -180,7 +182,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 		// Add message to message store
 		queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 		if err != nil {
-			return NewSoftError(500, err.Error(), 60, 40)
+			return nil, NewSoftError(500, err.Error(), 60, 40)
 		}
 		// Try to immediately consumed it
 		for name, queue := range queues {
@@ -195,15 +197,16 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 			}
 		}
 		if !consumed {
-			exchange.returnMessage(channel, msg, 313, "No consumers available for immediate message")
+			var rm = exchange.returnMessage(msg, 313, "No consumers available for immediate message")
+			return rm, nil
 		}
-		return nil
+		return nil, nil
 	}
 
 	// Add the message to the message store along with the queues we're about to add it to
 	queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 	if err != nil {
-		return NewSoftError(500, err.Error(), 60, 40)
+		return nil, NewSoftError(500, err.Error(), 60, 40)
 	}
 
 	for name, queue := range queues {
@@ -219,16 +222,16 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }
 
-func (exchange *Exchange) returnMessage(channel *Channel, msg *amqp.Message, code uint16, text string) {
-	channel.sendContent(&amqp.BasicReturn{
+func (exchange *Exchange) returnMessage(msg *amqp.Message, code uint16, text string) *amqp.BasicReturn {
+	return &amqp.BasicReturn{
 		Exchange:   exchange.name,
 		RoutingKey: msg.Method.RoutingKey,
 		ReplyCode:  code,
 		ReplyText:  text,
-	}, msg)
+	}
 }
 
 func (exchange *Exchange) addBinding(server *Server, method *amqp.QueueBind, connId int64, fromDisk bool) (uint16, error) {
