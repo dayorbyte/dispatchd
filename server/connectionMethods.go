@@ -32,7 +32,7 @@ func (channel *Channel) connectionOpen(conn *AMQPConnection, method *amqp.Connec
 	// TODO(MAY): Add support for virtual hosts. Check for access to the
 	// selected one
 	conn.connectStatus.open = true
-	channel.sendMethod(&amqp.ConnectionOpenOk{""})
+	channel.SendMethod(&amqp.ConnectionOpenOk{""})
 	conn.connectStatus.openOk = true
 	return nil
 }
@@ -69,7 +69,7 @@ func (channel *Channel) connectionStartOk(conn *AMQPConnection, method *amqp.Con
 	}
 	conn.clientProperties = method.ClientProperties
 	// TODO(MUST): add support these being enforced at the connection level.
-	channel.sendMethod(&amqp.ConnectionTune{
+	channel.SendMethod(&amqp.ConnectionTune{
 		conn.maxChannels,
 		conn.maxFrameSize,
 		uint16(conn.receiveHeartbeatInterval.Nanoseconds() / int64(time.Second)),
@@ -98,12 +98,12 @@ func (channel *Channel) startConnection() *AMQPError {
 	serverProps.SetKey("host", []byte("TODO"))
 	serverProps.SetKey("information", []byte("https://github.com/jeffjenkins/mq"))
 
-	channel.sendMethod(&amqp.ConnectionStart{0, 9, serverProps, []byte("PLAIN"), []byte("en_US")})
+	channel.SendMethod(&amqp.ConnectionStart{0, 9, serverProps, []byte("PLAIN"), []byte("en_US")})
 	return nil
 }
 
 func (channel *Channel) connectionClose(conn *AMQPConnection, method *amqp.ConnectionClose) *AMQPError {
-	channel.sendMethod(&amqp.ConnectionCloseOk{})
+	channel.SendMethod(&amqp.ConnectionCloseOk{})
 	conn.hardClose()
 	return nil
 }

@@ -19,7 +19,7 @@ func (channel *Channel) txRoute(methodFrame amqp.MethodFrame) *AMQPError {
 
 func (channel *Channel) txSelect(method *amqp.TxSelect) *AMQPError {
 	channel.startTxMode()
-	channel.sendMethod(&amqp.TxSelectOk{})
+	channel.SendMethod(&amqp.TxSelectOk{})
 	return nil
 }
 
@@ -27,12 +27,12 @@ func (channel *Channel) txCommit(method *amqp.TxCommit) *AMQPError {
 	if amqpErr := channel.commitTx(); amqpErr != nil {
 		return amqpErr
 	}
-	channel.sendMethod(&amqp.TxCommitOk{})
+	channel.SendMethod(&amqp.TxCommitOk{})
 	return nil
 }
 
 func (channel *Channel) txRollback(method *amqp.TxRollback) *AMQPError {
 	channel.rollbackTx()
-	channel.sendMethod(&amqp.TxRollbackOk{})
+	channel.SendMethod(&amqp.TxRollbackOk{})
 	return nil
 }

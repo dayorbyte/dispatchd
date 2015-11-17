@@ -42,7 +42,7 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *AMQPError
 		return NewSoftError(errCode, err.Error(), classId, methodId)
 	}
 	if !method.NoWait {
-		channel.sendMethod(&amqp.ExchangeDeclareOk{})
+		channel.SendMethod(&amqp.ExchangeDeclareOk{})
 	}
 	return nil
 }
@@ -54,7 +54,7 @@ func (channel *Channel) exchangeDelete(method *amqp.ExchangeDelete) *AMQPError {
 		return NewSoftError(errCode, err.Error(), classId, methodId)
 	}
 	if !method.NoWait {
-		channel.sendMethod(&amqp.ExchangeDeleteOk{})
+		channel.SendMethod(&amqp.ExchangeDeleteOk{})
 	}
 	return nil
 }
@@ -63,13 +63,13 @@ func (channel *Channel) exchangeBind(method *amqp.ExchangeBind) *AMQPError {
 	var classId, methodId = method.MethodIdentifier()
 	return NewHardError(540, "Not implemented", classId, methodId)
 	// if !method.NoWait {
-	// 	channel.sendMethod(&amqp.ExchangeBindOk{})
+	// 	channel.SendMethod(&amqp.ExchangeBindOk{})
 	// }
 }
 func (channel *Channel) exchangeUnbind(method *amqp.ExchangeUnbind) *AMQPError {
 	var classId, methodId = method.MethodIdentifier()
 	return NewHardError(540, "Not implemented", classId, methodId)
 	// if !method.NoWait {
-	// 	channel.sendMethod(&amqp.ExchangeUnbindOk{})
+	// 	channel.SendMethod(&amqp.ExchangeUnbindOk{})
 	// }
 }

@@ -128,7 +128,7 @@ func (q *Queue) consumeImmediate(qm *amqp.QueueMessage) bool {
 	defer q.consumerLock.RUnlock()
 	for _, consumer := range q.consumers {
 		var rhs = []interfaces.MessageResourceHolder{
-			consumer.channel,
+			consumer.cchannel,
 			consumer,
 		}
 		var msg, acquired = q.msgStore.Get(qm, rhs)
@@ -215,7 +215,7 @@ func (q *Queue) cancelConsumers() {
 	q.soleConsumer = nil
 	// Send cancel to each consumer
 	for _, c := range q.consumers {
-		c.channel.sendMethod(&amqp.BasicCancel{c.consumerTag, true})
+		c.cchannel.SendMethod(&amqp.BasicCancel{c.consumerTag, true})
 		c.stop()
 	}
 	q.consumers = make([]*Consumer, 0, 1)
@@ -232,7 +232,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 	var consumer = &Consumer{
 		msgStore:    q.msgStore,
 		arguments:   method.Arguments,
-		channel:     channel,
+		cchannel:    channel,
 		consumerTag: method.ConsumerTag,
 		exclusive:   method.Exclusive,
 		incoming:    make(chan bool, 1),
@@ -304,7 +304,7 @@ func (q *Queue) getOneForced() *amqp.QueueMessage {
 	return qMsg
 }
 
-func (q *Queue) getOne(channel *Channel, consumer *Consumer) (*amqp.QueueMessage, *amqp.Message) {
+func (q *Queue) getOne(channel interfaces.MessageResourceHolder, consumer *Consumer) (*amqp.QueueMessage, *amqp.Message) {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	// Empty check

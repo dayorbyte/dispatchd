@@ -16,7 +16,7 @@ func (channel *Channel) confirmRoute(methodFrame amqp.MethodFrame) *AMQPError {
 
 func (channel *Channel) confirmSelect(method *amqp.ConfirmSelect) *AMQPError {
 	if !method.Nowait {
-		channel.sendMethod(&amqp.ConfirmSelectOk{})
+		channel.SendMethod(&amqp.ConfirmSelectOk{})
 	}
 	return nil
 }

@@ -194,7 +194,7 @@ func (conn *AMQPConnection) handleOutgoing() {
 func (conn *AMQPConnection) connectionErrorWithMethod(amqpErr *AMQPError) {
 	fmt.Println("Sending connection error:", amqpErr.Msg)
 	conn.connectStatus.closing = true
-	conn.channels[0].sendMethod(&amqp.ConnectionClose{
+	conn.channels[0].SendMethod(&amqp.ConnectionClose{
 		ReplyCode: amqpErr.Code,
 		ReplyText: amqpErr.Msg,
 		ClassId:   amqpErr.Class,

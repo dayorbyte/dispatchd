@@ -12,7 +12,7 @@ import (
 type Consumer struct {
 	msgStore      *msgstore.MessageStore
 	arguments     *amqp.Table
-	channel       *Channel
+	cchannel      interfaces.ConsumerChannel
 	consumerTag   string
 	exclusive     bool
 	incoming      chan bool
@@ -73,7 +73,7 @@ func (consumer *Consumer) AcquireResources(qm *amqp.QueueMessage) bool {
 	// TODO: If flow is mostly for producers, then maybe we
 	// should consume? I feel like the right answer here is for
 	// clients to not produce and consume on the same channel.
-	if !consumer.channel.flow {
+	if !consumer.cchannel.FlowActive() {
 		return false
 	}
 	// If we aren't acking then there are no resource limits. Up the stats
@@ -134,7 +134,7 @@ func (consumer *Consumer) consumeOne() {
 	// Try to get message/check channel limit
 
 	var start = stats.Start()
-	var qm, msg = consumer.queue.getOne(consumer.channel, consumer)
+	var qm, msg = consumer.queue.getOne(consumer.cchannel, consumer)
 	stats.RecordHisto(consumer.statConsumeOneGetOne, start)
 	if qm == nil {
 		return
@@ -142,11 +142,11 @@ func (consumer *Consumer) consumeOne() {
 	var tag uint64 = 0
 	start = stats.Start()
 	if !consumer.noAck {
-		tag = consumer.channel.addUnackedMessage(consumer, qm, consumer.queue.name)
+		tag = consumer.cchannel.AddUnackedMessage(consumer.consumerTag, qm, consumer.queue.name)
 	} else {
 		// We aren't expecting an ack, so this is the last time the message
 		// will be referenced.
-		var rhs = []interfaces.MessageResourceHolder{consumer.channel, consumer}
+		var rhs = []interfaces.MessageResourceHolder{consumer.cchannel, consumer}
 		err = consumer.msgStore.RemoveRef(qm, consumer.queue.name, rhs)
 		if err != nil {
 			panic("Error getting queue message")
@@ -154,7 +154,7 @@ func (consumer *Consumer) consumeOne() {
 	}
 	stats.RecordHisto(consumer.statConsumeOneAck, start)
 	start = stats.Start()
-	consumer.channel.sendContent(&amqp.BasicDeliver{
+	consumer.cchannel.SendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
 		DeliveryTag: tag,
 		Redelivered: qm.DeliveryCount > 0,
@@ -170,9 +170,9 @@ func (consumer *Consumer) consumeImmediate(qm *amqp.QueueMessage, msg *amqp.Mess
 	defer consumer.consumeLock.Unlock()
 	var tag uint64 = 0
 	if !consumer.noAck {
-		tag = consumer.channel.addUnackedMessage(consumer, qm, consumer.queue.name)
+		tag = consumer.cchannel.AddUnackedMessage(consumer.consumerTag, qm, consumer.queue.name)
 	}
-	consumer.channel.sendContent(&amqp.BasicDeliver{
+	consumer.cchannel.SendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
 		DeliveryTag: tag,
 		Redelivered: msg.Redelivered > 0,
@@ -190,7 +190,7 @@ func (consumer *Consumer) redeliver(tag uint64, qm *amqp.QueueMessage) {
 	if !found {
 		panic("Integrity error, message not found in message store")
 	}
-	consumer.channel.sendContent(&amqp.BasicDeliver{
+	consumer.cchannel.SendContent(&amqp.BasicDeliver{
 		ConsumerTag: consumer.consumerTag,
 		DeliveryTag: tag,
 		Redelivered: msg.Redelivered > 0,

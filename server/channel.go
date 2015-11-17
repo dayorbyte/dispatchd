@@ -185,7 +185,7 @@ func (channel *Channel) recover(requeue bool) {
 				} else {
 					// no consumer, drop message
 					var rhs = []interfaces.MessageResourceHolder{
-						consumer.channel,
+						consumer.cchannel,
 						consumer,
 					}
 					channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
@@ -394,9 +394,13 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) *AMQPEr
 	return nil
 }
 
-func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *amqp.QueueMessage, queueName string) uint64 {
+func (channel *Channel) FlowActive() bool {
+	return channel.flow
+}
+
+func (channel *Channel) AddUnackedMessage(consumerTag string, msg *amqp.QueueMessage, queueName string) uint64 {
 	var tag = channel.nextDeliveryTag()
-	var unacked = amqp.NewUnackedMessage(consumer.consumerTag, msg, queueName)
+	var unacked = amqp.NewUnackedMessage(consumerTag, msg, queueName)
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
 
@@ -518,7 +522,7 @@ func (channel *Channel) sendError(amqpErr *AMQPError) {
 	if amqpErr.Soft {
 		fmt.Println("Sending channel error:", amqpErr.Msg)
 		channel.state = CH_STATE_CLOSING
-		channel.sendMethod(&amqp.ChannelClose{
+		channel.SendMethod(&amqp.ChannelClose{
 			ReplyCode: amqpErr.Code,
 			ReplyText: amqpErr.Msg,
 			ClassId:   amqpErr.Class,
@@ -534,7 +538,7 @@ func (channel *Channel) startChannel() {
 }
 
 func (channel *Channel) close(code uint16, reason string, classId uint16, methodId uint16) {
-	channel.sendMethod(&amqp.ChannelClose{
+	channel.SendMethod(&amqp.ChannelClose{
 		ReplyCode: code,
 		ReplyText: reason,
 		ClassId:   classId,
@@ -577,7 +581,7 @@ func (channel *Channel) removeConsumer(consumerTag string) error {
 
 // Send a method frame out to the client
 // TODO: why isn't this taking a pointer?
-func (channel *Channel) sendMethod(method amqp.MethodFrame) {
+func (channel *Channel) SendMethod(method amqp.MethodFrame) {
 	// fmt.Printf("Sending method: %s\n", method.MethodName())
 	var buf = bytes.NewBuffer([]byte{})
 	method.Write(buf)
@@ -585,7 +589,7 @@ func (channel *Channel) sendMethod(method amqp.MethodFrame) {
 }
 
 // Send a method frame out to the client
-func (channel *Channel) sendContent(method amqp.MethodFrame, message *amqp.Message) {
+func (channel *Channel) SendContent(method amqp.MethodFrame, message *amqp.Message) {
 	var start = stats.Start()
 	channel.sendLock.Lock()
 	defer channel.sendLock.Unlock()
@@ -604,7 +608,7 @@ func (channel *Channel) sendContent(method amqp.MethodFrame, message *amqp.Messa
 	stats.RecordHisto(channel.statSendEncode, start)
 	start = stats.Start()
 	// Send method
-	channel.sendMethod(method)
+	channel.SendMethod(method)
 	// Send header
 	channel.outgoing <- &amqp.WireFrame{uint8(amqp.FrameHeader), channel.id, buf.Bytes()}
 	// Send body
@@ -672,14 +676,14 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) *AMQPError {
 			return amqpErr
 		}
 		if returnMethod != nil {
-			channel.sendContent(returnMethod, channel.currentMessage)
+			channel.SendContent(returnMethod, channel.currentMessage)
 		}
 	}
 
 	channel.currentMessage = nil
 	if channel.confirmMode {
 		channel.msgIndex += 1
-		channel.sendMethod(&amqp.BasicAck{channel.msgIndex, false})
+		channel.SendMethod(&amqp.BasicAck{channel.msgIndex, false})
 	}
 	return nil
 }

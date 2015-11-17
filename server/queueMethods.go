@@ -41,7 +41,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *AMQPError {
 			if !method.NoWait {
 				var qsize = uint32(queue.queue.Len())
 				var csize = queue.activeConsumerCount()
-				channel.sendMethod(&amqp.QueueDeclareOk{method.Queue, qsize, csize})
+				channel.SendMethod(&amqp.QueueDeclareOk{method.Queue, qsize, csize})
 			}
 			channel.lastQueueName = method.Queue
 			return nil
@@ -55,7 +55,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *AMQPError {
 	}
 	channel.lastQueueName = method.Queue
 	if !method.NoWait {
-		channel.sendMethod(&amqp.QueueDeclareOk{name, uint32(0), uint32(0)})
+		channel.SendMethod(&amqp.QueueDeclareOk{name, uint32(0), uint32(0)})
 	}
 	return nil
 }
@@ -102,7 +102,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *AMQPError {
 	}
 
 	if !method.NoWait {
-		channel.sendMethod(&amqp.QueueBindOk{})
+		channel.SendMethod(&amqp.QueueBindOk{})
 	}
 	return nil
 }
@@ -131,7 +131,7 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) *AMQPError {
 
 	numPurged := queue.purge()
 	if !method.NoWait {
-		channel.sendMethod(&amqp.QueuePurgeOk{numPurged})
+		channel.SendMethod(&amqp.QueuePurgeOk{numPurged})
 	}
 	return nil
 }
@@ -155,7 +155,7 @@ func (channel *Channel) queueDelete(method *amqp.QueueDelete) *AMQPError {
 	}
 
 	if !method.NoWait {
-		channel.sendMethod(&amqp.QueueDeleteOk{numPurged})
+		channel.SendMethod(&amqp.QueueDeleteOk{numPurged})
 	}
 	return nil
 }
@@ -192,6 +192,6 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *AMQPError {
 	if err := exchange.removeBinding(channel.server, queue, binding); err != nil {
 		return NewSoftError(500, err.Error(), classId, methodId)
 	}
-	channel.sendMethod(&amqp.QueueUnbindOk{})
+	channel.SendMethod(&amqp.QueueUnbindOk{})
 	return nil
 }

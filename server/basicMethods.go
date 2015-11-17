@@ -35,13 +35,13 @@ func (channel *Channel) basicRoute(methodFrame amqp.MethodFrame) *AMQPError {
 
 func (channel *Channel) basicQos(method *amqp.BasicQos) *AMQPError {
 	channel.setPrefetch(method.PrefetchCount, method.PrefetchSize, method.Global)
-	channel.sendMethod(&amqp.BasicQosOk{})
+	channel.SendMethod(&amqp.BasicQosOk{})
 	return nil
 }
 
 func (channel *Channel) basicRecover(method *amqp.BasicRecover) *AMQPError {
 	channel.recover(method.Requeue)
-	channel.sendMethod(&amqp.BasicRecoverOk{})
+	channel.SendMethod(&amqp.BasicRecoverOk{})
 	return nil
 }
 
@@ -77,7 +77,7 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) *AMQPError {
 		return NewHardError(errCode, err.Error(), classId, methodId)
 	}
 	if !method.NoWait {
-		channel.sendMethod(&amqp.BasicConsumeOk{method.ConsumerTag})
+		channel.SendMethod(&amqp.BasicConsumeOk{method.ConsumerTag})
 	}
 
 	return nil
@@ -91,7 +91,7 @@ func (channel *Channel) basicCancel(method *amqp.BasicCancel) *AMQPError {
 	}
 
 	if !method.NoWait {
-		channel.sendMethod(&amqp.BasicCancelOk{method.ConsumerTag})
+		channel.SendMethod(&amqp.BasicCancelOk{method.ConsumerTag})
 	}
 	return nil
 }
@@ -124,7 +124,7 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) *AMQPError {
 	}
 	var qm = queue.getOneForced()
 	if qm == nil {
-		channel.sendMethod(&amqp.BasicGetEmpty{})
+		channel.SendMethod(&amqp.BasicGetEmpty{})
 		return nil
 	}
 
@@ -132,11 +132,11 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) *AMQPError {
 	msg, err := channel.server.msgStore.GetAndDecrRef(qm, queue.name, rhs)
 	if err != nil {
 		// TODO: return 500 error
-		channel.sendMethod(&amqp.BasicGetEmpty{})
+		channel.SendMethod(&amqp.BasicGetEmpty{})
 		return nil
 	}
 
-	channel.sendContent(&amqp.BasicGetOk{
+	channel.SendContent(&amqp.BasicGetOk{
 		DeliveryTag:  channel.nextDeliveryTag(),
 		Redelivered:  qm.DeliveryCount > 0,
 		Exchange:     msg.Exchange,

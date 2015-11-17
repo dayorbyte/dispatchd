@@ -28,14 +28,14 @@ func (channel *Channel) channelOpen(method *amqp.ChannelOpen) *AMQPError {
 		var classId, methodId = method.MethodIdentifier()
 		return NewHardError(504, "Channel already open", classId, methodId)
 	}
-	channel.sendMethod(&amqp.ChannelOpenOk{})
+	channel.SendMethod(&amqp.ChannelOpenOk{})
 	channel.setStateOpen()
 	return nil
 }
 
 func (channel *Channel) channelFlow(method *amqp.ChannelFlow) *AMQPError {
 	channel.changeFlow(method.Active)
-	channel.sendMethod(&amqp.ChannelFlowOk{channel.flow})
+	channel.SendMethod(&amqp.ChannelFlowOk{channel.flow})
 	return nil
 }
 
@@ -46,7 +46,7 @@ func (channel *Channel) channelFlowOk(method *amqp.ChannelFlowOk) *AMQPError {
 
 func (channel *Channel) channelClose(method *amqp.ChannelClose) *AMQPError {
 	// TODO(MAY): Report the class and method that are the reason for the close
-	channel.sendMethod(&amqp.ChannelCloseOk{})
+	channel.SendMethod(&amqp.ChannelCloseOk{})
 	channel.shutdown()
 	return nil
 }
