@@ -407,7 +407,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 		consumers:   make([]*Consumer, 0, 1),
 		maybeReady:  make(chan bool, 1),
 		connId:      connId,
-		server:      server,
+		msgStore:    server.msgStore,
 		statProcOne: stats.MakeHistogram("queue-proc-one"),
 		deleteChan:  server.queueDeleter,
 	}

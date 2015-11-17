@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
+	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/stats"
 	"sync"
 	"time"
@@ -42,7 +43,7 @@ type Queue struct {
 	connId          int64
 	deleteActive    time.Time
 	hasHadConsumers bool
-	server          *Server
+	msgStore        *msgstore.MessageStore
 	statProcOne     stats.Histogram
 	deleteChan      chan *Queue
 }
@@ -130,7 +131,7 @@ func (q *Queue) consumeImmediate(qm *amqp.QueueMessage) bool {
 			consumer.channel,
 			consumer,
 		}
-		var msg, acquired = q.server.msgStore.Get(qm, rhs)
+		var msg, acquired = q.msgStore.Get(qm, rhs)
 		if acquired {
 			consumer.consumeImmediate(qm, msg)
 			return true
@@ -167,7 +168,7 @@ func (q *Queue) readd(queueName string, msg *amqp.QueueMessage) {
 	defer q.queueLock.Unlock()
 	// this method is only called when we get a nack or we shut down a channel,
 	// so it means the message was not acked.
-	q.server.msgStore.IncrDeliveryCount(queueName, msg)
+	q.msgStore.IncrDeliveryCount(queueName, msg)
 	q.queue.PushFront(msg)
 	q.maybeReady <- true
 }
@@ -229,7 +230,7 @@ func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16
 
 	// Add consumer
 	var consumer = &Consumer{
-		msgStore:    channel.server.msgStore,
+		msgStore:    q.msgStore,
 		arguments:   method.Arguments,
 		channel:     channel,
 		consumerTag: method.ConsumerTag,
@@ -319,7 +320,7 @@ func (q *Queue) getOne(channel *Channel, consumer *Consumer) (*amqp.QueueMessage
 		channel,
 		consumer,
 	}
-	var msg, acquired = channel.server.msgStore.Get(qm, rhs)
+	var msg, acquired = q.msgStore.Get(qm, rhs)
 	if acquired {
 		q.queue.Remove(q.queue.Front())
 		return qm, msg
