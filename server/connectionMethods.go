@@ -1,12 +1,11 @@
 package main
 
 import (
-	"errors"
 	"github.com/jeffjenkins/mq/amqp"
 	"time"
 )
 
-func (channel *Channel) connectionRoute(conn *AMQPConnection, methodFrame amqp.MethodFrame) error {
+func (channel *Channel) connectionRoute(conn *AMQPConnection, methodFrame amqp.MethodFrame) *AMQPError {
 	switch method := methodFrame.(type) {
 	case *amqp.ConnectionStartOk:
 		return channel.connectionStartOk(conn, method)
@@ -25,10 +24,11 @@ func (channel *Channel) connectionRoute(conn *AMQPConnection, methodFrame amqp.M
 	case *amqp.ConnectionUnblocked:
 		return channel.connectionUnblocked(conn, method)
 	}
-	return errors.New("Unable to route method frame")
+	var classId, methodId = methodFrame.MethodIdentifier()
+	return NewHardError(540, "Unable to route method frame", classId, methodId)
 }
 
-func (channel *Channel) connectionOpen(conn *AMQPConnection, method *amqp.ConnectionOpen) error {
+func (channel *Channel) connectionOpen(conn *AMQPConnection, method *amqp.ConnectionOpen) *AMQPError {
 	// TODO(MAY): Add support for virtual hosts. Check for access to the
 	// selected one
 	conn.connectStatus.open = true
@@ -37,7 +37,7 @@ func (channel *Channel) connectionOpen(conn *AMQPConnection, method *amqp.Connec
 	return nil
 }
 
-func (channel *Channel) connectionTuneOk(conn *AMQPConnection, method *amqp.ConnectionTuneOk) error {
+func (channel *Channel) connectionTuneOk(conn *AMQPConnection, method *amqp.ConnectionTuneOk) *AMQPError {
 	conn.connectStatus.tuneOk = true
 	if method.ChannelMax > conn.maxChannels || method.FrameMax > conn.maxFrameSize {
 		conn.hardClose()
@@ -58,7 +58,7 @@ func (channel *Channel) connectionTuneOk(conn *AMQPConnection, method *amqp.Conn
 	return nil
 }
 
-func (channel *Channel) connectionStartOk(conn *AMQPConnection, method *amqp.ConnectionStartOk) error {
+func (channel *Channel) connectionStartOk(conn *AMQPConnection, method *amqp.ConnectionStartOk) *AMQPError {
 	// TODO(SHOULD): record product/version/platform/copyright/information
 	// TODO(MUST): assert mechanism, response, locale are not null
 	// TODO(MUST): if the auth is wrong, send 403 access-refused
@@ -81,7 +81,7 @@ func (channel *Channel) connectionStartOk(conn *AMQPConnection, method *amqp.Con
 	return nil
 }
 
-func (channel *Channel) startConnection() error {
+func (channel *Channel) startConnection() *AMQPError {
 	// TODO(SHOULD): add fields: host, product, version, platform, copyright, information
 	var capabilities = amqp.NewTable()
 	capabilities.SetKey("publisher_confirms", false)
@@ -102,29 +102,27 @@ func (channel *Channel) startConnection() error {
 	return nil
 }
 
-func (channel *Channel) connectionClose(conn *AMQPConnection, method *amqp.ConnectionClose) error {
+func (channel *Channel) connectionClose(conn *AMQPConnection, method *amqp.ConnectionClose) *AMQPError {
 	channel.sendMethod(&amqp.ConnectionCloseOk{})
 	conn.hardClose()
 	return nil
 }
 
-func (channel *Channel) connectionCloseOk(conn *AMQPConnection, method *amqp.ConnectionCloseOk) error {
+func (channel *Channel) connectionCloseOk(conn *AMQPConnection, method *amqp.ConnectionCloseOk) *AMQPError {
 	conn.hardClose()
 	return nil
 }
 
-func (channel *Channel) connectionSecureOk(conn *AMQPConnection, method *amqp.ConnectionSecureOk) error {
+func (channel *Channel) connectionSecureOk(conn *AMQPConnection, method *amqp.ConnectionSecureOk) *AMQPError {
 	// TODO(MAY): If other security mechanisms are in place, handle this
 	conn.hardClose()
 	return nil
 }
 
-func (channel *Channel) connectionBlocked(conn *AMQPConnection, method *amqp.ConnectionBlocked) error {
-	conn.connectionErrorWithMethod(540, "Not implemented", 10, 60)
-	return nil
+func (channel *Channel) connectionBlocked(conn *AMQPConnection, method *amqp.ConnectionBlocked) *AMQPError {
+	return NewHardError(540, "Not implemented", 10, 60)
 }
 
-func (channel *Channel) connectionUnblocked(conn *AMQPConnection, method *amqp.ConnectionUnblocked) error {
-	conn.connectionErrorWithMethod(540, "Not implemented", 10, 61)
-	return nil
+func (channel *Channel) connectionUnblocked(conn *AMQPConnection, method *amqp.ConnectionUnblocked) *AMQPError {
+	return NewHardError(540, "Not implemented", 10, 61)
 }

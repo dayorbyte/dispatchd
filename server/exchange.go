@@ -150,7 +150,7 @@ func (exchange *Exchange) queuesForPublish(server *Server, channel *Channel, msg
 	return queues
 }
 
-func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Message) {
+func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Message) *AMQPError {
 	// Concurrency note: Since there is no lock we can, technically, have messages
 	// published after the exchange has been closed. These couldn't be on the same
 	// channel as the close is happening on, so that seems justifiable.
@@ -158,7 +158,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 		if msg.Method.Mandatory || msg.Method.Immediate {
 			exchange.returnMessage(channel, msg, 313, "Exchange closed, cannot route to queues or consumers")
 		}
-		return
+		return nil
 	}
 	queues := exchange.queuesForPublish(server, channel, msg)
 
@@ -180,8 +180,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 		// Add message to message store
 		queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 		if err != nil {
-			channel.channelErrorWithMethod(500, err.Error(), 60, 40)
-			return
+			return NewSoftError(500, err.Error(), 60, 40)
 		}
 		// Try to immediately consumed it
 		for name, queue := range queues {
@@ -198,14 +197,13 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 		if !consumed {
 			exchange.returnMessage(channel, msg, 313, "No consumers available for immediate message")
 		}
-		return
+		return nil
 	}
 
 	// Add the message to the message store along with the queues we're about to add it to
 	queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 	if err != nil {
-		channel.channelErrorWithMethod(500, err.Error(), 60, 40)
-		return
+		return NewSoftError(500, err.Error(), 60, 40)
 	}
 
 	for name, queue := range queues {
@@ -221,6 +219,7 @@ func (exchange *Exchange) publish(server *Server, channel *Channel, msg *amqp.Me
 			}
 		}
 	}
+	return nil
 }
 
 func (exchange *Exchange) returnMessage(channel *Channel, msg *amqp.Message, code uint16, text string) {

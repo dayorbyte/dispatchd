@@ -83,14 +83,13 @@ func NewChannel(id uint16, conn *AMQPConnection) *Channel {
 	}
 }
 
-func (channel *Channel) commitTx() {
+func (channel *Channel) commitTx() *AMQPError {
 	channel.txLock.Lock()
 	defer channel.txLock.Unlock()
 	// messages
 	queueMessagesByQueue, err := channel.server.msgStore.AddTxMessages(channel.txMessages)
 	if err != nil {
-		channel.channelErrorWithMethod(500, err.Error(), 60, 40)
-		return
+		return NewSoftError(500, err.Error(), 60, 40)
 	}
 
 	for queueName, qms := range queueMessagesByQueue {
@@ -121,6 +120,7 @@ func (channel *Channel) commitTx() {
 	// Clear transaction
 	channel.txMessages = make([]*amqp.TxMessage, 0)
 	channel.txAcks = make([]*amqp.TxAck, 0)
+	return nil
 }
 
 func (channel *Channel) txAckMessage(ack *amqp.TxAck) {
@@ -211,22 +211,15 @@ func (channel *Channel) changeFlow(active bool) {
 	}
 }
 
-func (channel *Channel) channelErrorWithMethod(code uint16, message string, classId uint16, methodId uint16) {
-	fmt.Println("Sending channel error:", message)
-	channel.state = CH_STATE_CLOSING
-	channel.sendMethod(&amqp.ChannelClose{code, message, classId, methodId})
-}
-
-func (channel *Channel) ackBelow(tag uint64, commitTx bool) (success bool) {
+func (channel *Channel) ackBelow(tag uint64, commitTx bool) *AMQPError {
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
 		channel.txAcks = append(channel.txAcks, amqp.NewTxAck(tag, false, false, true))
-		return true
+		return nil
 	}
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
-	success = true
 	for k, unacked := range channel.awaitingAcks {
 		if k <= tag || tag == 0 {
 			consumer, cFound := channel.consumers[unacked.ConsumerTag]
@@ -236,9 +229,10 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) (success bool) {
 				rhs = append(rhs, consumer)
 			}
 			err := channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
+			// TODO: if this was an error do I still delete the ack we're waiting for?
+			// The resources probably haven't been released.
 			if err != nil {
-				channel.channelErrorWithMethod(500, err.Error(), 0, 0)
-				success = false
+				return NewSoftError(500, err.Error(), 60, 80)
 			}
 			delete(channel.awaitingAcks, k)
 
@@ -247,28 +241,28 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) (success bool) {
 			}
 		}
 	}
-	// TODO: should this be false if nothing was actually deleted and tag != 0?
-	return
+	// TODO: should this be an error if nothing was actually deleted and tag != 0?
+	return nil
 }
 
-func (channel *Channel) ackOne(tag uint64, commitTx bool) (success bool) {
+func (channel *Channel) ackOne(tag uint64, commitTx bool) *AMQPError {
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
 
 	var unacked, found = channel.awaitingAcks[tag]
 	if !found {
-		return false
+		var msg = fmt.Sprintf("Precondition Failed: Delivery Tag not found: %d", tag)
+		return NewSoftError(406, msg, 60, 80)
 	}
 	// Tx mode
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
 		channel.txAcks = append(channel.txAcks, amqp.NewTxAck(tag, false, false, false))
-		return true
+		return nil
 	}
 	// Normal mode
 	// Init
-	success = true
 	consumer, cFound := channel.consumers[unacked.ConsumerTag]
 
 	// Initialize resource holders array
@@ -277,21 +271,20 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) (success bool) {
 		rhs = append(rhs, consumer)
 	}
 	err := channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
+	// TODO: if this is an error, do I still delete the tag? the resources
+	// probably haven't been freed
 	if err != nil {
-		channel.channelErrorWithMethod(500, err.Error(), 0, 0)
-		success = false
+		return NewSoftError(500, err.Error(), 60, 80)
 	}
 	delete(channel.awaitingAcks, tag)
 
 	if cFound {
 		consumer.ping()
 	}
-	return
+	return nil
 }
 
-func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) (success bool) {
-	// fmt.Println("Nack below")
-	success = true
+func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) *AMQPError {
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
 
@@ -300,7 +293,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) (succ
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
 		channel.txAcks = append(channel.txAcks, amqp.NewTxAck(tag, true, requeue, true))
-		return true
+		return nil
 	}
 
 	// Non-transaction mode
@@ -331,8 +324,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) (succ
 				// resources
 				err := channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
 				if err != nil {
-					channel.channelErrorWithMethod(500, err.Error(), 0, 0)
-					success = false
+					return NewSoftError(500, err.Error(), 60, 120)
 				}
 			}
 
@@ -345,26 +337,26 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) (succ
 			}
 		}
 	}
-	return
+	return nil
 }
 
-func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) (success bool) {
+func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) *AMQPError {
 	channel.ackLock.Lock()
 	defer channel.ackLock.Unlock()
 	var unacked, found = channel.awaitingAcks[tag]
 	if !found {
-		return false
+		var msg = fmt.Sprintf("Precondition Failed: Delivery Tag not found: %d", tag)
+		return NewSoftError(406, msg, 60, 120)
 	}
 	// Transaction mode
 	if channel.txMode && !commitTx {
 		channel.txLock.Lock()
 		defer channel.txLock.Unlock()
 		channel.txAcks = append(channel.txAcks, amqp.NewTxAck(tag, true, requeue, false))
-		return true
+		return nil
 	}
 	// Non-transaction mode
 	// Init
-	success = true
 	consumer, cFound := channel.consumers[unacked.ConsumerTag]
 	queue, qFound := channel.server.queues[unacked.QueueName]
 
@@ -387,8 +379,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) (succes
 		// resources
 		err := channel.server.msgStore.RemoveRef(unacked.Msg, unacked.QueueName, rhs)
 		if err != nil {
-			channel.channelErrorWithMethod(500, err.Error(), 0, 0)
-			success = false
+			return NewSoftError(500, err.Error(), 60, 120)
 		}
 	}
 
@@ -400,7 +391,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) (succes
 		consumer.ping()
 	}
 
-	return
+	return nil
 }
 
 func (channel *Channel) addUnackedMessage(consumer *Consumer, msg *amqp.QueueMessage, queueName string) uint64 {
@@ -501,22 +492,41 @@ func (channel *Channel) start() {
 				break
 			}
 			var frame = <-channel.incoming
+			var amqpErr *AMQPError = nil
 			switch {
 			case frame.FrameType == uint8(amqp.FrameMethod):
-				channel.routeMethod(frame)
+				amqpErr = channel.routeMethod(frame)
 			case frame.FrameType == uint8(amqp.FrameHeader):
 				if channel.state != CH_STATE_CLOSING {
-					channel.handleContentHeader(frame)
+					amqpErr = channel.handleContentHeader(frame)
 				}
 			case frame.FrameType == uint8(amqp.FrameBody):
 				if channel.state != CH_STATE_CLOSING {
-					channel.handleContentBody(frame)
+					amqpErr = channel.handleContentBody(frame)
 				}
 			default:
-				fmt.Println("Unknown frame type!")
+				amqpErr = NewHardError(500, "Unknown frame type", 0, 0)
+			}
+			if amqpErr != nil {
+				channel.sendError(amqpErr)
 			}
 		}
 	}()
+}
+
+func (channel *Channel) sendError(amqpErr *AMQPError) {
+	if amqpErr.Soft {
+		fmt.Println("Sending channel error:", amqpErr.Msg)
+		channel.state = CH_STATE_CLOSING
+		channel.sendMethod(&amqp.ChannelClose{
+			ReplyCode: amqpErr.Code,
+			ReplyText: amqpErr.Msg,
+			ClassId:   amqpErr.Class,
+			MethodId:  amqpErr.Method,
+		})
+	} else {
+		channel.conn.connectionErrorWithMethod(amqpErr)
+	}
 }
 
 func (channel *Channel) startChannel() {
@@ -605,34 +615,28 @@ func (channel *Channel) sendContent(method amqp.MethodFrame, message *amqp.Messa
 	stats.RecordHisto(channel.statSendChan, start)
 }
 
-func (channel *Channel) handleContentHeader(frame *amqp.WireFrame) {
+func (channel *Channel) handleContentHeader(frame *amqp.WireFrame) *AMQPError {
 	if channel.currentMessage == nil {
-		// TODO: error
-		fmt.Println("Unexpected content header frame!")
-		return
+		return NewSoftError(500, "Unexpected content header frame!", 0, 0)
 	}
 	if channel.currentMessage.Header != nil {
-		// TODO: error
-		fmt.Println("Unexpected content header frame! Already saw header")
+		return NewSoftError(500, "Unexpected content header frame! Already saw header", 0, 0)
 	}
 	var headerFrame = &amqp.ContentHeaderFrame{}
 	var err = headerFrame.Read(bytes.NewReader(frame.Payload))
 	if err != nil {
-		// TODO: error
-		fmt.Println("Error parsing header frame: " + err.Error())
+		return NewHardError(500, "Error parsing header frame: "+err.Error(), 0, 0)
 	}
-
 	channel.currentMessage.Header = headerFrame
+	return nil
 }
 
-func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
+func (channel *Channel) handleContentBody(frame *amqp.WireFrame) *AMQPError {
 	if channel.currentMessage == nil {
-		// TODO: error
-		fmt.Println("Unexpected content body frame. No method content-having method called yet!")
+		return NewSoftError(500, "Unexpected content body frame. No method content-having method called yet!", 0, 0)
 	}
 	if channel.currentMessage.Header == nil {
-		// TODO: error
-		fmt.Println("Unexpected content body frame! No header yet")
+		return NewSoftError(500, "Unexpected content body frame! No header yet", 0, 0)
 	}
 	channel.currentMessage.Payload = append(channel.currentMessage.Payload, frame)
 	// TODO: store this on message
@@ -641,7 +645,7 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
 		size += uint64(len(body.Payload))
 	}
 	if size < channel.currentMessage.Header.ContentBodySize {
-		return
+		return nil
 	}
 
 	// We have the whole contents, let's publish!
@@ -670,13 +674,14 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) {
 		channel.msgIndex += 1
 		channel.sendMethod(&amqp.BasicAck{channel.msgIndex, false})
 	}
+	return nil
 }
 
-func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
+func (channel *Channel) routeMethod(frame *amqp.WireFrame) *AMQPError {
 	var methodReader = bytes.NewReader(frame.Payload)
 	var methodFrame, err = amqp.ReadMethod(methodReader)
 	if err != nil {
-		fmt.Println("ERROR: ", err)
+		return NewHardError(500, err.Error(), 0, 0)
 	}
 	var classId, methodId = methodFrame.MethodIdentifier()
 
@@ -689,33 +694,32 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) error {
 
 	// Non-open method on an INIT-state channel is an error
 	if channel.state == CH_STATE_INIT && (classId != 20 || methodId != 10) {
-		channel.conn.connectionErrorWithMethod(
+		return NewHardError(
 			503,
 			"Non-Channel.Open method called on unopened channel",
 			classId,
 			methodId,
 		)
-		return nil
 	}
 	// Route
 	// fmt.Println("Routing method: " + methodFrame.MethodName())
 	switch {
 	case classId == 10:
-		channel.connectionRoute(channel.conn, methodFrame)
+		return channel.connectionRoute(channel.conn, methodFrame)
 	case classId == 20:
-		channel.channelRoute(methodFrame)
+		return channel.channelRoute(methodFrame)
 	case classId == 40:
-		channel.exchangeRoute(methodFrame)
+		return channel.exchangeRoute(methodFrame)
 	case classId == 50:
-		channel.queueRoute(methodFrame)
+		return channel.queueRoute(methodFrame)
 	case classId == 60:
-		channel.basicRoute(methodFrame)
+		return channel.basicRoute(methodFrame)
 	case classId == 90:
-		channel.txRoute(methodFrame)
+		return channel.txRoute(methodFrame)
 	case classId == 85:
-		channel.confirmRoute(methodFrame)
+		return channel.confirmRoute(methodFrame)
 	default:
-		channel.conn.connectionErrorWithMethod(540, "Not implemented", classId, methodId)
+		return NewHardError(540, "Not implemented", classId, methodId)
 	}
 	return nil
 }

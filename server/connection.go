@@ -191,14 +191,15 @@ func (conn *AMQPConnection) handleOutgoing() {
 	}()
 }
 
-func (conn *AMQPConnection) connectionError(code uint16, message string) {
-	conn.connectionErrorWithMethod(code, message, 0, 0)
-}
-
-func (conn *AMQPConnection) connectionErrorWithMethod(code uint16, message string, classId uint16, methodId uint16) {
-	fmt.Println("Sending connection error:", message)
+func (conn *AMQPConnection) connectionErrorWithMethod(amqpErr *AMQPError) {
+	fmt.Println("Sending connection error:", amqpErr.Msg)
 	conn.connectStatus.closing = true
-	conn.channels[0].sendMethod(&amqp.ConnectionClose{code, message, classId, methodId})
+	conn.channels[0].sendMethod(&amqp.ConnectionClose{
+		ReplyCode: amqpErr.Code,
+		ReplyText: amqpErr.Msg,
+		ClassId:   amqpErr.Class,
+		MethodId:  amqpErr.Method,
+	})
 }
 
 func (conn *AMQPConnection) handleIncoming() {
