@@ -194,16 +194,9 @@ func (exchange *Exchange) removeBindingsForQueue(queueName string) {
 	exchange.bindings = remaining
 }
 
-func (exchange *Exchange) removeBinding(server *Server, queue *queue.Queue, binding *Binding) error {
+func (exchange *Exchange) removeBinding(queue *queue.Queue, binding *Binding) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
-	// First de-persist
-	if queue.Durable && exchange.durable {
-		err := server.depersistBinding(binding)
-		if err != nil {
-			return err
-		}
-	}
 
 	// Delete binding
 	for i, b := range exchange.bindings {

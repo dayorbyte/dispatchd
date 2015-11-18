@@ -190,7 +190,14 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *AMQPError {
 
 	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
 
-	if err := exchange.removeBinding(channel.server, queue, binding); err != nil {
+	if queue.Durable && exchange.durable {
+		err := channel.server.depersistBinding(binding)
+		if err != nil {
+			return NewSoftError(500, "Could not de-persist binding!", classId, methodId)
+		}
+	}
+
+	if err := exchange.removeBinding(queue, binding); err != nil {
 		return NewSoftError(500, err.Error(), classId, methodId)
 	}
 	channel.SendMethod(&amqp.QueueUnbindOk{})
