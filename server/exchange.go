@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
+	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/queue"
 	"sync"
 	"time"
@@ -33,6 +34,7 @@ type Exchange struct {
 	closed       bool
 	deleteActive time.Time
 	deleteChan   chan *Exchange
+	msgStore     *msgstore.MessageStore
 }
 
 func (exchange *Exchange) close() {
@@ -182,7 +184,7 @@ func (exchange *Exchange) publish(server *Server, msg *amqp.Message) (*amqp.Basi
 	if msg.Method.Immediate {
 		var consumed = false
 		// Add message to message store
-		queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
+		queueMessagesByQueue, err := exchange.msgStore.AddMessage(msg, queueNames)
 		if err != nil {
 			return nil, NewSoftError(500, err.Error(), 60, 40)
 		}
@@ -193,7 +195,7 @@ func (exchange *Exchange) publish(server *Server, msg *amqp.Message) (*amqp.Basi
 				var oneConsumed = queue.ConsumeImmediate(qm)
 				var rhs = make([]interfaces.MessageResourceHolder, 0)
 				if !oneConsumed {
-					server.msgStore.RemoveRef(qm, name, rhs)
+					exchange.msgStore.RemoveRef(qm, name, rhs)
 				}
 				consumed = oneConsumed || consumed
 			}
@@ -206,7 +208,7 @@ func (exchange *Exchange) publish(server *Server, msg *amqp.Message) (*amqp.Basi
 	}
 
 	// Add the message to the message store along with the queues we're about to add it to
-	queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
+	queueMessagesByQueue, err := exchange.msgStore.AddMessage(msg, queueNames)
 	if err != nil {
 		return nil, NewSoftError(500, err.Error(), 60, 40)
 	}
@@ -220,7 +222,7 @@ func (exchange *Exchange) publish(server *Server, msg *amqp.Message) (*amqp.Basi
 				// it is going away, so worst case if the server dies we have to process
 				// and discard the message on boot.
 				var rhs = make([]interfaces.MessageResourceHolder, 0)
-				server.msgStore.RemoveRef(qm, name, rhs)
+				exchange.msgStore.RemoveRef(qm, name, rhs)
 			}
 		}
 	}

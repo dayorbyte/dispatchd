@@ -284,6 +284,7 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		bindings:   make([]*Binding, 0),
 		system:     system,
 		deleteChan: server.exchangeDeleter,
+		msgStore:   server.msgStore,
 	}
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()
