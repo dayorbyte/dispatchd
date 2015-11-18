@@ -2,16 +2,14 @@ package main
 
 import (
 	"bytes"
-	"container/list"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/consumer"
 	"github.com/jeffjenkins/mq/msgstore"
-	"github.com/jeffjenkins/mq/stats"
+	"github.com/jeffjenkins/mq/queue"
 	"net"
 	"strings"
 	"sync"
@@ -19,7 +17,7 @@ import (
 
 type Server struct {
 	exchanges       map[string]*Exchange
-	queues          map[string]*Queue
+	queues          map[string]*queue.Queue
 	bindings        []*Binding
 	idLock          sync.Mutex
 	conns           map[int64]*AMQPConnection
@@ -27,7 +25,7 @@ type Server struct {
 	serverLock      sync.Mutex
 	msgStore        *msgstore.MessageStore
 	exchangeDeleter chan *Exchange
-	queueDeleter    chan *Queue
+	queueDeleter    chan *queue.Queue
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
@@ -57,13 +55,13 @@ func NewServer(dbPath string) *Server {
 
 	var server = &Server{
 		exchanges:       make(map[string]*Exchange),
-		queues:          make(map[string]*Queue),
+		queues:          make(map[string]*queue.Queue),
 		bindings:        make([]*Binding, 0),
 		conns:           make(map[int64]*AMQPConnection),
 		db:              db,
 		msgStore:        msgStore,
 		exchangeDeleter: make(chan *Exchange),
-		queueDeleter:    make(chan *Queue),
+		queueDeleter:    make(chan *queue.Queue),
 	}
 
 	server.init()
@@ -91,7 +89,7 @@ func (server *Server) exchangeDeleteMonitor() {
 func (server *Server) queueDeleteMonitor() {
 	for q := range server.queueDeleter {
 		var delq = &amqp.QueueDelete{
-			Queue:  q.name,
+			Queue:  q.Name,
 			NoWait: true,
 		}
 		server.deleteQueue(delq, -1)
@@ -163,14 +161,10 @@ func (server *Server) initQueues() {
 	}
 	for name, queue := range server.queues {
 		fmt.Printf("Loading persistent messages for queue '%s'\n", name)
-		queueList, err := server.msgStore.LoadQueueFromDisk(string(name))
-		if err != nil {
-			panic("Integrity error reading queue from disk! " + err.Error())
-		}
-		queue.queue = queueList
-		fmt.Printf("Loaded %d messages from queue\n", queueList.Len())
-	}
+		queue.LoadFromMsgStore(server.msgStore)
 
+		fmt.Printf("Loaded %d messages from queue\n", queue.Len())
+	}
 }
 
 func (server *Server) initExchanges() {
@@ -398,32 +392,28 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 	if !method.Exclusive {
 		connId = -1
 	}
-	var queue = &Queue{
-		name:        method.Queue,
-		durable:     method.Durable,
-		exclusive:   method.Exclusive,
-		autoDelete:  method.AutoDelete,
-		arguments:   method.Arguments,
-		queue:       list.New(),
-		consumers:   make([]*consumer.Consumer, 0, 1),
-		maybeReady:  make(chan bool, 1),
-		connId:      connId,
-		msgStore:    server.msgStore,
-		statProcOne: stats.MakeHistogram("queue-proc-one"),
-		deleteChan:  server.queueDeleter,
-	}
+	var queue = queue.NewQueue(
+		method.Queue,
+		method.Durable,
+		method.Exclusive,
+		method.AutoDelete,
+		method.Arguments,
+		connId,
+		server.msgStore,
+		server.queueDeleter,
+	)
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()
-	_, hasKey := server.queues[queue.name]
+	_, hasKey := server.queues[queue.Name]
 	if hasKey {
-		return queue.name, nil
+		return queue.Name, nil
 	}
-	server.queues[queue.name] = queue
+	server.queues[queue.Name] = queue
 	var defaultExchange = server.exchanges[""]
 	var defaultBinding = &amqp.QueueBind{
-		Queue:      queue.name,
+		Queue:      queue.Name,
 		Exchange:   "",
-		RoutingKey: queue.name,
+		RoutingKey: queue.Name,
 		Arguments:  amqp.NewTable(),
 	}
 	defaultExchange.addBinding(defaultBinding, connId, fromDisk)
@@ -431,22 +421,22 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 	if method.Durable && !fromDisk {
 		server.persistQueue(method)
 	}
-	queue.start()
-	return queue.name, nil
+	queue.Start()
+	return queue.Name, nil
 }
 
 func (server *Server) deleteQueuesForConn(connId int64) {
 	server.serverLock.Lock()
-	var queues = make([]*Queue, 0)
+	var queues = make([]*queue.Queue, 0)
 	for _, queue := range server.queues {
-		if queue.connId == connId {
+		if queue.ConnId == connId {
 			queues = append(queues, queue)
 		}
 	}
 	server.serverLock.Unlock()
 	for _, queue := range queues {
 		var method = &amqp.QueueDelete{
-			Queue: queue.name,
+			Queue: queue.Name,
 		}
 		server.deleteQueue(method, connId)
 	}
@@ -461,17 +451,17 @@ func (server *Server) deleteQueue(method *amqp.QueueDelete, connId int64) (uint3
 		return 0, 404, errors.New("Queue not found")
 	}
 
-	if queue.connId != -1 && queue.connId != connId {
+	if queue.ConnId != -1 && queue.ConnId != connId {
 		return 0, 405, fmt.Errorf("Queue is locked to another connection")
 	}
 
 	// Close to stop anything from changing
-	queue.close()
+	queue.Close()
 	// Delete for storage
 	server.depersistQueue(queue)
 	server.removeBindingsForQueue(method.Queue)
 	// Cleanup
-	numPurged, err := queue.delete(method.IfUnused, method.IfEmpty)
+	numPurged, err := queue.Delete(method.IfUnused, method.IfEmpty)
 	delete(server.queues, method.Queue)
 	if err != nil {
 		return 0, 406, err
@@ -480,8 +470,8 @@ func (server *Server) deleteQueue(method *amqp.QueueDelete, connId int64) (uint3
 
 }
 
-func (server *Server) depersistQueue(queue *Queue) error {
-	bindings := server.bindingsForQueue(queue.name)
+func (server *Server) depersistQueue(queue *queue.Queue) error {
+	bindings := server.bindingsForQueue(queue.Name)
 	return server.db.Update(func(tx *bolt.Tx) error {
 		for _, binding := range bindings {
 			if err := depersistBinding(tx, binding); err != nil {

@@ -3,6 +3,7 @@ package amqp
 import (
 	"errors"
 	"fmt"
+	"github.com/jeffjenkins/mq/util"
 	"io"
 	"regexp"
 )
@@ -17,6 +18,17 @@ type MethodFrame interface {
 	Read(reader io.Reader) (err error)
 	Write(writer io.Writer) (err error)
 	FrameType() byte
+}
+
+func NewMessage(method *BasicPublish, localId int64) *Message {
+	return &Message{
+		Id:       util.NextId(),
+		Method:   method,
+		Exchange: method.Exchange,
+		Key:      method.RoutingKey,
+		Payload:  make([]*WireFrame, 0, 1),
+		LocalId:  localId,
+	}
 }
 
 func NewTruncatedBodyFrame(channel uint16) WireFrame {

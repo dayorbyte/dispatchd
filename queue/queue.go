@@ -1,4 +1,4 @@
-package main
+package queue
 
 import (
 	"container/list"
@@ -10,29 +10,17 @@ import (
 	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/stats"
-	"github.com/jeffjenkins/mq/util"
 	"sync"
 	"time"
 )
 
-func NewMessage(method *amqp.BasicPublish, localId int64) *amqp.Message {
-	return &amqp.Message{
-		Id:       util.NextId(),
-		Method:   method,
-		Exchange: method.Exchange,
-		Key:      method.RoutingKey,
-		Payload:  make([]*amqp.WireFrame, 0, 1),
-		LocalId:  localId,
-	}
-}
-
 type Queue struct {
-	name            string
-	durable         bool
+	Name            string
+	Durable         bool
 	exclusive       bool
 	autoDelete      bool
 	arguments       *amqp.Table
-	closed          bool
+	Closed          bool
 	objLock         sync.RWMutex
 	queue           *list.List // int64
 	queueLock       sync.Mutex
@@ -42,7 +30,7 @@ type Queue struct {
 	statCount       uint64
 	maybeReady      chan bool
 	soleConsumer    *consumer.Consumer
-	connId          int64
+	ConnId          int64
 	deleteActive    time.Time
 	hasHadConsumers bool
 	msgStore        *msgstore.MessageStore
@@ -50,13 +38,40 @@ type Queue struct {
 	deleteChan      chan *Queue
 }
 
+func NewQueue(
+	name string,
+	durable bool,
+	exclusive bool,
+	autoDelete bool,
+	arguments *amqp.Table,
+	connId int64,
+	msgStore *msgstore.MessageStore,
+	deleteChan chan *Queue,
+) *Queue {
+	return &Queue{
+		Name:       name,
+		Durable:    durable,
+		exclusive:  exclusive,
+		autoDelete: autoDelete,
+		arguments:  arguments,
+		ConnId:     connId,
+		msgStore:   msgStore,
+		deleteChan: deleteChan,
+		// Fields that aren't passed in
+		statProcOne: stats.MakeHistogram("queue-proc-one"),
+		queue:       list.New(),
+		consumers:   make([]*consumer.Consumer, 0, 1),
+		maybeReady:  make(chan bool, 1),
+	}
+}
+
 func equivalentQueues(q1 *Queue, q2 *Queue) bool {
 	// Note: autodelete is not included since the spec says to ignore
 	// the field if the queue is already created
-	if q1.name != q2.name {
+	if q1.Name != q2.Name {
 		return false
 	}
-	if q1.durable != q2.durable {
+	if q1.Durable != q2.Durable {
 		return false
 	}
 	if q1.exclusive != q2.exclusive {
@@ -68,7 +83,15 @@ func equivalentQueues(q1 *Queue, q2 *Queue) bool {
 	return true
 }
 
-func (q *Queue) activeConsumerCount() uint32 {
+func (q *Queue) Len() uint32 {
+	var l = q.queue.Len()
+	if l < 0 {
+		panic("Queue length overflow!")
+	}
+	return uint32(l)
+}
+
+func (q *Queue) ActiveConsumerCount() uint32 {
 	// TODO(MUST): don't count consumers in the Channel.Flow state once
 	// that is implemented
 	return uint32(len(q.consumers))
@@ -76,25 +99,33 @@ func (q *Queue) activeConsumerCount() uint32 {
 
 func (q *Queue) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"name":       q.name,
-		"durable":    q.durable,
+		"name":       q.Name,
+		"durable":    q.Durable,
 		"exclusive":  q.exclusive,
-		"connId":     q.connId,
+		"connId":     q.ConnId,
 		"autoDelete": q.autoDelete,
 		"size":       q.queue.Len(),
 		"consumers":  q.consumers,
 	})
 }
 
-func (q *Queue) close() {
+func (q *Queue) LoadFromMsgStore(msgStore *msgstore.MessageStore) {
+	queueList, err := msgStore.LoadQueueFromDisk(q.Name)
+	if err != nil {
+		panic("Integrity error reading queue from disk! " + err.Error())
+	}
+	q.queue = queueList
+}
+
+func (q *Queue) Close() {
 	// This discards any messages which would be added. It does not
 	// do cleanup
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
-	q.closed = true
+	q.Closed = true
 }
 
-func (q *Queue) purge() uint32 {
+func (q *Queue) Purge() uint32 {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	return q.purgeNotThreadSafe()
@@ -106,12 +137,12 @@ func (q *Queue) purgeNotThreadSafe() uint32 {
 	return uint32(length)
 }
 
-func (q *Queue) add(qm *amqp.QueueMessage) bool {
+func (q *Queue) Add(qm *amqp.QueueMessage) bool {
 	// NOTE: I tried using consumeImmediate before adding things to the queue,
 	// but it caused a pretty significant slowdown.
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
-	if !q.closed {
+	if !q.Closed {
 		q.statCount += 1
 		q.queue.PushBack(qm)
 		select {
@@ -124,7 +155,7 @@ func (q *Queue) add(qm *amqp.QueueMessage) bool {
 	}
 }
 
-func (q *Queue) consumeImmediate(qm *amqp.QueueMessage) bool {
+func (q *Queue) ConsumeImmediate(qm *amqp.QueueMessage) bool {
 	// TODO: randomize or round-robin through consumers
 	q.consumerLock.RLock()
 	defer q.consumerLock.RUnlock()
@@ -138,9 +169,9 @@ func (q *Queue) consumeImmediate(qm *amqp.QueueMessage) bool {
 	return false
 }
 
-func (q *Queue) delete(ifUnused bool, ifEmpty bool) (uint32, error) {
+func (q *Queue) Delete(ifUnused bool, ifEmpty bool) (uint32, error) {
 	// Lock
-	if !q.closed {
+	if !q.Closed {
 		panic("Queue deleted before it was closed!")
 	}
 	q.queueLock.Lock()
@@ -160,7 +191,7 @@ func (q *Queue) delete(ifUnused bool, ifEmpty bool) (uint32, error) {
 	return q.purgeNotThreadSafe(), nil
 }
 
-func (q *Queue) readd(queueName string, msg *amqp.QueueMessage) {
+func (q *Queue) Readd(queueName string, msg *amqp.QueueMessage) {
 	// TODO: if there is a consumer available, dispatch
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
@@ -219,49 +250,33 @@ func (q *Queue) cancelConsumers() {
 	q.consumers = make([]*consumer.Consumer, 0, 1)
 }
 
-func (q *Queue) addConsumer(channel *Channel, method *amqp.BasicConsume) (uint16, error) {
-	if q.closed {
+func (q *Queue) AddConsumer(c *consumer.Consumer, exclusive bool) (uint16, error) {
+	if q.Closed {
 		return 0, nil
 	}
 	// Reset auto-delete
 	q.deleteActive = time.Unix(0, 0)
 
 	// Add consumer
-	var consumer = consumer.NewConsumer(
-		q.msgStore,
-		method.Arguments,
-		channel,
-		method.ConsumerTag,
-		method.Exclusive,
-		method.NoAck,
-		method.NoLocal,
-		q,
-		q.name,
-		channel.defaultPrefetchSize,
-		channel.defaultPrefetchCount,
-		channel.conn.id,
-	)
 	q.consumerLock.Lock()
-	if method.Exclusive {
+	if exclusive {
 		if len(q.consumers) == 0 {
-			q.soleConsumer = consumer
+			q.soleConsumer = c
 		} else {
 			return 403, fmt.Errorf("Exclusive access denied, %d consumers active", len(q.consumers))
 		}
 	}
-	channel.addConsumer(consumer)
-	q.consumers = append(q.consumers, consumer)
+	q.consumers = append(q.consumers, c)
 	q.hasHadConsumers = true
 	q.consumerLock.Unlock()
-	consumer.Start()
 	return 0, nil
 }
 
-func (q *Queue) start() {
+func (q *Queue) Start() {
 	fmt.Println("Queue started!")
 	go func() {
 		for _ = range q.maybeReady {
-			if q.closed {
+			if q.Closed {
 				fmt.Printf("Queue closed!\n")
 				break
 			}
@@ -289,7 +304,7 @@ func (q *Queue) processOne() {
 	}
 }
 
-func (q *Queue) getOneForced() *amqp.QueueMessage {
+func (q *Queue) GetOneForced() *amqp.QueueMessage {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	if q.queue.Len() == 0 {
@@ -303,7 +318,7 @@ func (q *Queue) GetOne(channel interfaces.MessageResourceHolder, consumer interf
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	// Empty check
-	if q.queue.Len() == 0 || q.closed {
+	if q.queue.Len() == 0 || q.Closed {
 		return nil, nil
 	}
 

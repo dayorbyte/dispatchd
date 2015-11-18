@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/interfaces"
+	"github.com/jeffjenkins/mq/queue"
 	"sync"
 	"time"
 )
@@ -96,8 +97,8 @@ func exchangeTypeToName(et extype) string {
 	}
 }
 
-func (exchange *Exchange) queuesForPublish(server *Server, msg *amqp.Message) map[string]*Queue {
-	var queues = make(map[string]*Queue)
+func (exchange *Exchange) queuesForPublish(server *Server, msg *amqp.Message) map[string]*queue.Queue {
+	var queues = make(map[string]*queue.Queue)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
@@ -189,7 +190,7 @@ func (exchange *Exchange) publish(server *Server, msg *amqp.Message) (*amqp.Basi
 		for name, queue := range queues {
 			qms := queueMessagesByQueue[name]
 			for _, qm := range qms {
-				var oneConsumed = queue.consumeImmediate(qm)
+				var oneConsumed = queue.ConsumeImmediate(qm)
 				var rhs = make([]interfaces.MessageResourceHolder, 0)
 				if !oneConsumed {
 					server.msgStore.RemoveRef(qm, name, rhs)
@@ -213,7 +214,7 @@ func (exchange *Exchange) publish(server *Server, msg *amqp.Message) (*amqp.Basi
 	for name, queue := range queues {
 		qms := queueMessagesByQueue[name]
 		for _, qm := range qms {
-			if !queue.add(qm) {
+			if !queue.Add(qm) {
 				// If we couldn't add it means the queue is closed and we should
 				// remove the ref from the message store. The queue being closed means
 				// it is going away, so worst case if the server dies we have to process
@@ -278,11 +279,11 @@ func (exchange *Exchange) removeBindingsForQueue(queueName string) {
 	exchange.bindings = remaining
 }
 
-func (exchange *Exchange) removeBinding(server *Server, queue *Queue, binding *Binding) error {
+func (exchange *Exchange) removeBinding(server *Server, queue *queue.Queue, binding *Binding) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 	// First de-persist
-	if queue.durable && exchange.durable {
+	if queue.Durable && exchange.durable {
 		err := server.depersistBinding(binding)
 		if err != nil {
 			return err

@@ -7,6 +7,7 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/consumer"
 	"github.com/jeffjenkins/mq/interfaces"
+	"github.com/jeffjenkins/mq/queue"
 	"github.com/jeffjenkins/mq/stats"
 	"math"
 	"sync"
@@ -100,7 +101,7 @@ func (channel *Channel) commitTx() *AMQPError {
 			continue
 		}
 		for _, qm := range qms {
-			if !queue.add(qm) {
+			if !queue.Add(qm) {
 				// If we couldn't add it means the queue is closed and we should
 				// remove the ref from the message store. The queue being closed means
 				// it is going away, so worst case if the server dies we have to process
@@ -157,7 +158,7 @@ func (channel *Channel) recover(requeue bool) {
 			// re-add to queue
 			queue, qFound := channel.server.queues[unacked.QueueName]
 			if qFound {
-				queue.readd(unacked.QueueName, unacked.Msg)
+				queue.Readd(unacked.QueueName, unacked.Msg)
 			}
 			// else: The queue gone. The reference would have been removed
 			//       then so we don't remove it now in an else clause
@@ -316,7 +317,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) *AMQP
 			if requeue && qFound {
 				// If we're requeueing we release the resources but don't remove the
 				// reference.
-				queue.readd(unacked.QueueName, unacked.Msg)
+				queue.Readd(unacked.QueueName, unacked.Msg)
 				for _, rh := range rhs {
 					rh.ReleaseResources(unacked.Msg)
 				}
@@ -371,7 +372,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) *AMQPEr
 	if requeue && qFound {
 		// If we're requeueing we release the resources but don't remove the
 		// reference.
-		queue.readd(unacked.QueueName, unacked.Msg)
+		queue.Readd(unacked.QueueName, unacked.Msg)
 		for _, rh := range rhs {
 			rh.ReleaseResources(unacked.Msg)
 		}
@@ -414,14 +415,45 @@ func (channel *Channel) AddUnackedMessage(consumerTag string, msg *amqp.QueueMes
 	return tag
 }
 
-func (channel *Channel) addConsumer(consumer *consumer.Consumer) error {
+func (channel *Channel) addConsumer(q *queue.Queue, method *amqp.BasicConsume) *AMQPError {
+	var classId, methodId = method.MethodIdentifier()
+	// Create consumer
+	var consumer = consumer.NewConsumer(
+		channel.server.msgStore,
+		method.Arguments,
+		channel,
+		method.ConsumerTag,
+		method.Exclusive,
+		method.NoAck,
+		method.NoLocal,
+		q,
+		q.Name,
+		channel.defaultPrefetchSize,
+		channel.defaultPrefetchCount,
+		channel.conn.id,
+	)
+
 	channel.consumerLock.Lock()
 	defer channel.consumerLock.Unlock()
+	// Make sure the doesn't exist on this channel
 	_, found := channel.consumers[consumer.ConsumerTag]
 	if found {
-		return fmt.Errorf("Consumer tag already exists: %s", consumer.ConsumerTag)
+		return NewHardError(
+			530,
+			fmt.Sprintf("Consumer tag already exists: %s", consumer.ConsumerTag),
+			classId,
+			methodId,
+		)
 	}
+
+	// Add the consumer to the queue, then channel
+	code, err := q.AddConsumer(consumer, method.Exclusive)
+	if err != nil {
+		return NewSoftError(code, err.Error(), classId, methodId)
+	}
+
 	channel.consumers[consumer.ConsumerTag] = consumer
+	consumer.Start()
 	return nil
 }
 
@@ -465,7 +497,7 @@ func (channel *Channel) activateConfirmMode() {
 }
 
 func (channel *Channel) startPublish(method *amqp.BasicPublish) error {
-	channel.currentMessage = NewMessage(method, channel.conn.id)
+	channel.currentMessage = amqp.NewMessage(method, channel.conn.id)
 	return nil
 }
 

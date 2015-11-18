@@ -40,8 +40,8 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *AMQPError {
 		queue, found := channel.conn.server.queues[method.Queue]
 		if found {
 			if !method.NoWait {
-				var qsize = uint32(queue.queue.Len())
-				var csize = queue.activeConsumerCount()
+				var qsize = uint32(queue.Len())
+				var csize = queue.ActiveConsumerCount()
 				channel.SendMethod(&amqp.QueueDeclareOk{method.Queue, qsize, csize})
 			}
 			channel.lastQueueName = method.Queue
@@ -80,11 +80,11 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *AMQPError {
 
 	// Check queue
 	var queue, foundQueue = channel.server.queues[method.Queue]
-	if !foundQueue || queue.closed {
+	if !foundQueue || queue.Closed {
 		return NewSoftError(404, fmt.Sprintf("Queue not found: %s", method.Queue), classId, methodId)
 	}
 
-	if queue.connId != -1 && queue.connId != channel.conn.id {
+	if queue.ConnId != -1 && queue.ConnId != channel.conn.id {
 		return NewSoftError(405, fmt.Sprintf("Queue is locked to another connection"), classId, methodId)
 	}
 
@@ -95,7 +95,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *AMQPError {
 	}
 
 	// Persist durable bindings
-	if exchange.durable && queue.durable {
+	if exchange.durable && queue.Durable {
 		var err = channel.server.persistBinding(method)
 		if err != nil {
 			return NewSoftError(500, err.Error(), classId, methodId)
@@ -126,11 +126,11 @@ func (channel *Channel) queuePurge(method *amqp.QueuePurge) *AMQPError {
 		return NewSoftError(404, "Queue not found", classId, methodId)
 	}
 
-	if queue.connId != -1 && queue.connId != channel.conn.id {
+	if queue.ConnId != -1 && queue.ConnId != channel.conn.id {
 		return NewSoftError(405, "Queue is locked to another connection", classId, methodId)
 	}
 
-	numPurged := queue.purge()
+	numPurged := queue.Purge()
 	if !method.NoWait {
 		channel.SendMethod(&amqp.QueuePurgeOk{numPurged})
 	}
@@ -178,7 +178,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *AMQPError {
 		return NewSoftError(404, "Queue not found", classId, methodId)
 	}
 
-	if queue.connId != -1 && queue.connId != channel.conn.id {
+	if queue.ConnId != -1 && queue.ConnId != channel.conn.id {
 		return NewSoftError(405, "Queue is locked to another connection", classId, methodId)
 	}
 

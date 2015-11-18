@@ -6,7 +6,6 @@ import (
 	"github.com/rcrowley/go-metrics"
 	"net/http"
 	"os"
-	"sort"
 )
 
 func homeJSON(w http.ResponseWriter, r *http.Request, server *Server) {
@@ -24,49 +23,6 @@ func statsJSON(w http.ResponseWriter, r *http.Request, server *Server) {
 		w.Write([]byte(err.Error()))
 	}
 	w.Write(b)
-}
-
-func home(w http.ResponseWriter, r *http.Request, server *Server) {
-	// Exchange info
-	w.Header().Set("Content-Type", "text/html")
-	fmt.Fprintf(w, "<h1>Exchanges</h1>")
-	fmt.Fprintf(w, "<pre>")
-
-	var keys = make([]string, 0, len(server.exchanges))
-	for name, _ := range server.exchanges {
-		keys = append(keys, name)
-	}
-	sort.Strings(keys)
-	for _, name := range keys {
-		exchange := server.exchanges[name]
-		fmt.Fprintf(
-			w,
-			"'%s': type: %s, bindings: %d\n",
-			name,
-			exchangeTypeToName(exchange.extype),
-			len(exchange.bindings),
-		)
-	}
-	fmt.Fprintf(w, "</pre>")
-
-	// Queue info
-	fmt.Fprintf(w, "<h1>Queues</h1>")
-	fmt.Fprintf(w, "<pre>")
-	for name, queue := range server.queues {
-		fmt.Fprintf(
-			w,
-			"'%s': consumers: %d, queue length: %d, total received messages: %d\n",
-			name,
-			len(queue.consumers),
-			queue.queue.Len(),
-			queue.statCount,
-		)
-		fmt.Fprintf(w, "<h3>Consumers</h3>")
-		for _, consumer := range queue.consumers {
-			fmt.Fprintf(w, "'%s': %d\n", consumer.ConsumerTag, consumer.StatCount)
-		}
-	}
-	fmt.Fprintf(w, "</pre>")
 }
 
 func startAdminServer(server *Server) {

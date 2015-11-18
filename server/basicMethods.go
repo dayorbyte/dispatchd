@@ -72,10 +72,9 @@ func (channel *Channel) basicConsume(method *amqp.BasicConsume) *AMQPError {
 	if len(method.ConsumerTag) == 0 {
 		method.ConsumerTag = util.RandomId()
 	}
-	errCode, err := queue.addConsumer(channel, method)
-	if err != nil {
-		var classId, methodId = method.MethodIdentifier()
-		return NewHardError(errCode, err.Error(), classId, methodId)
+	amqpErr := channel.addConsumer(queue, method)
+	if amqpErr != nil {
+		return amqpErr
 	}
 	if !method.NoWait {
 		channel.SendMethod(&amqp.BasicConsumeOk{method.ConsumerTag})
@@ -123,14 +122,14 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) *AMQPError {
 		var classId, methodId = method.MethodIdentifier()
 		return NewSoftError(404, "Queue not found", classId, methodId)
 	}
-	var qm = queue.getOneForced()
+	var qm = queue.GetOneForced()
 	if qm == nil {
 		channel.SendMethod(&amqp.BasicGetEmpty{})
 		return nil
 	}
 
 	var rhs = []interfaces.MessageResourceHolder{channel}
-	msg, err := channel.server.msgStore.GetAndDecrRef(qm, queue.name, rhs)
+	msg, err := channel.server.msgStore.GetAndDecrRef(qm, queue.Name, rhs)
 	if err != nil {
 		// TODO: return 500 error
 		channel.SendMethod(&amqp.BasicGetEmpty{})

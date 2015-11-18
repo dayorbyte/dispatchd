@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/queue"
 )
 
-func depersistQueue(tx *bolt.Tx, queue *Queue) error {
+func depersistQueue(tx *bolt.Tx, queue *queue.Queue) error {
 	bucket, err := tx.CreateBucketIfNotExists([]byte("queues"))
 	if err != nil {
 		return fmt.Errorf("create bucket: %s", err)
 	}
-	return bucket.Delete([]byte(queue.name))
+	return bucket.Delete([]byte(queue.Name))
 }
 
 func depersistExchange(tx *bolt.Tx, exchange *Exchange) error {
