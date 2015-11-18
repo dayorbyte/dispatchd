@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/queue"
 	"net"
@@ -534,4 +535,85 @@ func (server *Server) openConnection(network net.Conn) {
 	c := NewAMQPConnection(server, network)
 	server.conns[c.id] = c
 	c.openConnection()
+}
+
+func (server *Server) publish(exchange *Exchange, msg *amqp.Message) (*amqp.BasicReturn, *AMQPError) {
+	// Concurrency note: Since there is no lock we can, technically, have messages
+	// published after the exchange has been closed. These couldn't be on the same
+	// channel as the close is happening on, so that seems justifiable.
+	if exchange.closed {
+		if msg.Method.Mandatory || msg.Method.Immediate {
+			var rm = exchange.returnMessage(msg, 313, "Exchange closed, cannot route to queues or consumers")
+			return rm, nil
+		}
+		return nil, nil
+	}
+	queues := exchange.queuesForPublish(msg)
+
+	if len(queues) == 0 {
+		// If we got here the message was unroutable.
+		if msg.Method.Mandatory || msg.Method.Immediate {
+			var rm = exchange.returnMessage(msg, 313, "No queues available")
+			return rm, nil
+		}
+	}
+
+	var queueNames = make([]string, 0, len(queues))
+	for k, _ := range queues {
+		queueNames = append(queueNames, k)
+	}
+
+	// Immediate messages
+	if msg.Method.Immediate {
+		var consumed = false
+		// Add message to message store
+		queueMessagesByQueue, err := exchange.msgStore.AddMessage(msg, queueNames)
+		if err != nil {
+			return nil, NewSoftError(500, err.Error(), 60, 40)
+		}
+		// Try to immediately consumed it
+		for queueName, _ := range queues {
+			qms := queueMessagesByQueue[queueName]
+			for _, qm := range qms {
+				queue, found := server.queues[queueName]
+				if !found {
+					// The queue must have been deleted since the queuesForPublish call
+					continue
+				}
+				var oneConsumed = queue.ConsumeImmediate(qm)
+				var rhs = make([]interfaces.MessageResourceHolder, 0)
+				if !oneConsumed {
+					exchange.msgStore.RemoveRef(qm, queueName, rhs)
+				}
+				consumed = oneConsumed || consumed
+			}
+		}
+		if !consumed {
+			var rm = exchange.returnMessage(msg, 313, "No consumers available for immediate message")
+			return rm, nil
+		}
+		return nil, nil
+	}
+
+	// Add the message to the message store along with the queues we're about to add it to
+	queueMessagesByQueue, err := exchange.msgStore.AddMessage(msg, queueNames)
+	if err != nil {
+		return nil, NewSoftError(500, err.Error(), 60, 40)
+	}
+
+	for queueName, _ := range queues {
+		qms := queueMessagesByQueue[queueName]
+		for _, qm := range qms {
+			queue, found := server.queues[queueName]
+			if !found || !queue.Add(qm) {
+				// If we couldn't add it means the queue is closed and we should
+				// remove the ref from the message store. The queue being closed means
+				// it is going away, so worst case if the server dies we have to process
+				// and discard the message on boot.
+				var rhs = make([]interfaces.MessageResourceHolder, 0)
+				exchange.msgStore.RemoveRef(qm, queueName, rhs)
+			}
+		}
+	}
+	return nil, nil
 }

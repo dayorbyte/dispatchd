@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/interfaces"
+	// "github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/queue"
 	"sync"
@@ -99,8 +99,8 @@ func exchangeTypeToName(et extype) string {
 	}
 }
 
-func (exchange *Exchange) queuesForPublish(server *Server, msg *amqp.Message) map[string]*queue.Queue {
-	var queues = make(map[string]*queue.Queue)
+func (exchange *Exchange) queuesForPublish(msg *amqp.Message) map[string]bool {
+	var queues = make(map[string]bool)
 	switch {
 	case exchange.extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
@@ -109,11 +109,7 @@ func (exchange *Exchange) queuesForPublish(server *Server, msg *amqp.Message) ma
 				if alreadySeen {
 					continue
 				}
-				var queue, foundQueue = server.queues[binding.queueName]
-				if !foundQueue {
-					panic("queue not found!")
-				}
-				queues[binding.queueName] = queue
+				queues[binding.queueName] = true
 			}
 		}
 	case exchange.extype == EX_TYPE_FANOUT:
@@ -123,11 +119,7 @@ func (exchange *Exchange) queuesForPublish(server *Server, msg *amqp.Message) ma
 				if alreadySeen {
 					continue
 				}
-				var queue, foundQueue = server.queues[binding.queueName]
-				if !foundQueue {
-					panic("queue not found!")
-				}
-				queues[binding.queueName] = queue
+				queues[binding.queueName] = true
 			}
 		}
 	case exchange.extype == EX_TYPE_TOPIC:
@@ -137,11 +129,7 @@ func (exchange *Exchange) queuesForPublish(server *Server, msg *amqp.Message) ma
 				if alreadySeen {
 					continue
 				}
-				var queue, foundQueue = server.queues[binding.queueName]
-				if !foundQueue {
-					panic("queue not found!")
-				}
-				queues[binding.queueName] = queue
+				queues[binding.queueName] = true
 			}
 		}
 	case exchange.extype == EX_TYPE_HEADERS:
@@ -152,81 +140,6 @@ func (exchange *Exchange) queuesForPublish(server *Server, msg *amqp.Message) ma
 		panic("unknown exchange type!")
 	}
 	return queues
-}
-
-func (exchange *Exchange) publish(server *Server, msg *amqp.Message) (*amqp.BasicReturn, *AMQPError) {
-	// Concurrency note: Since there is no lock we can, technically, have messages
-	// published after the exchange has been closed. These couldn't be on the same
-	// channel as the close is happening on, so that seems justifiable.
-	if exchange.closed {
-		if msg.Method.Mandatory || msg.Method.Immediate {
-			var rm = exchange.returnMessage(msg, 313, "Exchange closed, cannot route to queues or consumers")
-			return rm, nil
-		}
-		return nil, nil
-	}
-	queues := exchange.queuesForPublish(server, msg)
-
-	if len(queues) == 0 {
-		// If we got here the message was unroutable.
-		if msg.Method.Mandatory || msg.Method.Immediate {
-			var rm = exchange.returnMessage(msg, 313, "No queues available")
-			return rm, nil
-		}
-	}
-
-	var queueNames = make([]string, 0, len(queues))
-	for k, _ := range queues {
-		queueNames = append(queueNames, k)
-	}
-
-	// Immediate messages
-	if msg.Method.Immediate {
-		var consumed = false
-		// Add message to message store
-		queueMessagesByQueue, err := exchange.msgStore.AddMessage(msg, queueNames)
-		if err != nil {
-			return nil, NewSoftError(500, err.Error(), 60, 40)
-		}
-		// Try to immediately consumed it
-		for name, queue := range queues {
-			qms := queueMessagesByQueue[name]
-			for _, qm := range qms {
-				var oneConsumed = queue.ConsumeImmediate(qm)
-				var rhs = make([]interfaces.MessageResourceHolder, 0)
-				if !oneConsumed {
-					exchange.msgStore.RemoveRef(qm, name, rhs)
-				}
-				consumed = oneConsumed || consumed
-			}
-		}
-		if !consumed {
-			var rm = exchange.returnMessage(msg, 313, "No consumers available for immediate message")
-			return rm, nil
-		}
-		return nil, nil
-	}
-
-	// Add the message to the message store along with the queues we're about to add it to
-	queueMessagesByQueue, err := exchange.msgStore.AddMessage(msg, queueNames)
-	if err != nil {
-		return nil, NewSoftError(500, err.Error(), 60, 40)
-	}
-
-	for name, queue := range queues {
-		qms := queueMessagesByQueue[name]
-		for _, qm := range qms {
-			if !queue.Add(qm) {
-				// If we couldn't add it means the queue is closed and we should
-				// remove the ref from the message store. The queue being closed means
-				// it is going away, so worst case if the server dies we have to process
-				// and discard the message on boot.
-				var rhs = make([]interfaces.MessageResourceHolder, 0)
-				exchange.msgStore.RemoveRef(qm, name, rhs)
-			}
-		}
-	}
-	return nil, nil
 }
 
 func (exchange *Exchange) returnMessage(msg *amqp.Message, code uint16, text string) *amqp.BasicReturn {

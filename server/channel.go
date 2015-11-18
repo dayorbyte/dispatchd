@@ -694,7 +694,7 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) *AMQPError {
 
 	if channel.txMode {
 		// TxMode, add the messages to a list
-		queues := exchange.queuesForPublish(server, channel.currentMessage)
+		queues := exchange.queuesForPublish(channel.currentMessage)
 		channel.txLock.Lock()
 		for queueName, _ := range queues {
 			var txmsg = amqp.NewTxMessage(message, queueName)
@@ -703,7 +703,7 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) *AMQPError {
 		channel.txLock.Unlock()
 	} else {
 		// Normal mode, publish directly
-		returnMethod, amqpErr := exchange.publish(server, channel.currentMessage)
+		returnMethod, amqpErr := server.publish(exchange, channel.currentMessage)
 		if amqpErr != nil {
 			channel.currentMessage = nil
 			return amqpErr
