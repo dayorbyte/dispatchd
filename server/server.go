@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/binding"
+	"github.com/jeffjenkins/mq/exchange"
 	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/queue"
@@ -17,15 +19,15 @@ import (
 )
 
 type Server struct {
-	exchanges       map[string]*Exchange
+	exchanges       map[string]*exchange.Exchange
 	queues          map[string]*queue.Queue
-	bindings        []*Binding
+	bindings        []*binding.Binding
 	idLock          sync.Mutex
 	conns           map[int64]*AMQPConnection
 	db              *bolt.DB
 	serverLock      sync.Mutex
 	msgStore        *msgstore.MessageStore
-	exchangeDeleter chan *Exchange
+	exchangeDeleter chan *exchange.Exchange
 	queueDeleter    chan *queue.Queue
 }
 
@@ -55,13 +57,13 @@ func NewServer(dbPath string) *Server {
 	}
 
 	var server = &Server{
-		exchanges:       make(map[string]*Exchange),
+		exchanges:       make(map[string]*exchange.Exchange),
 		queues:          make(map[string]*queue.Queue),
-		bindings:        make([]*Binding, 0),
+		bindings:        make([]*binding.Binding, 0),
 		conns:           make(map[int64]*AMQPConnection),
 		db:              db,
 		msgStore:        msgStore,
-		exchangeDeleter: make(chan *Exchange),
+		exchangeDeleter: make(chan *exchange.Exchange),
 		queueDeleter:    make(chan *queue.Queue),
 	}
 
@@ -80,7 +82,7 @@ func (server *Server) init() {
 func (server *Server) exchangeDeleteMonitor() {
 	for e := range server.exchangeDeleter {
 		var dele = &amqp.ExchangeDelete{
-			Exchange: e.name,
+			Exchange: e.Name,
 			NoWait:   true,
 		}
 		server.deleteExchange(dele)
@@ -123,7 +125,7 @@ func (server *Server) initBindings() {
 			}
 
 			// Add Binding
-			exchange.addBinding(method, -1, true)
+			exchange.AddBinding(method, -1, true)
 		}
 		return nil
 	})
@@ -268,39 +270,36 @@ func (server *Server) initExchanges() {
 }
 
 func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool, diskLoad bool) (uint16, error) {
-	var tp, err = exchangeNameToType(method.Type)
-	if err != nil || tp == EX_TYPE_HEADERS {
+	var tp, err = exchange.ExchangeNameToType(method.Type)
+	if err != nil || tp == exchange.EX_TYPE_HEADERS {
 		// TODO: I should really make ChannelException and ConnectionException
 		// types
 		return uint16(503), err
 	}
-	var exchange = &Exchange{
-		name:       method.Exchange,
-		extype:     tp,
-		durable:    method.Durable,
-		autodelete: method.AutoDelete,
-		internal:   method.Internal,
-		arguments:  method.Arguments,
-		incoming:   make(chan amqp.Frame),
-		bindings:   make([]*Binding, 0),
-		system:     system,
-		deleteChan: server.exchangeDeleter,
-		msgStore:   server.msgStore,
-	}
+	var exchange = exchange.NewExchange(
+		method.Exchange,
+		tp,
+		method.Durable,
+		method.AutoDelete,
+		method.Internal,
+		method.Arguments,
+		system,
+		server.exchangeDeleter,
+	)
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()
-	existing, hasKey := server.exchanges[exchange.name]
+	existing, hasKey := server.exchanges[exchange.Name]
 	if !hasKey && method.Passive {
 		return 404, errors.New("Exchange does not exist")
 	}
 	if hasKey {
 		if diskLoad {
-			panic(fmt.Sprintf("Can't disk load a key that exists: %s", exchange.name))
+			panic(fmt.Sprintf("Can't disk load a key that exists: %s", exchange.Name))
 		}
-		if existing.extype != exchange.extype {
+		if existing.Extype != exchange.Extype {
 			return 530, errors.New("Cannot redeclare an exchange with a different type")
 		}
-		if equivalentExchanges(existing, exchange) {
+		if existing.EquivalentExchanges(exchange) {
 			return 0, nil
 		}
 		// Not equivalent, error in passive mode
@@ -318,10 +317,10 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		return 0, errors.New("Exchange names starting with 'amq.' are reserved")
 	}
 
-	if exchange.durable && !diskLoad {
-		server.persistExchange(method, exchange.system)
+	if exchange.Durable && !diskLoad {
+		server.persistExchange(method, exchange.System)
 	}
-	server.exchanges[exchange.name] = exchange
+	server.exchanges[exchange.Name] = exchange
 	return 0, nil
 }
 
@@ -384,12 +383,6 @@ func (server *Server) persistBinding(method *amqp.QueueBind) error {
 	})
 }
 
-func (server *Server) depersistBinding(binding *Binding) error {
-	return server.db.Update(func(tx *bolt.Tx) error {
-		return depersistBinding(tx, binding)
-	})
-}
-
 func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, fromDisk bool) (string, error) {
 	if !method.Exclusive {
 		connId = -1
@@ -418,7 +411,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 		RoutingKey: queue.Name,
 		Arguments:  amqp.NewTable(),
 	}
-	defaultExchange.addBinding(defaultBinding, connId, fromDisk)
+	defaultExchange.AddBinding(defaultBinding, connId, fromDisk)
 	// TODO: queue should store bindings too?
 	if method.Durable && !fromDisk {
 		server.persistQueue(method)
@@ -476,36 +469,25 @@ func (server *Server) depersistQueue(queue *queue.Queue) error {
 	bindings := server.bindingsForQueue(queue.Name)
 	return server.db.Update(func(tx *bolt.Tx) error {
 		for _, binding := range bindings {
-			if err := depersistBinding(tx, binding); err != nil {
+			if err := binding.DepersistBoltTx(tx); err != nil {
 				return err
 			}
 		}
-		return depersistQueue(tx, queue)
+		return queue.DepersistBoltTx(tx)
 	})
 }
 
-func (server *Server) depersistExchange(exchange *Exchange) error {
-	return server.db.Update(func(tx *bolt.Tx) error {
-		for _, binding := range exchange.bindings {
-			if err := depersistBinding(tx, binding); err != nil {
-				return err
-			}
-		}
-		return depersistExchange(tx, exchange)
-	})
-}
-
-func (server *Server) bindingsForQueue(queueName string) []*Binding {
-	ret := make([]*Binding, 0)
+func (server *Server) bindingsForQueue(queueName string) []*binding.Binding {
+	ret := make([]*binding.Binding, 0)
 	for _, exchange := range server.exchanges {
-		ret = append(ret, exchange.bindingsForQueue(queueName)...)
+		ret = append(ret, exchange.BindingsForQueue(queueName)...)
 	}
 	return ret
 }
 
 func (server *Server) removeBindingsForQueue(queueName string) {
 	for _, exchange := range server.exchanges {
-		exchange.removeBindingsForQueue(queueName)
+		exchange.RemoveBindingsForQueue(queueName)
 	}
 }
 
@@ -516,11 +498,11 @@ func (server *Server) deleteExchange(method *amqp.ExchangeDelete) (uint16, error
 	if !found {
 		return 404, fmt.Errorf("Exchange not found: '%s'", method.Exchange)
 	}
-	if exchange.system {
+	if exchange.System {
 		return 530, fmt.Errorf("Cannot delete system exchange: '%s'", method.Exchange)
 	}
-	exchange.close()
-	server.depersistExchange(exchange)
+	exchange.Close()
+	exchange.Depersist(server.db)
 	// Note: we don't need to delete the bindings from the queues they are
 	// associated with because they are stored on the exchange.
 	delete(server.exchanges, method.Exchange)
@@ -537,23 +519,32 @@ func (server *Server) openConnection(network net.Conn) {
 	c.openConnection()
 }
 
-func (server *Server) publish(exchange *Exchange, msg *amqp.Message) (*amqp.BasicReturn, *AMQPError) {
+func (server *Server) returnMessage(msg *amqp.Message, code uint16, text string) *amqp.BasicReturn {
+	return &amqp.BasicReturn{
+		Exchange:   msg.Method.Exchange,
+		RoutingKey: msg.Method.RoutingKey,
+		ReplyCode:  code,
+		ReplyText:  text,
+	}
+}
+
+func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*amqp.BasicReturn, *AMQPError) {
 	// Concurrency note: Since there is no lock we can, technically, have messages
 	// published after the exchange has been closed. These couldn't be on the same
 	// channel as the close is happening on, so that seems justifiable.
-	if exchange.closed {
+	if exchange.Closed {
 		if msg.Method.Mandatory || msg.Method.Immediate {
-			var rm = exchange.returnMessage(msg, 313, "Exchange closed, cannot route to queues or consumers")
+			var rm = server.returnMessage(msg, 313, "Exchange closed, cannot route to queues or consumers")
 			return rm, nil
 		}
 		return nil, nil
 	}
-	queues := exchange.queuesForPublish(msg)
+	queues := exchange.QueuesForPublish(msg)
 
 	if len(queues) == 0 {
 		// If we got here the message was unroutable.
 		if msg.Method.Mandatory || msg.Method.Immediate {
-			var rm = exchange.returnMessage(msg, 313, "No queues available")
+			var rm = server.returnMessage(msg, 313, "No queues available")
 			return rm, nil
 		}
 	}
@@ -567,7 +558,7 @@ func (server *Server) publish(exchange *Exchange, msg *amqp.Message) (*amqp.Basi
 	if msg.Method.Immediate {
 		var consumed = false
 		// Add message to message store
-		queueMessagesByQueue, err := exchange.msgStore.AddMessage(msg, queueNames)
+		queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 		if err != nil {
 			return nil, NewSoftError(500, err.Error(), 60, 40)
 		}
@@ -583,20 +574,20 @@ func (server *Server) publish(exchange *Exchange, msg *amqp.Message) (*amqp.Basi
 				var oneConsumed = queue.ConsumeImmediate(qm)
 				var rhs = make([]interfaces.MessageResourceHolder, 0)
 				if !oneConsumed {
-					exchange.msgStore.RemoveRef(qm, queueName, rhs)
+					server.msgStore.RemoveRef(qm, queueName, rhs)
 				}
 				consumed = oneConsumed || consumed
 			}
 		}
 		if !consumed {
-			var rm = exchange.returnMessage(msg, 313, "No consumers available for immediate message")
+			var rm = server.returnMessage(msg, 313, "No consumers available for immediate message")
 			return rm, nil
 		}
 		return nil, nil
 	}
 
 	// Add the message to the message store along with the queues we're about to add it to
-	queueMessagesByQueue, err := exchange.msgStore.AddMessage(msg, queueNames)
+	queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 	if err != nil {
 		return nil, NewSoftError(500, err.Error(), 60, 40)
 	}
@@ -611,7 +602,7 @@ func (server *Server) publish(exchange *Exchange, msg *amqp.Message) (*amqp.Basi
 				// it is going away, so worst case if the server dies we have to process
 				// and discard the message on boot.
 				var rhs = make([]interfaces.MessageResourceHolder, 0)
-				exchange.msgStore.RemoveRef(qm, queueName, rhs)
+				server.msgStore.RemoveRef(qm, queueName, rhs)
 			}
 		}
 	}

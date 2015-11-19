@@ -694,7 +694,7 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) *AMQPError {
 
 	if channel.txMode {
 		// TxMode, add the messages to a list
-		queues := exchange.queuesForPublish(channel.currentMessage)
+		queues := exchange.QueuesForPublish(channel.currentMessage)
 		channel.txLock.Lock()
 		for queueName, _ := range queues {
 			var txmsg = amqp.NewTxMessage(message, queueName)

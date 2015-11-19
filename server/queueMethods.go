@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/binding"
 	"github.com/jeffjenkins/mq/util"
 )
 
@@ -89,13 +90,13 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *AMQPError {
 	}
 
 	// Add binding
-	err := exchange.addBinding(method, channel.conn.id, false)
+	err := exchange.AddBinding(method, channel.conn.id, false)
 	if err != nil {
 		return NewSoftError(500, err.Error(), classId, methodId)
 	}
 
 	// Persist durable bindings
-	if exchange.durable && queue.Durable {
+	if exchange.Durable && queue.Durable {
 		var err = channel.server.persistBinding(method)
 		if err != nil {
 			return NewSoftError(500, err.Error(), classId, methodId)
@@ -188,16 +189,16 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *AMQPError {
 		return NewSoftError(404, "Exchange not found", classId, methodId)
 	}
 
-	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
+	var binding = binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
 
-	if queue.Durable && exchange.durable {
-		err := channel.server.depersistBinding(binding)
+	if queue.Durable && exchange.Durable {
+		err := binding.Depersist(channel.server.db)
 		if err != nil {
 			return NewSoftError(500, "Could not de-persist binding!", classId, methodId)
 		}
 	}
 
-	if err := exchange.removeBinding(queue, binding); err != nil {
+	if err := exchange.RemoveBinding(queue, binding); err != nil {
 		return NewSoftError(500, err.Error(), classId, methodId)
 	}
 	channel.SendMethod(&amqp.QueueUnbindOk{})

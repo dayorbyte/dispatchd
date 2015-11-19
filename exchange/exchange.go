@@ -1,63 +1,87 @@
-package main
+package exchange
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
-	// "github.com/jeffjenkins/mq/interfaces"
-	"github.com/jeffjenkins/mq/msgstore"
+	"github.com/jeffjenkins/mq/binding"
 	"github.com/jeffjenkins/mq/queue"
 	"sync"
 	"time"
 )
 
-type extype uint8
+type Extype uint8
 
 const (
-	EX_TYPE_DIRECT  extype = 1
-	EX_TYPE_FANOUT  extype = 2
-	EX_TYPE_TOPIC   extype = 3
-	EX_TYPE_HEADERS extype = 4
+	EX_TYPE_DIRECT  Extype = 1
+	EX_TYPE_FANOUT  Extype = 2
+	EX_TYPE_TOPIC   Extype = 3
+	EX_TYPE_HEADERS Extype = 4
 )
 
 type Exchange struct {
-	name         string
-	extype       extype
-	durable      bool
+	Name         string
+	Extype       Extype
+	Durable      bool
 	autodelete   bool
 	internal     bool
 	arguments    *amqp.Table
-	system       bool
-	bindings     []*Binding
+	System       bool
+	bindings     []*binding.Binding
 	bindingsLock sync.Mutex
 	incoming     chan amqp.Frame
-	closed       bool
+	Closed       bool
 	deleteActive time.Time
 	deleteChan   chan *Exchange
-	msgStore     *msgstore.MessageStore
 }
 
-func (exchange *Exchange) close() {
-	exchange.closed = true
+func (exchange *Exchange) Close() {
+	exchange.Closed = true
 }
 
 func (exchange *Exchange) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"type":     exchangeTypeToName(exchange.extype),
+		"type":     exchangeTypeToName(exchange.Extype),
 		"bindings": exchange.bindings,
 	})
 }
 
-func equivalentExchanges(ex1 *Exchange, ex2 *Exchange) bool {
+func NewExchange(
+	name string,
+	extype Extype,
+	durable bool,
+	autodelete bool,
+	internal bool,
+	arguments *amqp.Table,
+	system bool,
+	deleteChan chan *Exchange,
+) *Exchange {
+	return &Exchange{
+		Name:       name,
+		Extype:     extype,
+		Durable:    durable,
+		autodelete: autodelete,
+		internal:   internal,
+		arguments:  arguments,
+		System:     system,
+		deleteChan: deleteChan,
+		// not passed in
+		incoming: make(chan amqp.Frame),
+		bindings: make([]*binding.Binding, 0),
+	}
+}
+
+func (ex1 *Exchange) EquivalentExchanges(ex2 *Exchange) bool {
 	// NOTE: auto-delete is ignored for existing exchanges, so we
 	// do not check it here.
-	if ex1.name != ex2.name {
+	if ex1.Name != ex2.Name {
 		return false
 	}
-	if ex1.extype != ex2.extype {
+	if ex1.Extype != ex2.Extype {
 		return false
 	}
-	if ex1.durable != ex2.durable {
+	if ex1.Durable != ex2.Durable {
 		return false
 	}
 	if ex1.internal != ex2.internal {
@@ -69,7 +93,7 @@ func equivalentExchanges(ex1 *Exchange, ex2 *Exchange) bool {
 	return true
 }
 
-func exchangeNameToType(et string) (extype, error) {
+func ExchangeNameToType(et string) (Extype, error) {
 	switch {
 	case et == "direct":
 		return EX_TYPE_DIRECT, nil
@@ -84,7 +108,7 @@ func exchangeNameToType(et string) (extype, error) {
 	}
 }
 
-func exchangeTypeToName(et extype) string {
+func exchangeTypeToName(et Extype) string {
 	switch {
 	case et == EX_TYPE_DIRECT:
 		return "direct"
@@ -99,40 +123,40 @@ func exchangeTypeToName(et extype) string {
 	}
 }
 
-func (exchange *Exchange) queuesForPublish(msg *amqp.Message) map[string]bool {
+func (exchange *Exchange) QueuesForPublish(msg *amqp.Message) map[string]bool {
 	var queues = make(map[string]bool)
 	switch {
-	case exchange.extype == EX_TYPE_DIRECT:
+	case exchange.Extype == EX_TYPE_DIRECT:
 		for _, binding := range exchange.bindings {
-			if binding.matchDirect(msg.Method) {
-				var _, alreadySeen = queues[binding.queueName]
+			if binding.MatchDirect(msg.Method) {
+				var _, alreadySeen = queues[binding.QueueName]
 				if alreadySeen {
 					continue
 				}
-				queues[binding.queueName] = true
+				queues[binding.QueueName] = true
 			}
 		}
-	case exchange.extype == EX_TYPE_FANOUT:
+	case exchange.Extype == EX_TYPE_FANOUT:
 		for _, binding := range exchange.bindings {
-			if binding.matchFanout(msg.Method) {
-				var _, alreadySeen = queues[binding.queueName]
+			if binding.MatchFanout(msg.Method) {
+				var _, alreadySeen = queues[binding.QueueName]
 				if alreadySeen {
 					continue
 				}
-				queues[binding.queueName] = true
+				queues[binding.QueueName] = true
 			}
 		}
-	case exchange.extype == EX_TYPE_TOPIC:
+	case exchange.Extype == EX_TYPE_TOPIC:
 		for _, binding := range exchange.bindings {
-			if binding.matchTopic(msg.Method) {
-				var _, alreadySeen = queues[binding.queueName]
+			if binding.MatchTopic(msg.Method) {
+				var _, alreadySeen = queues[binding.QueueName]
 				if alreadySeen {
 					continue
 				}
-				queues[binding.queueName] = true
+				queues[binding.QueueName] = true
 			}
 		}
-	case exchange.extype == EX_TYPE_HEADERS:
+	case exchange.Extype == EX_TYPE_HEADERS:
 		// TODO: implement
 		panic("Headers is not implemented!")
 	default:
@@ -142,20 +166,30 @@ func (exchange *Exchange) queuesForPublish(msg *amqp.Message) map[string]bool {
 	return queues
 }
 
-func (exchange *Exchange) returnMessage(msg *amqp.Message, code uint16, text string) *amqp.BasicReturn {
-	return &amqp.BasicReturn{
-		Exchange:   exchange.name,
-		RoutingKey: msg.Method.RoutingKey,
-		ReplyCode:  code,
-		ReplyText:  text,
-	}
+func (exchange *Exchange) Depersist(db *bolt.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		for _, binding := range exchange.bindings {
+			if err := binding.DepersistBoltTx(tx); err != nil {
+				return err
+			}
+		}
+		return DepersistExchangeBoltTx(tx, exchange)
+	})
 }
 
-func (exchange *Exchange) addBinding(method *amqp.QueueBind, connId int64, fromDisk bool) error {
+func DepersistExchangeBoltTx(tx *bolt.Tx, exchange *Exchange) error {
+	bucket, err := tx.CreateBucketIfNotExists([]byte("exchanges"))
+	if err != nil {
+		return fmt.Errorf("create bucket: %s", err)
+	}
+	return bucket.Delete([]byte(exchange.Name))
+}
+
+func (exchange *Exchange) AddBinding(method *amqp.QueueBind, connId int64, fromDisk bool) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 
-	var binding = NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
+	var binding = binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
 
 	for _, b := range exchange.bindings {
 		if binding.Equals(b) {
@@ -170,31 +204,31 @@ func (exchange *Exchange) addBinding(method *amqp.QueueBind, connId int64, fromD
 	return nil
 }
 
-func (exchange *Exchange) bindingsForQueue(queueName string) []*Binding {
-	var ret = make([]*Binding, 0)
+func (exchange *Exchange) BindingsForQueue(queueName string) []*binding.Binding {
+	var ret = make([]*binding.Binding, 0)
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 	for _, b := range exchange.bindings {
-		if b.queueName == queueName {
+		if b.QueueName == queueName {
 			ret = append(ret, b)
 		}
 	}
 	return ret
 }
 
-func (exchange *Exchange) removeBindingsForQueue(queueName string) {
-	var remaining = make([]*Binding, 0)
+func (exchange *Exchange) RemoveBindingsForQueue(queueName string) {
+	var remaining = make([]*binding.Binding, 0)
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 	for _, b := range exchange.bindings {
-		if b.queueName != queueName {
+		if b.QueueName != queueName {
 			remaining = append(remaining, b)
 		}
 	}
 	exchange.bindings = remaining
 }
 
-func (exchange *Exchange) removeBinding(queue *queue.Queue, binding *Binding) error {
+func (exchange *Exchange) RemoveBinding(queue *queue.Queue, binding *binding.Binding) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 

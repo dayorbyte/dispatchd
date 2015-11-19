@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/consumer"
 	"github.com/jeffjenkins/mq/interfaces"
@@ -107,6 +108,20 @@ func (q *Queue) MarshalJSON() ([]byte, error) {
 		"size":       q.queue.Len(),
 		"consumers":  q.consumers,
 	})
+}
+
+func (q *Queue) Depersist(db *bolt.DB) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		return q.DepersistBoltTx(tx)
+	})
+}
+
+func (q *Queue) DepersistBoltTx(tx *bolt.Tx) error {
+	bucket, err := tx.CreateBucketIfNotExists([]byte("queues"))
+	if err != nil {
+		return fmt.Errorf("create bucket: %s", err)
+	}
+	return bucket.Delete([]byte(q.Name))
 }
 
 func (q *Queue) LoadFromMsgStore(msgStore *msgstore.MessageStore) {
