@@ -8,7 +8,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/stats"
 	"sync"
 )
@@ -123,11 +122,11 @@ func (ms *MessageStore) Fsck() ([]int64, []int64) {
 	return make([]int64, 0), make([]int64, 0)
 }
 
-func (ms *MessageStore) Get(qm *amqp.QueueMessage, rhs []interfaces.MessageResourceHolder) (*amqp.Message, bool) {
+func (ms *MessageStore) Get(qm *amqp.QueueMessage, rhs []amqp.MessageResourceHolder) (*amqp.Message, bool) {
 	ms.msgLock.RLock()
 	defer ms.msgLock.RUnlock()
 	// Acquire resources
-	var acquired = make([]interfaces.MessageResourceHolder, 0, len(rhs))
+	var acquired = make([]amqp.MessageResourceHolder, 0, len(rhs))
 	for _, rh := range rhs {
 		if !rh.AcquireResources(qm) {
 			break
@@ -254,7 +253,7 @@ func (ms *MessageStore) IncrDeliveryCount(queueName string, qm *amqp.QueueMessag
 	return
 }
 
-func (ms *MessageStore) GetAndDecrRef(qm *amqp.QueueMessage, queueName string, rhs []interfaces.MessageResourceHolder) (*amqp.Message, error) {
+func (ms *MessageStore) GetAndDecrRef(qm *amqp.QueueMessage, queueName string, rhs []amqp.MessageResourceHolder) (*amqp.Message, error) {
 	msg, found := ms.GetNoChecks(qm.Id)
 	if !found {
 		panic("Integrity error!")
@@ -265,7 +264,7 @@ func (ms *MessageStore) GetAndDecrRef(qm *amqp.QueueMessage, queueName string, r
 	return msg, nil
 }
 
-func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs []interfaces.MessageResourceHolder) error {
+func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs []amqp.MessageResourceHolder) error {
 	defer stats.RecordHisto(ms.statRemoveRef, stats.Start())
 	im, found := ms.GetIndex(qm.Id)
 	if !found {

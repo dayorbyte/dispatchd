@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/stats"
 	"github.com/jeffjenkins/mq/util"
 )
@@ -128,7 +127,7 @@ func (channel *Channel) basicGet(method *amqp.BasicGet) *AMQPError {
 		return nil
 	}
 
-	var rhs = []interfaces.MessageResourceHolder{channel}
+	var rhs = []amqp.MessageResourceHolder{channel}
 	msg, err := channel.server.msgStore.GetAndDecrRef(qm, queue.Name, rhs)
 	if err != nil {
 		// TODO: return 500 error

@@ -20,6 +20,14 @@ type MethodFrame interface {
 	FrameType() byte
 }
 
+// A message resource is something which has limits on the count of
+// messages it can handle as well as the cumulative size of the messages
+// it can handle.
+type MessageResourceHolder interface {
+	AcquireResources(qm *QueueMessage) bool
+	ReleaseResources(qm *QueueMessage)
+}
+
 func NewMessage(method *BasicPublish, localId int64) *Message {
 	return &Message{
 		Id:       util.NextId(),

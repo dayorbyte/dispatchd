@@ -3,7 +3,6 @@ package consumer
 import (
 	"encoding/json"
 	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/stats"
 	"sync"
@@ -12,13 +11,13 @@ import (
 type Consumer struct {
 	msgStore      *msgstore.MessageStore
 	arguments     *amqp.Table
-	cchannel      interfaces.ConsumerChannel
+	cchannel      ConsumerChannel
 	ConsumerTag   string
 	exclusive     bool
 	incoming      chan bool
 	noAck         bool
 	noLocal       bool
-	cqueue        interfaces.ConsumerQueue
+	cqueue        ConsumerQueue
 	queueName     string
 	consumeLock   sync.Mutex
 	limitLock     sync.Mutex
@@ -37,15 +36,32 @@ type Consumer struct {
 	statConsumeOneSend   stats.Histogram
 }
 
+type ConsumerQueue interface {
+	GetOne(
+		channel amqp.MessageResourceHolder,
+		consumer amqp.MessageResourceHolder,
+	) (*amqp.QueueMessage, *amqp.Message)
+	MaybeReady() chan bool
+}
+
+// The methods necessary for a consumer to interact with a channel
+type ConsumerChannel interface {
+	amqp.MessageResourceHolder
+	SendContent(method amqp.MethodFrame, msg *amqp.Message)
+	SendMethod(method amqp.MethodFrame)
+	FlowActive() bool
+	AddUnackedMessage(consumerTag string, qm *amqp.QueueMessage, queueName string) uint64
+}
+
 func NewConsumer(
 	msgStore *msgstore.MessageStore,
 	arguments *amqp.Table,
-	cchannel interfaces.ConsumerChannel,
+	cchannel ConsumerChannel,
 	consumerTag string,
 	exclusive bool,
 	noAck bool,
 	noLocal bool,
-	cqueue interfaces.ConsumerQueue,
+	cqueue ConsumerQueue,
 	queueName string,
 	prefetchSize uint32,
 	prefetchCount uint16,
@@ -86,8 +102,8 @@ func (consumer *Consumer) MarshalJSON() ([]byte, error) {
 }
 
 // TODO: make this a field that we construct on init
-func (consumer *Consumer) MessageResourceHolders() []interfaces.MessageResourceHolder {
-	return []interfaces.MessageResourceHolder{consumer, consumer.cchannel}
+func (consumer *Consumer) MessageResourceHolders() []amqp.MessageResourceHolder {
+	return []amqp.MessageResourceHolder{consumer, consumer.cchannel}
 }
 
 func (consumer *Consumer) Stop() {
@@ -186,7 +202,7 @@ func (consumer *Consumer) consumeOne() {
 	} else {
 		// We aren't expecting an ack, so this is the last time the message
 		// will be referenced.
-		var rhs = []interfaces.MessageResourceHolder{consumer.cchannel, consumer}
+		var rhs = []amqp.MessageResourceHolder{consumer.cchannel, consumer}
 		err = consumer.msgStore.RemoveRef(qm, consumer.queueName, rhs)
 		if err != nil {
 			panic("Error getting queue message")

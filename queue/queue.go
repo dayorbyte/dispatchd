@@ -8,7 +8,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/consumer"
-	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/stats"
 	"sync"
@@ -329,7 +328,7 @@ func (q *Queue) GetOneForced() *amqp.QueueMessage {
 	return qMsg
 }
 
-func (q *Queue) GetOne(channel interfaces.MessageResourceHolder, consumer interfaces.MessageResourceHolder) (*amqp.QueueMessage, *amqp.Message) {
+func (q *Queue) GetOne(channel amqp.MessageResourceHolder, consumer amqp.MessageResourceHolder) (*amqp.QueueMessage, *amqp.Message) {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	// Empty check
@@ -341,7 +340,7 @@ func (q *Queue) GetOne(channel interfaces.MessageResourceHolder, consumer interf
 	// from the channel.
 	var qm = q.queue.Front().Value.(*amqp.QueueMessage)
 
-	var rhs = []interfaces.MessageResourceHolder{
+	var rhs = []amqp.MessageResourceHolder{
 		channel,
 		consumer,
 	}

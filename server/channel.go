@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/consumer"
-	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/queue"
 	"github.com/jeffjenkins/mq/stats"
 	"math"
@@ -106,7 +105,7 @@ func (channel *Channel) commitTx() *AMQPError {
 				// remove the ref from the message store. The queue being closed means
 				// it is going away, so worst case if the server dies we have to process
 				// and discard the message on boot.
-				var rhs = []interfaces.MessageResourceHolder{channel}
+				var rhs = []amqp.MessageResourceHolder{channel}
 				channel.server.msgStore.RemoveRef(qm, queueName, rhs)
 			}
 		}
@@ -186,7 +185,7 @@ func (channel *Channel) recover(requeue bool) {
 					consumer.Redeliver(tag, unacked.Msg)
 				} else {
 					// no consumer, drop message
-					var rhs = []interfaces.MessageResourceHolder{
+					var rhs = []amqp.MessageResourceHolder{
 						channel,
 						consumer,
 					}
@@ -226,7 +225,7 @@ func (channel *Channel) ackBelow(tag uint64, commitTx bool) *AMQPError {
 		if k <= tag || tag == 0 {
 			consumer, cFound := channel.consumers[unacked.ConsumerTag]
 			// Initialize resource holders array
-			var rhs = []interfaces.MessageResourceHolder{channel}
+			var rhs = []amqp.MessageResourceHolder{channel}
 			if cFound {
 				rhs = append(rhs, consumer)
 			}
@@ -268,7 +267,7 @@ func (channel *Channel) ackOne(tag uint64, commitTx bool) *AMQPError {
 	consumer, cFound := channel.consumers[unacked.ConsumerTag]
 
 	// Initialize resource holders array
-	var rhs = []interfaces.MessageResourceHolder{channel}
+	var rhs = []amqp.MessageResourceHolder{channel}
 	if cFound {
 		rhs = append(rhs, consumer)
 	}
@@ -308,7 +307,7 @@ func (channel *Channel) nackBelow(tag uint64, requeue bool, commitTx bool) *AMQP
 			queue, qFound := channel.server.queues[unacked.QueueName]
 
 			// Initialize resource holders array
-			var rhs = []interfaces.MessageResourceHolder{channel}
+			var rhs = []amqp.MessageResourceHolder{channel}
 			if cFound {
 				rhs = append(rhs, consumer)
 			}
@@ -363,7 +362,7 @@ func (channel *Channel) nackOne(tag uint64, requeue bool, commitTx bool) *AMQPEr
 	queue, qFound := channel.server.queues[unacked.QueueName]
 
 	// Initialize resource holders array
-	var rhs = []interfaces.MessageResourceHolder{channel}
+	var rhs = []amqp.MessageResourceHolder{channel}
 	if cFound {
 		rhs = append(rhs, consumer)
 	}

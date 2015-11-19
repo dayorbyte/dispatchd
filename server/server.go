@@ -10,7 +10,6 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/binding"
 	"github.com/jeffjenkins/mq/exchange"
-	"github.com/jeffjenkins/mq/interfaces"
 	"github.com/jeffjenkins/mq/msgstore"
 	"github.com/jeffjenkins/mq/queue"
 	"net"
@@ -572,7 +571,7 @@ func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*
 					continue
 				}
 				var oneConsumed = queue.ConsumeImmediate(qm)
-				var rhs = make([]interfaces.MessageResourceHolder, 0)
+				var rhs = make([]amqp.MessageResourceHolder, 0)
 				if !oneConsumed {
 					server.msgStore.RemoveRef(qm, queueName, rhs)
 				}
@@ -601,7 +600,7 @@ func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*
 				// remove the ref from the message store. The queue being closed means
 				// it is going away, so worst case if the server dies we have to process
 				// and discard the message on boot.
-				var rhs = make([]interfaces.MessageResourceHolder, 0)
+				var rhs = make([]amqp.MessageResourceHolder, 0)
 				server.msgStore.RemoveRef(qm, queueName, rhs)
 			}
 		}

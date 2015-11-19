@@ -4,7 +4,6 @@ import (
 	// "container/list"
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/interfaces"
 	"os"
 	"testing"
 )
@@ -13,7 +12,7 @@ func TestWrite(t *testing.T) {
 	// Setup
 	var dbFile = "TestWrite.db"
 	os.Remove(dbFile)
-	rhs := []interfaces.MessageResourceHolder{&TestResourceHolder{}}
+	rhs := []amqp.MessageResourceHolder{&TestResourceHolder{}}
 	ms, err := NewMessageStore(dbFile)
 	// Create messages
 	msg1 := amqp.RandomMessage(true)
