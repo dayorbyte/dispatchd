@@ -185,11 +185,18 @@ func DepersistExchangeBoltTx(tx *bolt.Tx, exchange *Exchange) error {
 	return bucket.Delete([]byte(exchange.Name))
 }
 
+func (exchange *Exchange) IsTopic() bool {
+	return exchange.Extype == EX_TYPE_TOPIC
+}
+
 func (exchange *Exchange) AddBinding(method *amqp.QueueBind, connId int64, fromDisk bool) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 
-	var binding = binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
+	var binding, err = binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, exchange.IsTopic())
+	if err != nil {
+		return err
+	}
 
 	for _, b := range exchange.bindings {
 		if binding.Equals(b) {

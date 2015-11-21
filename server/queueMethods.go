@@ -189,7 +189,17 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *AMQPError {
 		return NewSoftError(404, "Exchange not found", classId, methodId)
 	}
 
-	var binding = binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments)
+	var binding, err = binding.NewBinding(
+		method.Queue,
+		method.Exchange,
+		method.RoutingKey,
+		method.Arguments,
+		exchange.IsTopic(),
+	)
+
+	if err != nil {
+		return NewSoftError(500, err.Error(), classId, methodId)
+	}
 
 	if queue.Durable && exchange.Durable {
 		err := binding.Depersist(channel.server.db)

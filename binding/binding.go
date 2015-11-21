@@ -19,6 +19,8 @@ type Binding struct {
 	topicMatcher *regexp.Regexp
 }
 
+var topicRoutingPatternPattern, _ = regexp.Compile(`^((\w+|\*|#)(\.(\w+|\*|#))*|)$`)
+
 func (binding *Binding) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"queueName":    binding.QueueName,
@@ -66,30 +68,37 @@ func (binding *Binding) DepersistBoltTx(tx *bolt.Tx) error {
 	return bucket.Delete([]byte(hash.Sum(nil)))
 }
 
-func NewBinding(queueName string, exchangeName string, key string, arguments *amqp.Table) *Binding {
-	var parts = strings.Split(key, ".")
-	for i, part := range parts {
-		if part == "*" {
-			parts[i] = `[^\.]+`
-			continue
+func NewBinding(queueName string, exchangeName string, key string, arguments *amqp.Table, topic bool) (*Binding, error) {
+	var re *regexp.Regexp = nil
+	if topic {
+		if !topicRoutingPatternPattern.MatchString(key) {
+			return nil, fmt.Errorf("Topic exchange routing key can only have a-zA-Z0-9, or # or *")
 		}
-		if part == "#" {
-			parts[i] = ".*"
+		var parts = strings.Split(key, ".")
+		for i, part := range parts {
+			if part == "*" {
+				parts[i] = `[^\.]+`
+			} else if part == "#" {
+				parts[i] = ".*"
+			} else {
+				parts[i] = regexp.QuoteMeta(parts[i])
+			}
+		}
+		expression := "^" + strings.Join(parts, `\.`) + "$"
+		var err error = nil
+		re, err = regexp.Compile(expression)
+		if err != nil {
+			return nil, fmt.Errorf("Could not compile regex: '%s'", expression)
 		}
 	}
-	// TODO: deal with failed compile
-	expression := "^" + strings.Join(parts, `\.`) + "$"
-	var regexp, success = regexp.Compile(expression)
-	if success != nil {
-		panic("Could not compile regex: '" + expression + "'")
-	}
+
 	return &Binding{
 		QueueName:    queueName,
 		ExchangeName: exchangeName,
 		Key:          key,
 		Arguments:    arguments,
-		topicMatcher: regexp,
-	}
+		topicMatcher: re,
+	}, nil
 }
 
 func (b *Binding) MatchDirect(message *amqp.BasicPublish) bool {
