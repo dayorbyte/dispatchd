@@ -44,7 +44,7 @@ def main(args):
 def nocover(file, line):
   with open(os.path.join(os.environ['GOPATH'], 'src', file)) as inf:
     lines = inf.readlines()
-    if 'pragma: nocover' in lines[int(line)]:
+    if 'pragma: nocover' in lines[int(line)-1]:
       return True
     return False
 
