@@ -63,7 +63,7 @@ def cover_summary(cover_names):
           continue
         full_file, _, report = line.partition(':')
         file = full_file.replace(PREFIX, '')
-        if 'pb.go' in file:
+        if 'pb.go' in file or 'generated' in file or 'testlib' in file:
           continue
         range, _, _ = report.partition(' ')
         first, _, second = range.partition(',')
