@@ -29,7 +29,7 @@ func (binding *Binding) MarshalJSON() ([]byte, error) {
 }
 
 func (binding *Binding) Equals(other *Binding) bool {
-	if other == nil {
+	if other == nil || binding == nil {
 		return false
 	}
 	return binding.QueueName == other.QueueName &&
