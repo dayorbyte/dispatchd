@@ -97,7 +97,7 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *AMQPError {
 
 	// Persist durable bindings
 	if exchange.Durable && queue.Durable {
-		var err = channel.server.persistBinding(method)
+		var err = binding.PersistBinding(channel.server.db, method)
 		if err != nil {
 			return NewSoftError(500, err.Error(), classId, methodId)
 		}
