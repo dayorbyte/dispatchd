@@ -47,15 +47,6 @@ func ReadFrame(reader io.Reader) (*WireFrame, error) {
 
 // Fields
 
-func ReadBit(buf io.Reader) (bool, error) {
-	var data byte
-	err := binary.Read(buf, binary.BigEndian, &data)
-	if err != nil {
-		return false, errors.New("Could not read byte")
-	}
-	return data != 0, nil
-}
-
 func ReadOctet(buf io.Reader) (data byte, err error) {
 	err = binary.Read(buf, binary.BigEndian, &data)
 	if err != nil {

@@ -187,9 +187,9 @@ func (server *Server) initExchanges() {
 			if err != nil {
 				panic(fmt.Sprintf("Failed to read exchange '%s': %s", name, err.Error()))
 			}
-			system, err := amqp.ReadBit(reader)
+			system, err := amqp.ReadOctet(reader)
 			// fmt.Printf("Got exchange from disk: %s (%s)\n", method.Exchange, method.Type)
-			_, err = server.declareExchange(method, system, true)
+			_, err = server.declareExchange(method, system == 1, true)
 			if err != nil {
 				return err
 			}
@@ -331,7 +331,12 @@ func (server *Server) persistExchange(method *amqp.ExchangeDeclare, system bool)
 		}
 		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
 		method.Write(buffer)
-		amqp.WriteBit(buffer, system)
+		if system {
+			amqp.WriteOctet(buffer, uint8(1))
+		} else {
+			amqp.WriteOctet(buffer, uint8(0))
+		}
+
 		var name = method.Exchange
 		if name == "" {
 			name = "~"

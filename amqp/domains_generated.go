@@ -1,19 +1,11 @@
 package amqp
 
-var ReadNoWait = ReadBit
-var WriteNoWait = WriteBit
-var ReadNoLocal = ReadBit
-var WriteNoLocal = WriteBit
 var ReadMethodId = ReadShort
 var WriteMethodId = WriteShort
 var ReadReplyText = ReadShortstr
 var WriteReplyText = WriteShortstr
-var ReadNoAck = ReadBit
-var WriteNoAck = WriteBit
 var ReadPeerProperties = ReadTable
 var WritePeerProperties = WriteTable
-var ReadRedelivered = ReadBit
-var WriteRedelivered = WriteBit
 var ReadClassId = ReadShort
 var WriteClassId = WriteShort
 var ReadMessageCount = ReadLong

@@ -36,14 +36,6 @@ func WriteFrameEnd(buf io.Writer) error {
 
 // Fields
 
-func WriteBit(buf io.Writer, b bool) error {
-	if b {
-		return binary.Write(buf, binary.BigEndian, byte(1))
-	}
-	return binary.Write(buf, binary.BigEndian, byte(0))
-
-}
-
 func WriteOctet(buf io.Writer, b byte) error {
 	return binary.Write(buf, binary.BigEndian, b)
 }
@@ -116,7 +108,11 @@ func writeValue(writer io.Writer, value *FieldValue) (err error) {
 	switch v := value.Value.(type) {
 	case *FieldValue_VBoolean:
 		if err = binary.Write(writer, binary.BigEndian, byte('t')); err == nil {
-			err = WriteBit(writer, v.VBoolean)
+			if v.VBoolean {
+				err = WriteOctet(writer, uint8(1))
+			} else {
+				err = WriteOctet(writer, uint8(0))
+			}
 		}
 	case *FieldValue_VInt8:
 		if err = binary.Write(writer, binary.BigEndian, byte('b')); err == nil {
