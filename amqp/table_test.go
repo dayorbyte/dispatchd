@@ -5,27 +5,25 @@ import (
 	"testing"
 )
 
-func TestTableRoundtrip(t *testing.T) {
+func TestBasicTable(t *testing.T) {
 	// Create
-	var inTable = NewTable()
-	inTable.SetKey("product", "mq")
-	inTable.SetKey("version", "0.1")
-	inTable.SetKey("copyright", "Jeffrey Jenkins, 2015")
-	// encode
-	writer := bytes.NewBuffer(make([]byte, 0))
-	err := WriteTable(writer, inTable)
-	if err != nil {
-		t.Errorf(err.Error())
+	var table = NewTable()
+	table.SetKey("product", "mq")
+	table.SetKey("version", uint8(7))
+	table.SetKey("version", uint8(6))               // for code coverage, reset a value
+	err := table.SetKey("bad", make(map[bool]bool)) // for code coverage, a type it doesn't understand
+	if err == nil {
+		t.Errorf("No error on bad set value")
 	}
 
-	var reader = bytes.NewReader(writer.Bytes())
-	outTable, err := ReadTable(reader)
-	if err != nil {
-		t.Errorf(err.Error())
+	var fv = table.GetKey("version")
+	if fv.Value.(*FieldValue_VUint8).VUint8 != uint8(6) {
+		t.Errorf("Didn't get the right key from table")
 	}
-	if !EquivalentTables(inTable, outTable) {
-		t.Errorf("Tables no equal")
+	if table.GetKey("DOES NOT EXIST") != nil {
+		t.Errorf("Found key that shouldn't exist!")
 	}
+
 }
 
 func TestTableTypes(t *testing.T) {
