@@ -259,11 +259,13 @@ func readValue(reader io.Reader) (*FieldValue, error) {
 		}
 		return &FieldValue{Value: &FieldValue_VDouble{VDouble: v}}, nil
 	case t == 'D':
-		var v = Decimal{}
-		if err = binary.Read(reader, binary.BigEndian, &v.Scale); err != nil {
+		var scale uint8 = 0
+		var val int32 = 0
+		var v = Decimal{&scale, &val}
+		if err = binary.Read(reader, binary.BigEndian, v.Scale); err != nil {
 			return nil, err
 		}
-		if err = binary.Read(reader, binary.BigEndian, &v.Value); err != nil {
+		if err = binary.Read(reader, binary.BigEndian, v.Value); err != nil {
 			return nil, err
 		}
 		return &FieldValue{Value: &FieldValue_VDecimal{VDecimal: &v}}, nil
