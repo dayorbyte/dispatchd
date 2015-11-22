@@ -50,22 +50,27 @@ func TestMethodTypes(t *testing.T) {
 		if err != nil {
 			t.Errorf(err.Error())
 		}
+
 		var outBytes = outBuf.Bytes()[4:]
 		// Try all lengths of bytes below the ones needed
 		for index, _ := range outBytes {
-			printWireBytes(outBytes, t)
-			var inBind = &ExchangeBind{}
+			var inBind = reflect.New(reflect.TypeOf(method).Elem()).Interface().(MethodFrame)
+			//&ExchangeBind{}
+			t.Logf("%s", reflect.TypeOf(inBind))
 			err = inBind.Read(bytes.NewBuffer(outBytes[:index]))
 			if err == nil {
+				printWireBytes(outBytes, t)
 				t.Errorf("Parsed malformed request bytes")
 				return
 			}
 		}
 		// printWireBytes(outBytes, t)
 		// Try the right set of bytes
-		var inBind = &ExchangeBind{}
+		var inBind = reflect.New(reflect.TypeOf(method).Elem()).Interface().(MethodFrame)
 		err = inBind.Read(bytes.NewBuffer(outBytes))
 		if err != nil {
+			t.Logf("Method is %s", method.MethodName())
+			printWireBytes(outBytes, t)
 			t.Errorf(err.Error())
 			return
 		}
@@ -81,6 +86,18 @@ func methodsForTesting() []MethodFrame {
 			NoWait:      true,
 			Arguments:   everythingTable(),
 		},
+		&ConnectionTune{
+			ChannelMax: uint16(3),
+			FrameMax:   uint32(1),
+			Heartbeat:  uint16(2),
+		},
+		// &BasicDeliver{
+		// 	ConsumerTag: string("deliver"),
+		// 	DeliveryTag: uint64(4),
+		// 	Redelivered: true,
+		// 	Exchange:    string("ex1"),
+		// 	RoutingKey:  string("rk1"),
+		// },
 	}
 }
 
