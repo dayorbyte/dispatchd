@@ -34,18 +34,6 @@ func WriteFrameEnd(buf io.Writer) error {
 	return binary.Write(buf, binary.BigEndian, byte(0xCE))
 }
 
-// Composite Types
-
-func WriteMethodPayloadHeader(buf io.Writer, classId uint16, methodId uint16) (err error) {
-	if err = binary.Write(buf, binary.BigEndian, classId); err != nil {
-		return
-	}
-	if err = binary.Write(buf, binary.BigEndian, methodId); err != nil {
-		return
-	}
-	return nil
-}
-
 // Fields
 
 func WriteBit(buf io.Writer, b bool) error {

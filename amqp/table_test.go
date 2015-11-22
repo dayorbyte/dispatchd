@@ -37,36 +37,7 @@ func TestBasicTable(t *testing.T) {
 }
 
 func TestTableTypes(t *testing.T) {
-	var inTable = NewTable()
-
-	// Basic types
-	inTable.SetKey("bool", true)
-	inTable.SetKey("int8", int8(-2))
-	inTable.SetKey("uint8", uint8(3))
-	inTable.SetKey("int16", int16(-4))
-	inTable.SetKey("uint16", uint16(5))
-	inTable.SetKey("int32", int32(-6))
-	inTable.SetKey("uint32", uint32(7))
-	inTable.SetKey("int64", int64(-8))
-	inTable.SetKey("uint64", uint64(9))
-	inTable.SetKey("float32", float32(10.1))
-	inTable.SetKey("float64", float64(-11.2))
-	inTable.SetKey("string", "string value")
-	inTable.SetKey("[]byte", []byte{14, 15, 16, 17})
-	// Decimal
-	var scale = uint8(12)
-	var value = int32(-13)
-	inTable.SetKey("*Decimal", &Decimal{&scale, &value})
-	// Field Array
-	var fa = NewFieldArray()
-	fa.AppendFA(int8(101))
-	inTable.SetKey("*FieldArray", fa)
-	// Table
-	var innerTable = NewTable()
-	innerTable.SetKey("some key", "some value")
-	inTable.SetKey("*Table", innerTable)
-
-	// TODO: timestamp
+	var inTable = everythingTable()
 
 	// Encode
 	writer := bytes.NewBuffer(make([]byte, 0))
@@ -86,5 +57,37 @@ func TestTableTypes(t *testing.T) {
 	if !EquivalentTables(inTable, outTable) {
 		t.Errorf("Tables no equal")
 	}
+}
 
+func everythingTable() *Table {
+	var inTable = NewTable()
+
+	// Basic types
+	inTable.SetKey("bool", true)
+	inTable.SetKey("int8", int8(-2))
+	inTable.SetKey("uint8", uint8(3))
+	inTable.SetKey("int16", int16(-4))
+	inTable.SetKey("uint16", uint16(5))
+	inTable.SetKey("int32", int32(-6))
+	inTable.SetKey("uint32", uint32(7))
+	inTable.SetKey("int64", int64(-8))
+	inTable.SetKey("uint64", uint64(9))
+	inTable.SetKey("float32", float32(10.1))
+	inTable.SetKey("float64", float64(-11.2))
+	inTable.SetKey("string", "string value")
+	inTable.SetKey("[]byte", []byte{14, 15, 16, 17})
+	// TODO: timestamp
+	// Decimal
+	var scale = uint8(12)
+	var value = int32(-13)
+	inTable.SetKey("*Decimal", &Decimal{&scale, &value})
+	// Field Array
+	var fa = NewFieldArray()
+	fa.AppendFA(int8(101))
+	inTable.SetKey("*FieldArray", fa)
+	// Table
+	var innerTable = NewTable()
+	innerTable.SetKey("some key", "some value")
+	inTable.SetKey("*Table", innerTable)
+	return inTable
 }

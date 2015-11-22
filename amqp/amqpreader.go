@@ -48,37 +48,6 @@ func ReadFrame(reader io.Reader) (*WireFrame, error) {
 	return f, nil
 }
 
-// Constants
-
-func ReadProtocolHeader(buf io.Reader) (err error) {
-	var expected = [...]byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1}
-	var proto [8]byte
-	err = binary.Read(buf, binary.BigEndian, proto)
-	if err != nil || proto != expected {
-		return errors.New("Bad frame end")
-	}
-	return nil
-}
-
-func ReadVersion(buf io.Reader) (err error) {
-	var expected = [2]byte{0, 9}
-	var version [2]byte
-	err = binary.Read(buf, binary.BigEndian, &version)
-	if err != nil || version != expected {
-		return errors.New("Bad frame end")
-	}
-	return nil
-}
-
-func ReadFrameEnd(buf io.Reader) (err error) {
-	var end byte
-	err = binary.Read(buf, binary.BigEndian, &end)
-	if err != nil || end != byte(0xCE) {
-		return errors.New("Bad frame end")
-	}
-	return nil
-}
-
 // Fields
 
 func ReadBit(buf io.Reader) (bool, error) {
