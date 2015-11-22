@@ -34,3 +34,33 @@ func TestWireFrame(t *testing.T) {
 		}
 	}
 }
+
+func TestMethodTypes(t *testing.T) {
+	var outBind = &ExchangeBind{
+		Destination: "dest",
+		Source:      "src",
+		RoutingKey:  "rk",
+		NoWait:      true,
+		Arguments:   NewTable(), //everythingTable(),
+	}
+	var outBuf = bytes.NewBuffer([]byte{})
+	err := outBind.Write(outBuf)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	var outBytes = outBuf.Bytes()[4:]
+	printWireBytes(outBytes, t)
+	var inBind = &ExchangeBind{}
+	err = inBind.Read(bytes.NewBuffer(outBytes))
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
+func printWireBytes(bs []byte, t *testing.T) {
+	t.Logf("Byte count: %d", len(bs))
+	for _, b := range bs {
+		t.Logf("(%c %d),", b, b)
+	}
+	t.Logf("\n")
+}
