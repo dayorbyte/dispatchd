@@ -21,18 +21,15 @@ func ReadFrame(reader io.Reader) (*WireFrame, error) {
 
 	var f = &WireFrame{}
 
+	// The reads from memReader are guaranteed to succeed because the 7 bytes
+	// were allocated above and that is what is read out
+
 	// frame type
-	frameType, err := ReadOctet(memReader)
-	if err != nil {
-		return nil, err
-	}
+	frameType, _ := ReadOctet(memReader)
 	f.FrameType = frameType
 
 	// channel
-	channel, err := ReadShort(memReader)
-	if err != nil {
-		return nil, err
-	}
+	channel, _ := ReadShort(memReader)
 	f.Channel = channel
 
 	// Variable length part

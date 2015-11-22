@@ -2,9 +2,17 @@ package amqp
 
 import (
 	"bytes"
+	"math/rand"
 	"reflect"
 	"testing"
 )
+
+var testRand *rand.Rand = nil
+
+func init() {
+	var source = rand.NewSource(int64(1234))
+	testRand = rand.New(source)
+}
 
 func TestWireFrame(t *testing.T) {
 	// Write frame to bytes
@@ -36,24 +44,43 @@ func TestWireFrame(t *testing.T) {
 }
 
 func TestMethodTypes(t *testing.T) {
-	var outBind = &ExchangeBind{
-		Destination: "dest",
-		Source:      "src",
-		RoutingKey:  "rk",
-		NoWait:      true,
-		Arguments:   NewTable(), //everythingTable(),
+	for _, method := range methodsForTesting() {
+		var outBuf = bytes.NewBuffer([]byte{})
+		err := method.Write(outBuf)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+		var outBytes = outBuf.Bytes()[4:]
+		// Try all lengths of bytes below the ones needed
+		for index, _ := range outBytes {
+			printWireBytes(outBytes, t)
+			var inBind = &ExchangeBind{}
+			err = inBind.Read(bytes.NewBuffer(outBytes[:index]))
+			if err == nil {
+				t.Errorf("Parsed malformed request bytes")
+				return
+			}
+		}
+		// printWireBytes(outBytes, t)
+		// Try the right set of bytes
+		var inBind = &ExchangeBind{}
+		err = inBind.Read(bytes.NewBuffer(outBytes))
+		if err != nil {
+			t.Errorf(err.Error())
+			return
+		}
 	}
-	var outBuf = bytes.NewBuffer([]byte{})
-	err := outBind.Write(outBuf)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	var outBytes = outBuf.Bytes()[4:]
-	printWireBytes(outBytes, t)
-	var inBind = &ExchangeBind{}
-	err = inBind.Read(bytes.NewBuffer(outBytes))
-	if err != nil {
-		t.Errorf(err.Error())
+}
+
+func methodsForTesting() []MethodFrame {
+	return []MethodFrame{
+		&ExchangeBind{
+			Destination: "dest",
+			Source:      "src",
+			RoutingKey:  "rk",
+			NoWait:      true,
+			Arguments:   everythingTable(),
+		},
 	}
 }
 

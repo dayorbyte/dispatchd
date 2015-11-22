@@ -2,7 +2,10 @@ package amqp
 
 import (
 	"bytes"
+	"math/rand"
+	"reflect"
 	"testing"
+	// "unsafe"
 )
 
 func TestBasicFieldArray(t *testing.T) {
@@ -57,6 +60,10 @@ func TestTableTypes(t *testing.T) {
 	if !EquivalentTables(inTable, outTable) {
 		t.Errorf("Tables no equal")
 	}
+}
+
+func (table *Table) Generator(rand *rand.Rand, size int) reflect.Value {
+	return reflect.ValueOf(everythingTable())
 }
 
 func everythingTable() *Table {
