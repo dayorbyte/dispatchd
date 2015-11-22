@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+func TestBasicFieldArray(t *testing.T) {
+	// TODO: test this more thoroughly. it gets some working out in other tests
+	// but this could do more.
+	var fa = NewFieldArray()
+	err := fa.AppendFA(make(map[bool]bool))
+	if err == nil {
+		t.Errorf("No error with bad append value")
+	}
+}
+
 func TestBasicTable(t *testing.T) {
 	// Create
 	var table = NewTable()
