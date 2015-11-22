@@ -302,7 +302,7 @@ func readValue(reader io.Reader) (*FieldValue, error) {
 	case t == 'V':
 		return nil, nil
 	}
-	return nil, fmt.Errorf("Unknown table value type %d", t)
+	return nil, fmt.Errorf("Unknown table value type '%c' (%d)", t, t)
 }
 
 func readArray(reader io.Reader) ([]*FieldValue, error) {
@@ -313,7 +313,7 @@ func readArray(reader io.Reader) ([]*FieldValue, error) {
 	}
 	var data = bytes.NewBuffer(longstr)
 	for data.Len() > 0 {
-		var value, err = readValue(reader)
+		var value, err = readValue(data)
 		if err != nil {
 			return nil, err
 		}

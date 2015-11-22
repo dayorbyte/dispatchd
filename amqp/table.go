@@ -83,3 +83,11 @@ func calcValue(value interface{}) isFieldValue_Value {
 	}
 	return nil
 }
+
+func NewFieldArray() *FieldArray {
+	return &FieldArray{Value: make([]*FieldValue, 0)}
+}
+
+func (fa *FieldArray) AppendFA(value interface{}) {
+	fa.Value = append(fa.Value, &FieldValue{calcValue(value)})
+}
