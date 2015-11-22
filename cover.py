@@ -74,7 +74,7 @@ def cover_summary(cover_names):
           continue
         missing[file].append(range)
 
-  for file, ranges in missing.iteritems():
+  for file, ranges in sorted(missing.items()):
     if len(ranges) > 20:
       ranges = ranges[:20]
       ranges.append('Report Truncated.')
