@@ -89,20 +89,32 @@ func ReadStringChar(buf io.Reader) (data byte, err error) {
 
 func ReadShortstr(buf io.Reader) (string, error) {
 	var length uint8
-	binary.Read(buf, binary.BigEndian, &length)
+	var err = binary.Read(buf, binary.BigEndian, &length)
+	if err != nil {
+		return "", err
+	}
 	if length > MaxShortStringLength {
 		return "", errors.New("String too long for short string")
 	}
 	var slice = make([]byte, length)
-	binary.Read(buf, binary.BigEndian, slice)
+	err = binary.Read(buf, binary.BigEndian, slice)
+	if err != nil {
+		return "", err
+	}
 	return string(slice), nil
 }
 
 func ReadLongstr(buf io.Reader) ([]byte, error) {
 	var length uint32
 	var err = binary.Read(buf, binary.BigEndian, &length)
+	if err != nil {
+		return nil, err
+	}
 	var slice = make([]byte, length)
-	binary.Read(buf, binary.BigEndian, slice)
+	err = binary.Read(buf, binary.BigEndian, slice)
+	if err != nil {
+		return nil, err
+	}
 	return slice, err
 }
 

@@ -55,11 +55,9 @@ func TestMethodTypes(t *testing.T) {
 		// Try all lengths of bytes below the ones needed
 		for index, _ := range outBytes {
 			var inBind = reflect.New(reflect.TypeOf(method).Elem()).Interface().(MethodFrame)
-			//&ExchangeBind{}
-			t.Logf("%s", reflect.TypeOf(inBind))
 			err = inBind.Read(bytes.NewBuffer(outBytes[:index]))
 			if err == nil {
-				printWireBytes(outBytes, t)
+				printWireBytes(outBytes[:index], t)
 				t.Errorf("Parsed malformed request bytes")
 				return
 			}
@@ -91,20 +89,20 @@ func methodsForTesting() []MethodFrame {
 			FrameMax:   uint32(1),
 			Heartbeat:  uint16(2),
 		},
-		// &BasicDeliver{
-		// 	ConsumerTag: string("deliver"),
-		// 	DeliveryTag: uint64(4),
-		// 	Redelivered: true,
-		// 	Exchange:    string("ex1"),
-		// 	RoutingKey:  string("rk1"),
-		// },
+		&BasicDeliver{
+			ConsumerTag: string("deliver"),
+			DeliveryTag: uint64(4),
+			Redelivered: true,
+			Exchange:    string("ex1"),
+			RoutingKey:  string("rk1"),
+		},
 	}
 }
 
 func printWireBytes(bs []byte, t *testing.T) {
 	t.Logf("Byte count: %d", len(bs))
-	for _, b := range bs {
-		t.Logf("(%c %d),", b, b)
+	for i, b := range bs {
+		t.Logf("%d:(%c %d),", i, b, b)
 	}
 	t.Logf("\n")
 }
