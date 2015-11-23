@@ -54,7 +54,7 @@ def cover_summary(cover_names):
   missing = defaultdict(list)
   for pkg, name in cover_names:
     if not os.path.exists(name):
-      missing[pkg + '/*.go'] = ['No coverage']
+      missing[pkg + '/*.go'] = None
       continue
     with open(name) as inf:
       for line in inf.readlines():
@@ -69,18 +69,23 @@ def cover_summary(cover_names):
         first, _, second = range.partition(',')
         first_line, _, _ = first.partition('.')
         second_line, _, _ = second.partition('.')
-        range = '{}-{}'.format(first_line, second_line)
+        range = (int(first_line), int(second_line))
         if nocover(full_file, first_line):
           continue
         missing[file].append(range)
 
   for file, ranges in sorted(missing.items()):
-    if len(ranges) > 20:
-      ranges = ranges[:20]
-      ranges.append('Report Truncated.')
-    if len(ranges) == 0:
-      print Colors.GREEN, file+':', Colors.ENDC, 'Full coverage!'
-    print Colors.RED, file+':', Colors.ENDC, ', '.join(ranges)
+    if ranges is not None:
+      ranges = sorted(ranges)
+      ranges = ['{}-{}'.format(x,y) for x, y in ranges]
+      if len(ranges) > 20:
+        ranges = ranges[:20]
+        ranges.append('Report Truncated.')
+      if len(ranges) == 0:
+        print Colors.GREEN, file+':', Colors.ENDC, 'Full coverage!'
+      print Colors.RED, file+':', Colors.ENDC, ', '.join(ranges)
+    else:
+      print Colors.RED, file+':', Colors.ENDC, 'No coverage'
 
 
 
