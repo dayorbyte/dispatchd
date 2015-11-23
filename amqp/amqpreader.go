@@ -107,13 +107,16 @@ func ReadLongstr(buf io.Reader) ([]byte, error) {
 	return slice, err
 }
 
-func ReadTimestamp(buf io.Reader) (uint64, error) {
+// Can't get coverage on this easily since I can't currently generate
+// timestamp values in Tables because protobuf doesn't give me a type that
+// is different from uint64
+func ReadTimestamp(buf io.Reader) (uint64, error) { // pragma: nocover
 	var t uint64
 	var err = binary.Read(buf, binary.BigEndian, &t)
-	if err != nil {
+	if err != nil { // pragma: nocover
 		return 0, errors.New("Could not read uint64")
 	}
-	return t, nil
+	return t, nil // pragma: nocover
 }
 
 func ReadTable(reader io.Reader) (*Table, error) {
@@ -283,7 +286,7 @@ func readArray(reader io.Reader) ([]*FieldValue, error) {
 func (props *BasicContentHeaderProperties) ReadProps(flags uint16, reader io.Reader) (err error) {
 	if MaskContentType&flags != 0 {
 		v, err := ReadShortstr(reader)
-		*props.ContentType = v
+		props.ContentType = &v
 		if err != nil {
 			return err
 		}
