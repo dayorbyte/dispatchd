@@ -26,8 +26,13 @@
 
 ## Next
 
-* Tests
-* Refactors to increase testability and isolation of components
+* More tests. I'm aiming for full test coverage. I'm about ~1/3 of the way
+  there and all work right now is writing tests
+* Faster persistent messages. Right now it's like ~200qps with peristence
+  on. I also think I can not persist messages which I can send off right
+  away if the response is fast enough
+* Faster consumption. I can't seem to get more than 8000qps from a single
+  consumer, but I can do like 30000 with producers
 
 ## Later
 
