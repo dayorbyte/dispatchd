@@ -41,8 +41,8 @@ func TestExchangeTypes(t *testing.T) {
 	if ext, err := exchangeTypeToName(EX_TYPE_HEADERS); ext != "headers" || err != nil {
 		t.Errorf("Error converting type")
 	}
-	if _, err := exchangeTypeToName(Extype(12345)); err != nil {
-		t.Errorf(err.Error())
+	if _, err := exchangeTypeToName(Extype(123)); err == nil {
+		t.Errorf("No error converting bad type")
 	}
 }
 
@@ -110,4 +110,135 @@ func TestEquivalentExchanges(t *testing.T) {
 	if !ex.EquivalentExchanges(ex2) {
 		t.Errorf("Same exchanges aren't equal!")
 	}
+}
+
+func TestExchangeRoutingDirect(t *testing.T) {
+	// Make exchange ang binding
+	var exDirect = NewExchange(
+		"exd",
+		EX_TYPE_DIRECT,
+		false,
+		false,
+		false,
+		amqp.NewTable(),
+		false,
+		make(chan *Exchange),
+	)
+	exDirect.AddBinding(&amqp.QueueBind{Queue: "q1", Exchange: "exd", RoutingKey: "rk-1"}, -1, false)
+
+	// Create a random message, won't route by default
+	var msg = amqp.RandomMessage(false)
+	// Test wrong exchange for coverage
+	res, err := exDirect.QueuesForPublish(msg)
+	if err != nil {
+		t.Errorf(err.Msg)
+	}
+	if len(res) > 0 {
+		t.Errorf("Routed message which should not have routed", res)
+	}
+
+	// Test right exchange, wrong key
+	msg.Method.Exchange = "exd"
+
+	res, err = exDirect.QueuesForPublish(msg)
+	if err != nil {
+		t.Errorf(err.Msg)
+	}
+	if len(res) > 0 {
+		t.Errorf("Routed message which should not have routed", res)
+	}
+
+	// Set the right values for routing
+	msg.Method.RoutingKey = "rk-1"
+
+	res, err = exDirect.QueuesForPublish(msg)
+	if err != nil {
+		t.Errorf(err.Msg)
+	}
+	if _, found := res["q1"]; !found {
+		t.Errorf("Failed to route direct message: %s", res)
+	}
+}
+
+func TestExchangeRoutingFanout(t *testing.T) {
+	var exFanout = NewExchange(
+		"exf",
+		EX_TYPE_FANOUT,
+		false,
+		false,
+		false,
+		amqp.NewTable(),
+		false,
+		make(chan *Exchange),
+	)
+	exFanout.AddBinding(&amqp.QueueBind{Queue: "q1", Exchange: "exf", RoutingKey: "rk-1"}, -1, false)
+	exFanout.AddBinding(&amqp.QueueBind{Queue: "q2", Exchange: "exf", RoutingKey: "rk-2"}, -1, false)
+
+	// Create a random message, won't route by default
+	var msg = amqp.RandomMessage(false)
+	msg.Method.Exchange = "exf"
+
+	res, err := exFanout.QueuesForPublish(msg)
+	if err != nil {
+		t.Errorf(err.Msg)
+	}
+	_, foundQ1 := res["q1"]
+	_, foundQ2 := res["q2"]
+	if !foundQ1 || !foundQ2 {
+		t.Errorf("Failed to route fanout message")
+	}
+}
+
+func TestExchangeRoutingTopic(t *testing.T) {
+	var exTopic = NewExchange(
+		"ext",
+		EX_TYPE_TOPIC,
+		false,
+		false,
+		false,
+		amqp.NewTable(),
+		false,
+		make(chan *Exchange),
+	)
+	exTopic.AddBinding(&amqp.QueueBind{Queue: "q1", Exchange: "ext", RoutingKey: "api.msg.*.json"}, -1, false)
+	exTopic.AddBinding(&amqp.QueueBind{Queue: "q1", Exchange: "ext", RoutingKey: "api.*.home.json"}, -1, false)
+	exTopic.AddBinding(&amqp.QueueBind{Queue: "q2", Exchange: "ext", RoutingKey: "api.msg.home.json"}, -1, false)
+	exTopic.AddBinding(&amqp.QueueBind{Queue: "q3", Exchange: "ext", RoutingKey: "log.#"}, -1, false)
+
+	// Create a random message, won't route by default
+	var msg = amqp.RandomMessage(false)
+	msg.Method.Exchange = "ext"
+
+	// no match
+	res, err := exTopic.QueuesForPublish(msg)
+	if err != nil {
+		t.Errorf(err.Msg)
+	}
+	if len(res) > 0 {
+		t.Errorf("Routed message which should not have routed", res)
+	}
+
+	// one match on #
+	msg.Method.RoutingKey = "log.msg.home.json"
+	res, err = exTopic.QueuesForPublish(msg)
+	if err != nil {
+		t.Errorf(err.Msg)
+	}
+	_, foundLog := res["q3"]
+	if !foundLog || len(res) != 1 {
+		t.Errorf("Bad results routing to # key")
+	}
+
+	// one queue on two matches
+	msg.Method.RoutingKey = "api.msg.home.json"
+	res, err = exTopic.QueuesForPublish(msg)
+	if err != nil {
+		t.Errorf(err.Msg)
+	}
+	_, foundQ1 := res["q1"]
+	_, foundQ2 := res["q2"]
+	if !foundQ1 || !foundQ2 || len(res) != 2 {
+		t.Errorf("Bad results routing to multiply-bound * key")
+	}
+
 }

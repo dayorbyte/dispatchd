@@ -124,7 +124,7 @@ func TestJson(t *testing.T) {
 }
 
 func TestPersistence(t *testing.T) {
-	var dbFile = "TestPersistence.db"
+	var dbFile = "TestBindingPersistence.db"
 	os.Remove(dbFile)
 	defer os.Remove(dbFile)
 	db, err := bolt.Open(dbFile, 0600, nil)

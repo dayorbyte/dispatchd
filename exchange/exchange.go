@@ -129,26 +129,22 @@ func exchangeTypeToName(et Extype) (string, error) {
 
 func (exchange *Exchange) QueuesForPublish(msg *amqp.Message) (map[string]bool, *amqp.AMQPError) {
 	var queues = make(map[string]bool)
+	if msg.Method.Exchange != exchange.Name {
+		return queues, nil
+	}
 	switch {
 	case exchange.Extype == EX_TYPE_DIRECT:
+		// In a direct exchange we can return the first match since there is
+		// only one queue with a particular name
 		for _, binding := range exchange.bindings {
 			if binding.MatchDirect(msg.Method) {
-				var _, alreadySeen = queues[binding.QueueName]
-				if alreadySeen {
-					continue
-				}
 				queues[binding.QueueName] = true
+				return queues, nil
 			}
 		}
 	case exchange.Extype == EX_TYPE_FANOUT:
 		for _, binding := range exchange.bindings {
-			if binding.MatchFanout(msg.Method) {
-				var _, alreadySeen = queues[binding.QueueName]
-				if alreadySeen {
-					continue
-				}
-				queues[binding.QueueName] = true
-			}
+			queues[binding.QueueName] = true
 		}
 	case exchange.Extype == EX_TYPE_TOPIC:
 		for _, binding := range exchange.bindings {
