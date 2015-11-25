@@ -1,4 +1,4 @@
-package main
+package amqp
 
 // Soft error (close channel)
 

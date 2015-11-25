@@ -40,7 +40,7 @@ func TestBasicTable(t *testing.T) {
 }
 
 func TestTableTypes(t *testing.T) {
-	var inTable = everythingTable()
+	var inTable = EverythingTable()
 
 	// Encode
 	writer := bytes.NewBuffer(make([]byte, 0))
@@ -63,7 +63,7 @@ func TestTableTypes(t *testing.T) {
 }
 
 func (table *Table) Generator(rand *rand.Rand, size int) reflect.Value {
-	return reflect.ValueOf(everythingTable())
+	return reflect.ValueOf(EverythingTable())
 }
 
 func EverythingTable() *Table {

@@ -4,7 +4,7 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 )
 
-func (channel *Channel) txRoute(methodFrame amqp.MethodFrame) *AMQPError {
+func (channel *Channel) txRoute(methodFrame amqp.MethodFrame) *amqp.AMQPError {
 	switch method := methodFrame.(type) {
 	case *amqp.TxSelect:
 		return channel.txSelect(method)
@@ -14,16 +14,16 @@ func (channel *Channel) txRoute(methodFrame amqp.MethodFrame) *AMQPError {
 		return channel.txRollback(method)
 	}
 	var classId, methodId = methodFrame.MethodIdentifier()
-	return NewHardError(540, "Unable to route method frame", classId, methodId)
+	return amqp.NewHardError(540, "Unable to route method frame", classId, methodId)
 }
 
-func (channel *Channel) txSelect(method *amqp.TxSelect) *AMQPError {
+func (channel *Channel) txSelect(method *amqp.TxSelect) *amqp.AMQPError {
 	channel.startTxMode()
 	channel.SendMethod(&amqp.TxSelectOk{})
 	return nil
 }
 
-func (channel *Channel) txCommit(method *amqp.TxCommit) *AMQPError {
+func (channel *Channel) txCommit(method *amqp.TxCommit) *amqp.AMQPError {
 	if amqpErr := channel.commitTx(); amqpErr != nil {
 		return amqpErr
 	}
@@ -31,7 +31,7 @@ func (channel *Channel) txCommit(method *amqp.TxCommit) *AMQPError {
 	return nil
 }
 
-func (channel *Channel) txRollback(method *amqp.TxRollback) *AMQPError {
+func (channel *Channel) txRollback(method *amqp.TxRollback) *amqp.AMQPError {
 	channel.rollbackTx()
 	channel.SendMethod(&amqp.TxRollbackOk{})
 	return nil

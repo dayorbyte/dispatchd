@@ -512,7 +512,7 @@ func (server *Server) returnMessage(msg *amqp.Message, code uint16, text string)
 	}
 }
 
-func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*amqp.BasicReturn, *AMQPError) {
+func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*amqp.BasicReturn, *amqp.AMQPError) {
 	// Concurrency note: Since there is no lock we can, technically, have messages
 	// published after the exchange has been closed. These couldn't be on the same
 	// channel as the close is happening on, so that seems justifiable.
@@ -523,7 +523,10 @@ func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*
 		}
 		return nil, nil
 	}
-	queues := exchange.QueuesForPublish(msg)
+	queues, amqpErr := exchange.QueuesForPublish(msg)
+	if amqpErr != nil {
+		return nil, amqpErr
+	}
 
 	if len(queues) == 0 {
 		// If we got here the message was unroutable.
@@ -544,7 +547,7 @@ func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*
 		// Add message to message store
 		queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 		if err != nil {
-			return nil, NewSoftError(500, err.Error(), 60, 40)
+			return nil, amqp.NewSoftError(500, err.Error(), 60, 40)
 		}
 		// Try to immediately consumed it
 		for queueName, _ := range queues {
@@ -573,7 +576,7 @@ func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*
 	// Add the message to the message store along with the queues we're about to add it to
 	queueMessagesByQueue, err := server.msgStore.AddMessage(msg, queueNames)
 	if err != nil {
-		return nil, NewSoftError(500, err.Error(), 60, 40)
+		return nil, amqp.NewSoftError(500, err.Error(), 60, 40)
 	}
 
 	for queueName, _ := range queues {

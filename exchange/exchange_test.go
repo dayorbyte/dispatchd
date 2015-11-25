@@ -29,17 +29,20 @@ func TestExchangeTypes(t *testing.T) {
 		t.Errorf("No error converting unknown exchange name")
 	}
 	//
-	if ext := exchangeTypeToName(EX_TYPE_TOPIC); ext != "topic" {
+	if ext, err := exchangeTypeToName(EX_TYPE_TOPIC); ext != "topic" || err != nil {
 		t.Errorf("Error converting type")
 	}
-	if ext := exchangeTypeToName(EX_TYPE_FANOUT); ext != "fanout" {
+	if ext, err := exchangeTypeToName(EX_TYPE_FANOUT); ext != "fanout" || err != nil {
 		t.Errorf("Error converting type")
 	}
-	if ext := exchangeTypeToName(EX_TYPE_DIRECT); ext != "direct" {
+	if ext, err := exchangeTypeToName(EX_TYPE_DIRECT); ext != "direct" || err != nil {
 		t.Errorf("Error converting type")
 	}
-	if ext := exchangeTypeToName(EX_TYPE_HEADERS); ext != "headers" {
+	if ext, err := exchangeTypeToName(EX_TYPE_HEADERS); ext != "headers" || err != nil {
 		t.Errorf("Error converting type")
+	}
+	if _, err := exchangeTypeToName(Extype(12345)); err != nil {
+		t.Errorf(err.Error())
 	}
 }
 
@@ -87,6 +90,12 @@ func TestEquivalentExchanges(t *testing.T) {
 		t.Errorf("Different exchanges are equal!")
 	}
 	ex2.internal = true
+	// durable
+	ex2.Durable = false
+	if ex.EquivalentExchanges(ex2) {
+		t.Errorf("Different exchanges are equal!")
+	}
+	ex2.Durable = true
 	// args
 	var newTable = amqp.NewTable()
 	newTable.SetKey("stuff", true)

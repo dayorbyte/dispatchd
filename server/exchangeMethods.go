@@ -5,7 +5,7 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 )
 
-func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) *AMQPError {
+func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) *amqp.AMQPError {
 	switch method := methodFrame.(type) {
 	case *amqp.ExchangeDeclare:
 		return channel.exchangeDeclare(method)
@@ -17,10 +17,10 @@ func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) *AMQPError {
 		return channel.exchangeDelete(method)
 	}
 	var classId, methodId = methodFrame.MethodIdentifier()
-	return NewHardError(540, "Not implemented", classId, methodId)
+	return amqp.NewHardError(540, "Not implemented", classId, methodId)
 }
 
-func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *AMQPError {
+func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.AMQPError {
 	var classId, methodId = method.MethodIdentifier()
 	// The client I'm using for testing thought declaring the empty exchange
 	// was OK. Check later
@@ -33,13 +33,13 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *AMQPError
 	// Check the name format
 	var err = amqp.CheckExchangeOrQueueName(method.Exchange)
 	if err != nil {
-		return NewSoftError(406, err.Error(), classId, methodId)
+		return amqp.NewSoftError(406, err.Error(), classId, methodId)
 	}
 
 	// Declare!
 	errCode, err := channel.server.declareExchange(method, false, false)
 	if err != nil {
-		return NewSoftError(errCode, err.Error(), classId, methodId)
+		return amqp.NewSoftError(errCode, err.Error(), classId, methodId)
 	}
 	if !method.NoWait {
 		channel.SendMethod(&amqp.ExchangeDeclareOk{})
@@ -47,11 +47,11 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *AMQPError
 	return nil
 }
 
-func (channel *Channel) exchangeDelete(method *amqp.ExchangeDelete) *AMQPError {
+func (channel *Channel) exchangeDelete(method *amqp.ExchangeDelete) *amqp.AMQPError {
 	var classId, methodId = method.MethodIdentifier()
 	var errCode, err = channel.server.deleteExchange(method)
 	if err != nil {
-		return NewSoftError(errCode, err.Error(), classId, methodId)
+		return amqp.NewSoftError(errCode, err.Error(), classId, methodId)
 	}
 	if !method.NoWait {
 		channel.SendMethod(&amqp.ExchangeDeleteOk{})
@@ -59,16 +59,16 @@ func (channel *Channel) exchangeDelete(method *amqp.ExchangeDelete) *AMQPError {
 	return nil
 }
 
-func (channel *Channel) exchangeBind(method *amqp.ExchangeBind) *AMQPError {
+func (channel *Channel) exchangeBind(method *amqp.ExchangeBind) *amqp.AMQPError {
 	var classId, methodId = method.MethodIdentifier()
-	return NewHardError(540, "Not implemented", classId, methodId)
+	return amqp.NewHardError(540, "Not implemented", classId, methodId)
 	// if !method.NoWait {
 	// 	channel.SendMethod(&amqp.ExchangeBindOk{})
 	// }
 }
-func (channel *Channel) exchangeUnbind(method *amqp.ExchangeUnbind) *AMQPError {
+func (channel *Channel) exchangeUnbind(method *amqp.ExchangeUnbind) *amqp.AMQPError {
 	var classId, methodId = method.MethodIdentifier()
-	return NewHardError(540, "Not implemented", classId, methodId)
+	return amqp.NewHardError(540, "Not implemented", classId, methodId)
 	// if !method.NoWait {
 	// 	channel.SendMethod(&amqp.ExchangeUnbindOk{})
 	// }

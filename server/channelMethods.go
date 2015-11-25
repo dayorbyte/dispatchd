@@ -4,7 +4,7 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 )
 
-func (channel *Channel) channelRoute(methodFrame amqp.MethodFrame) *AMQPError {
+func (channel *Channel) channelRoute(methodFrame amqp.MethodFrame) *amqp.AMQPError {
 	switch method := methodFrame.(type) {
 	case *amqp.ChannelOpen:
 		return channel.channelOpen(method)
@@ -20,38 +20,38 @@ func (channel *Channel) channelRoute(methodFrame amqp.MethodFrame) *AMQPError {
 		//   return channel.channelOpenOk(method)
 	}
 	var classId, methodId = methodFrame.MethodIdentifier()
-	return NewHardError(540, "Unable to route method frame", classId, methodId)
+	return amqp.NewHardError(540, "Unable to route method frame", classId, methodId)
 }
 
-func (channel *Channel) channelOpen(method *amqp.ChannelOpen) *AMQPError {
+func (channel *Channel) channelOpen(method *amqp.ChannelOpen) *amqp.AMQPError {
 	if channel.state == CH_STATE_OPEN {
 		var classId, methodId = method.MethodIdentifier()
-		return NewHardError(504, "Channel already open", classId, methodId)
+		return amqp.NewHardError(504, "Channel already open", classId, methodId)
 	}
 	channel.SendMethod(&amqp.ChannelOpenOk{})
 	channel.setStateOpen()
 	return nil
 }
 
-func (channel *Channel) channelFlow(method *amqp.ChannelFlow) *AMQPError {
+func (channel *Channel) channelFlow(method *amqp.ChannelFlow) *amqp.AMQPError {
 	channel.changeFlow(method.Active)
 	channel.SendMethod(&amqp.ChannelFlowOk{channel.flow})
 	return nil
 }
 
-func (channel *Channel) channelFlowOk(method *amqp.ChannelFlowOk) *AMQPError {
+func (channel *Channel) channelFlowOk(method *amqp.ChannelFlowOk) *amqp.AMQPError {
 	var classId, methodId = method.MethodIdentifier()
-	return NewHardError(540, "Not implemented", classId, methodId)
+	return amqp.NewHardError(540, "Not implemented", classId, methodId)
 }
 
-func (channel *Channel) channelClose(method *amqp.ChannelClose) *AMQPError {
+func (channel *Channel) channelClose(method *amqp.ChannelClose) *amqp.AMQPError {
 	// TODO(MAY): Report the class and method that are the reason for the close
 	channel.SendMethod(&amqp.ChannelCloseOk{})
 	channel.shutdown()
 	return nil
 }
 
-func (channel *Channel) channelCloseOk(method *amqp.ChannelCloseOk) *AMQPError {
+func (channel *Channel) channelCloseOk(method *amqp.ChannelCloseOk) *amqp.AMQPError {
 	channel.shutdown()
 	return nil
 }

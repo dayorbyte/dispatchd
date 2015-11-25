@@ -250,7 +250,7 @@ func methodsForTesting() []MethodFrame {
 			Source:      "src",
 			RoutingKey:  "rk",
 			NoWait:      true,
-			Arguments:   everythingTable(),
+			Arguments:   EverythingTable(),
 		},
 		&ConnectionTune{
 			ChannelMax: uint16(3),

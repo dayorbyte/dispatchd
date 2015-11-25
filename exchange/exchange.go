@@ -41,8 +41,12 @@ func (exchange *Exchange) Close() {
 }
 
 func (exchange *Exchange) MarshalJSON() ([]byte, error) {
+	var typ, err = exchangeTypeToName(exchange.Extype)
+	if err != nil {
+		return nil, err
+	}
 	return json.Marshal(map[string]interface{}{
-		"type":     exchangeTypeToName(exchange.Extype),
+		"type":     typ,
 		"bindings": exchange.bindings,
 	})
 }
@@ -108,22 +112,22 @@ func ExchangeNameToType(et string) (Extype, error) {
 	}
 }
 
-func exchangeTypeToName(et Extype) string {
+func exchangeTypeToName(et Extype) (string, error) {
 	switch {
 	case et == EX_TYPE_DIRECT:
-		return "direct"
+		return "direct", nil
 	case et == EX_TYPE_FANOUT:
-		return "fanout"
+		return "fanout", nil
 	case et == EX_TYPE_TOPIC:
-		return "topic"
+		return "topic", nil
 	case et == EX_TYPE_HEADERS:
-		return "headers"
+		return "headers", nil
 	default:
-		panic(fmt.Sprintf("bad exchange type: %d", et))
+		return "", fmt.Errorf("bad exchange type: %d", et)
 	}
 }
 
-func (exchange *Exchange) QueuesForPublish(msg *amqp.Message) map[string]bool {
+func (exchange *Exchange) QueuesForPublish(msg *amqp.Message) (map[string]bool, *amqp.AMQPError) {
 	var queues = make(map[string]bool)
 	switch {
 	case exchange.Extype == EX_TYPE_DIRECT:
@@ -156,14 +160,13 @@ func (exchange *Exchange) QueuesForPublish(msg *amqp.Message) map[string]bool {
 				queues[binding.QueueName] = true
 			}
 		}
-	case exchange.Extype == EX_TYPE_HEADERS:
-		// TODO: implement
-		panic("Headers is not implemented!")
-	default:
-		// TODO: can this happen? Seems like checks should be earlier
-		panic("unknown exchange type!")
+	// case exchange.Extype == EX_TYPE_HEADERS:
+	// 	// TODO: implement
+	// 	panic("Headers is not implemented!")
+	default: // pragma: nocover
+		panic("Unknown exchange type created somehow. Server integrity error!")
 	}
-	return queues
+	return queues, nil
 }
 
 func (exchange *Exchange) Depersist(db *bolt.DB) error {
