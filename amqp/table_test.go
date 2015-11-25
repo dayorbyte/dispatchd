@@ -66,7 +66,7 @@ func (table *Table) Generator(rand *rand.Rand, size int) reflect.Value {
 	return reflect.ValueOf(everythingTable())
 }
 
-func everythingTable() *Table {
+func EverythingTable() *Table {
 	var inTable = NewTable()
 
 	// Basic types
