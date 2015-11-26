@@ -275,7 +275,7 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		// types
 		return uint16(503), err
 	}
-	var exchange = exchange.NewExchange(
+	var ex = exchange.NewExchange(
 		method.Exchange,
 		tp,
 		method.Durable,
@@ -287,18 +287,18 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 	)
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()
-	existing, hasKey := server.exchanges[exchange.Name]
+	existing, hasKey := server.exchanges[ex.Name]
 	if !hasKey && method.Passive {
 		return 404, errors.New("Exchange does not exist")
 	}
 	if hasKey {
 		if diskLoad {
-			panic(fmt.Sprintf("Can't disk load a key that exists: %s", exchange.Name))
+			panic(fmt.Sprintf("Can't disk load a key that exists: %s", ex.Name))
 		}
-		if existing.Extype != exchange.Extype {
+		if existing.Extype != ex.Extype {
 			return 530, errors.New("Cannot redeclare an exchange with a different type")
 		}
-		if existing.EquivalentExchanges(exchange) {
+		if existing.EquivalentExchanges(ex) {
 			return 0, nil
 		}
 		// Not equivalent, error in passive mode
@@ -316,38 +316,11 @@ func (server *Server) declareExchange(method *amqp.ExchangeDeclare, system bool,
 		return 0, errors.New("Exchange names starting with 'amq.' are reserved")
 	}
 
-	if exchange.Durable && !diskLoad {
-		server.persistExchange(method, exchange.System)
+	if ex.Durable && !diskLoad {
+		exchange.PersistExchange(server.db, method, ex.System)
 	}
-	server.exchanges[exchange.Name] = exchange
+	server.exchanges[ex.Name] = ex
 	return 0, nil
-}
-
-func (server *Server) persistExchange(method *amqp.ExchangeDeclare, system bool) {
-	err := server.db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte("exchanges"))
-		if err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
-		method.Write(buffer)
-		if system {
-			amqp.WriteOctet(buffer, uint8(1))
-		} else {
-			amqp.WriteOctet(buffer, uint8(0))
-		}
-
-		var name = method.Exchange
-		if name == "" {
-			name = "~"
-		}
-		// trim off the first four bytes, they're the class/method, which we
-		// already know
-		return bucket.Put([]byte(name), buffer.Bytes()[4:])
-	})
-	if err != nil {
-		fmt.Printf("********** FAILED TO PERSIST EXCHANGE '%s': %s\n", method.Exchange, err.Error())
-	}
 }
 
 func (server *Server) persistQueue(method *amqp.QueueDeclare) {

@@ -1,9 +1,13 @@
 package exchange
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
-	// "github.com/jeffjenkins/mq/binding"
-	// "github.com/jeffjenkins/mq/queue"
+	"os"
+	"reflect"
 	"testing"
 )
 
@@ -11,6 +15,55 @@ import (
 // EX_TYPE_FANOUT
 // EX_TYPE_TOPIC
 // EX_TYPE_HEADERS
+
+func TestClose(t *testing.T) {
+	var ex = NewExchange(
+		"ex",
+		EX_TYPE_TOPIC,
+		false,
+		false,
+		false,
+		amqp.NewTable(),
+		false,
+		make(chan *Exchange),
+	)
+	if ex.Closed {
+		t.Errorf("Exchange closed when it shouldn't be!")
+	}
+	ex.Close()
+	if !ex.Closed {
+		t.Errorf("Exchange closed when it shouldn't be!")
+	}
+}
+
+func TestJSON(t *testing.T) {
+	var ex = NewExchange(
+		"ex",
+		EX_TYPE_TOPIC,
+		false,
+		false,
+		false,
+		amqp.NewTable(),
+		false,
+		make(chan *Exchange),
+	)
+	var expected, err = json.Marshal(map[string]interface{}{
+		"type":     "topic",
+		"bindings": make([]int, 0),
+	})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	got, err := json.Marshal(ex)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if !reflect.DeepEqual(expected, got) {
+		t.Errorf("unequal!\nexpected:%v\ngot     :%v", expected, got)
+	}
+	// ex.Extype = Extype(123)
+}
 
 func TestExchangeTypes(t *testing.T) {
 	if ext, err := ExchangeNameToType("topic"); ext != EX_TYPE_TOPIC || err != nil {
@@ -241,4 +294,72 @@ func TestExchangeRoutingTopic(t *testing.T) {
 		t.Errorf("Bad results routing to multiply-bound * key")
 	}
 
+}
+
+func TestPersistence(t *testing.T) {
+	// Create DB
+	var dbFile = "TestExchangePersistence.db"
+	os.Remove(dbFile)
+	defer os.Remove(dbFile)
+	db, err := bolt.Open(dbFile, 0600, nil)
+	if err != nil {
+		t.Errorf("Failed to create db")
+	}
+	err = PersistExchange(db, &amqp.ExchangeDeclare{
+		Exchange:   "ex1",
+		Type:       "topic",
+		Passive:    false,
+		Durable:    true,
+		AutoDelete: false,
+		Internal:   false,
+		NoWait:     false,
+		Arguments:  amqp.NewTable(),
+	}, false)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	// Read
+	err = db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("exchanges"))
+		exBytes := bucket.Get([]byte("ex1"))
+		if exBytes == nil {
+			return fmt.Errorf("ex1 not found")
+		}
+		var decl = &amqp.ExchangeDeclare{}
+		err = decl.Read(bytes.NewBuffer(exBytes))
+		if err != nil {
+			return err
+		}
+		if decl.Type != "topic" {
+			return fmt.Errorf("Different exchange types after persisting!")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Errorf("Error loading persisted exchage %s", err.Error())
+	}
+
+	// Depersist
+	ex := NewExchange("ex1", EX_TYPE_TOPIC, true, false, false, amqp.NewTable(), false, make(chan *Exchange))
+	ex.AddBinding(&amqp.QueueBind{
+		Queue:      "q1",
+		Exchange:   "ex1",
+		RoutingKey: "api.msg.*.json",
+		Arguments:  amqp.NewTable(),
+	}, -1, false)
+	ex.Depersist(db)
+
+	// Verify
+	err = db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("exchanges"))
+		exBytes := bucket.Get([]byte("ex1"))
+		if exBytes != nil {
+			return fmt.Errorf("ex1 found!")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Errorf("Error loading persisted exchage %s", err.Error())
+	}
 }

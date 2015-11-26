@@ -40,6 +40,7 @@ func (binding *Binding) Equals(other *Binding) bool {
 }
 
 func (binding *Binding) Depersist(db *bolt.DB) error {
+	// TODO: record if these are durable and only depersist if they are
 	return db.Update(func(tx *bolt.Tx) error {
 		return binding.DepersistBoltTx(tx)
 	})

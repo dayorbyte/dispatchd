@@ -1,6 +1,7 @@
 package exchange
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
@@ -165,10 +166,34 @@ func (exchange *Exchange) QueuesForPublish(msg *amqp.Message) (map[string]bool, 
 	return queues, nil
 }
 
+func PersistExchange(db *bolt.DB, method *amqp.ExchangeDeclare, system bool) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("exchanges"))
+		if err != nil { // pragma: nocover
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
+		method.Write(buffer)
+		if system {
+			amqp.WriteOctet(buffer, uint8(1))
+		} else {
+			amqp.WriteOctet(buffer, uint8(0))
+		}
+
+		var name = method.Exchange
+		if name == "" {
+			name = "~"
+		}
+		// trim off the first four bytes, they're the class/method, which we
+		// already know
+		return bucket.Put([]byte(name), buffer.Bytes()[4:])
+	})
+}
+
 func (exchange *Exchange) Depersist(db *bolt.DB) error {
 	return db.Update(func(tx *bolt.Tx) error {
 		for _, binding := range exchange.bindings {
-			if err := binding.DepersistBoltTx(tx); err != nil {
+			if err := binding.DepersistBoltTx(tx); err != nil { // pragma: nocover
 				return err
 			}
 		}
@@ -178,7 +203,7 @@ func (exchange *Exchange) Depersist(db *bolt.DB) error {
 
 func DepersistExchangeBoltTx(tx *bolt.Tx, exchange *Exchange) error {
 	bucket, err := tx.CreateBucketIfNotExists([]byte("exchanges"))
-	if err != nil {
+	if err != nil { // pragma: nocover
 		return fmt.Errorf("create bucket: %s", err)
 	}
 	return bucket.Delete([]byte(exchange.Name))
