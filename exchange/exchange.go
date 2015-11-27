@@ -7,7 +7,6 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/binding"
-	"github.com/jeffjenkins/mq/queue"
 	"sync"
 	"time"
 )
@@ -259,7 +258,7 @@ func (exchange *Exchange) RemoveBindingsForQueue(queueName string) {
 	exchange.bindings = remaining
 }
 
-func (exchange *Exchange) RemoveBinding(queue *queue.Queue, binding *binding.Binding) error {
+func (exchange *Exchange) RemoveBinding(binding *binding.Binding) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 

@@ -208,7 +208,7 @@ func (channel *Channel) queueUnbind(method *amqp.QueueUnbind) *amqp.AMQPError {
 		}
 	}
 
-	if err := exchange.RemoveBinding(queue, binding); err != nil {
+	if err := exchange.RemoveBinding(binding); err != nil {
 		return amqp.NewSoftError(500, err.Error(), classId, methodId)
 	}
 	channel.SendMethod(&amqp.QueueUnbindOk{})
