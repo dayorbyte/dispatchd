@@ -9,6 +9,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 // EX_TYPE_DIRECT
@@ -396,4 +397,111 @@ func TestPersistence(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error loading persisted exchage %s", err.Error())
 	}
+}
+
+func TestAddBinding(t *testing.T) {
+	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, make(chan *Exchange))
+	ex.deleteActive = time.Now()
+	// bad binding
+	err := ex.AddBinding(&amqp.QueueBind{
+		Queue:      "q1",
+		Exchange:   "ex1",
+		RoutingKey: "~!@#",
+		Arguments:  amqp.NewTable(),
+	}, -1, false)
+	if err == nil {
+		t.Errorf("No error with bad binding!")
+	}
+	if len(ex.bindings) != 0 {
+		t.Errorf("Bad binding was added despite error")
+	}
+	// duplicate binding
+	var b = &amqp.QueueBind{
+		Queue:      "q1",
+		Exchange:   "ex1",
+		RoutingKey: "a.b.c",
+		Arguments:  amqp.NewTable(),
+	}
+	err = ex.AddBinding(b, -1, false)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if len(ex.bindings) != 1 {
+		t.Errorf("Wrong number of bindings")
+	}
+	err = ex.AddBinding(b, -1, false)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if len(ex.bindings) != 1 {
+		t.Errorf("Wrong number of bindings")
+	}
+	if ex.deleteActive != time.Unix(0, 0) {
+		t.Errorf("Error did not reset time")
+	}
+
+}
+
+func TestBindingsForQueue(t *testing.T) {
+	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, make(chan *Exchange))
+	var b = &amqp.QueueBind{
+		Queue:      "q1",
+		Exchange:   "ex1",
+		RoutingKey: "a.b.c",
+		Arguments:  amqp.NewTable(),
+	}
+	//
+	ex.AddBinding(b, -1, false)
+	b.RoutingKey = "d.e.f"
+	ex.AddBinding(b, -1, false)
+	b.RoutingKey = "g.h.i"
+	ex.AddBinding(b, -1, false)
+	b.Queue = "q2"
+	ex.AddBinding(b, -1, false)
+	b.RoutingKey = "j.k.l"
+	ex.AddBinding(b, -1, false)
+
+	if len(ex.BindingsForQueue("q1")) != 3 {
+		t.Errorf("Wrong number of bindings for q1")
+	}
+	if len(ex.BindingsForQueue("q2")) != 2 {
+		t.Errorf("Wrong number of bindings for q2")
+	}
+	if len(ex.BindingsForQueue("q0")) != 0 {
+		t.Errorf("Wrong number of bindings for q0")
+	}
+}
+
+func TestRemoveBindingsForQueue(t *testing.T) {
+	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, make(chan *Exchange))
+	var b = &amqp.QueueBind{
+		Queue:      "q1",
+		Exchange:   "ex1",
+		RoutingKey: "a.b.c",
+		Arguments:  amqp.NewTable(),
+	}
+	//
+	ex.AddBinding(b, -1, false)
+	b.RoutingKey = "d.e.f"
+	ex.AddBinding(b, -1, false)
+	b.RoutingKey = "g.h.i"
+	ex.AddBinding(b, -1, false)
+	b.Queue = "q2"
+	ex.AddBinding(b, -1, false)
+	b.RoutingKey = "j.k.l"
+	ex.AddBinding(b, -1, false)
+
+	ex.RemoveBindingsForQueue("q0")
+	if len(ex.bindings) != 5 {
+		t.Errorf("Wrong number of bindings after removing q0 bindings")
+	}
+	ex.RemoveBindingsForQueue("q1")
+	if len(ex.bindings) != 2 {
+		t.Errorf("Wrong number of bindings after removing q1 bindings")
+	}
+	ex.RemoveBindingsForQueue("q2")
+	if len(ex.bindings) != 0 {
+		t.Errorf("Wrong number of bindings after removing q2 bindings: %v", ex.bindings)
+	}
+
 }
