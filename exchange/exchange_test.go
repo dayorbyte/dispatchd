@@ -62,7 +62,11 @@ func TestJSON(t *testing.T) {
 	if !reflect.DeepEqual(expected, got) {
 		t.Errorf("unequal!\nexpected:%v\ngot     :%v", expected, got)
 	}
-	// ex.Extype = Extype(123)
+	ex.Extype = Extype(123)
+	_, err = json.Marshal(ex)
+	if err == nil {
+		t.Errorf("Didn't get error in json.Marshal with an invalid extype")
+	}
 }
 
 func TestExchangeTypes(t *testing.T) {
@@ -305,7 +309,7 @@ func TestPersistence(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create db")
 	}
-	err = PersistExchange(db, &amqp.ExchangeDeclare{
+	var ex = &amqp.ExchangeDeclare{
 		Exchange:   "ex1",
 		Type:       "topic",
 		Passive:    false,
@@ -314,25 +318,55 @@ func TestPersistence(t *testing.T) {
 		Internal:   false,
 		NoWait:     false,
 		Arguments:  amqp.NewTable(),
-	}, false)
+	}
+	err = PersistExchange(db, ex, false)
+	ex.Exchange = ""
+	err = PersistExchange(db, ex, true)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
 	// Read
 	err = db.View(func(tx *bolt.Tx) error {
+		// Check non-system exchange
 		bucket := tx.Bucket([]byte("exchanges"))
 		exBytes := bucket.Get([]byte("ex1"))
 		if exBytes == nil {
 			return fmt.Errorf("ex1 not found")
 		}
 		var decl = &amqp.ExchangeDeclare{}
-		err = decl.Read(bytes.NewBuffer(exBytes))
+		var buf = bytes.NewBuffer(exBytes)
+		err = decl.Read(buf)
 		if err != nil {
 			return err
 		}
+		system, err := amqp.ReadOctet(buf)
+		if err != nil {
+			return err
+		}
+		if system != 0 {
+			t.Errorf("System was persisted wrong")
+		}
 		if decl.Type != "topic" {
 			return fmt.Errorf("Different exchange types after persisting!")
+		}
+		// Check system exchange
+		exBytes = bucket.Get([]byte("~"))
+		if exBytes == nil {
+			return fmt.Errorf("ex1 not found")
+		}
+		decl = &amqp.ExchangeDeclare{}
+		buf = bytes.NewBuffer(exBytes)
+		err = decl.Read(buf)
+		if err != nil {
+			return err
+		}
+		system, err = amqp.ReadOctet(buf)
+		if err != nil {
+			return err
+		}
+		if system != 1 {
+			t.Errorf("System was persisted wrong")
 		}
 		return nil
 	})
@@ -341,14 +375,14 @@ func TestPersistence(t *testing.T) {
 	}
 
 	// Depersist
-	ex := NewExchange("ex1", EX_TYPE_TOPIC, true, false, false, amqp.NewTable(), false, make(chan *Exchange))
-	ex.AddBinding(&amqp.QueueBind{
+	realEx := NewExchange("ex1", EX_TYPE_TOPIC, true, false, false, amqp.NewTable(), false, make(chan *Exchange))
+	realEx.AddBinding(&amqp.QueueBind{
 		Queue:      "q1",
 		Exchange:   "ex1",
 		RoutingKey: "api.msg.*.json",
 		Arguments:  amqp.NewTable(),
 	}, -1, false)
-	ex.Depersist(db)
+	realEx.Depersist(db)
 
 	// Verify
 	err = db.View(func(tx *bolt.Tx) error {
