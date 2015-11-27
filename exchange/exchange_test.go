@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/binding"
 	"os"
 	"reflect"
 	"testing"
@@ -504,4 +505,46 @@ func TestRemoveBindingsForQueue(t *testing.T) {
 		t.Errorf("Wrong number of bindings after removing q2 bindings: %v", ex.bindings)
 	}
 
+}
+
+// func NewBinding(queueName string, exchangeName string, key string, arguments *amqp.Table, topic bool) (*Binding, error) {
+
+func TestRemoveBinding(t *testing.T) {
+	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, make(chan *Exchange))
+	var b = &amqp.QueueBind{
+		Queue:      "q1",
+		Exchange:   "ex1",
+		RoutingKey: "a.b.c",
+		Arguments:  amqp.NewTable(),
+	}
+	// Add bindings
+	ex.AddBinding(b, -1, false)
+	b.RoutingKey = "d.e.f"
+	ex.AddBinding(b, -1, false)
+	b.RoutingKey = "g.h.i"
+	ex.AddBinding(b, -1, false)
+	b.Queue = "q2"
+	ex.AddBinding(b, -1, false)
+	b.RoutingKey = "j.k.l"
+	ex.AddBinding(b, -1, false)
+
+	// Remove the Q2 bindings
+	b1, err := binding.NewBinding("q2", "ex1", "g.h.i", amqp.NewTable(), true)
+	if err != nil {
+		t.Errorf("Error creating binding")
+	}
+	ex.RemoveBinding(b1)
+	if len(ex.bindings) != 4 {
+		t.Errorf("Wrong number of bindings: %d", len(ex.bindings))
+	}
+	b2, err := binding.NewBinding("q2", "ex1", "j.k.l", amqp.NewTable(), true)
+	if err != nil {
+		t.Errorf("Error creating binding")
+	}
+	ex.RemoveBinding(b2)
+
+	// Check that all q2 bindings are gone
+	if len(ex.BindingsForQueue("q2")) != 0 {
+		t.Errorf("Wrong number of bindings")
+	}
 }
