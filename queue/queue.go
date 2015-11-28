@@ -8,18 +8,20 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/consumer"
+	"github.com/jeffjenkins/mq/gen"
 	"github.com/jeffjenkins/mq/msgstore"
+	"github.com/jeffjenkins/mq/persist"
 	"github.com/jeffjenkins/mq/stats"
 	"sync"
 	"time"
 )
 
+var QUEUE_BUCKET_NAME = []byte("queues")
+
 type Queue struct {
-	Name            string
-	Durable         bool
-	exclusive       bool
+	gen.QueueState
 	autoDelete      bool
-	arguments       *amqp.Table
+	exclusive       bool
 	Closed          bool
 	objLock         sync.RWMutex
 	queue           *list.List // int64
@@ -49,11 +51,13 @@ func NewQueue(
 	deleteChan chan *Queue,
 ) *Queue {
 	return &Queue{
-		Name:       name,
-		Durable:    durable,
+		QueueState: gen.QueueState{
+			Name:      name,
+			Durable:   durable,
+			Arguments: arguments,
+		},
 		exclusive:  exclusive,
 		autoDelete: autoDelete,
-		arguments:  arguments,
 		ConnId:     connId,
 		msgStore:   msgStore,
 		deleteChan: deleteChan,
@@ -77,7 +81,7 @@ func equivalentQueues(q1 *Queue, q2 *Queue) bool {
 	if q1.exclusive != q2.exclusive {
 		return false
 	}
-	if !amqp.EquivalentTables(q1.arguments, q2.arguments) {
+	if !amqp.EquivalentTables(q1.Arguments, q2.Arguments) {
 		return false
 	}
 	return true
@@ -110,17 +114,15 @@ func (q *Queue) MarshalJSON() ([]byte, error) {
 }
 
 func (q *Queue) Depersist(db *bolt.DB) error {
-	return db.Update(func(tx *bolt.Tx) error {
-		return q.DepersistBoltTx(tx)
-	})
+	return persist.DepersistOne(db, "queues", q.Name)
 }
 
 func (q *Queue) DepersistBoltTx(tx *bolt.Tx) error {
-	bucket, err := tx.CreateBucketIfNotExists([]byte("queues"))
+	bucket, err := tx.CreateBucketIfNotExists(QUEUE_BUCKET_NAME)
 	if err != nil {
 		return fmt.Errorf("create bucket: %s", err)
 	}
-	return bucket.Delete([]byte(q.Name))
+	return persist.DepersistOneBoltTx(bucket, q.Name)
 }
 
 func (q *Queue) LoadFromMsgStore(msgStore *msgstore.MessageStore) {

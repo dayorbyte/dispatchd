@@ -29,3 +29,11 @@ message BindingState {
   optional string key = 4 [(gogoproto.nullable) = false];
   optional amqp.Table arguments = 5;
 }
+
+message QueueState {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string name = 1 [(gogoproto.nullable) = false];
+  optional bool durable = 2 [(gogoproto.nullable) = false];
+  optional amqp.Table arguments = 3;
+}
