@@ -10,9 +10,9 @@ import (
 //            Persist
 //
 
-func PersistOne(db *bolt.DB, bucket string, key string, obj proto.Marshaler) error {
+func PersistOne(db *bolt.DB, bucketName []byte, key string, obj proto.Marshaler) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte(bucket))
+		bucket, err := tx.CreateBucketIfNotExists(bucketName)
 		if err != nil { // pragma: nocover
 			return fmt.Errorf("create bucket: %s", err)
 		}
@@ -28,9 +28,9 @@ func PersistOneBoltTx(bucket *bolt.Bucket, key string, obj proto.Marshaler) erro
 	return bucket.Put([]byte(key), exBytes)
 }
 
-func PersistMany(db *bolt.DB, bucket string, objs map[string]proto.Marshaler) error {
+func PersistMany(db *bolt.DB, bucketName []byte, objs map[string]proto.Marshaler) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte(bucket))
+		bucket, err := tx.CreateBucketIfNotExists(bucketName)
 		if err != nil { // pragma: nocover
 			return fmt.Errorf("create bucket: %s", err)
 		}
@@ -52,9 +52,9 @@ func PersistManyBoltTx(bucket *bolt.Bucket, objs map[string]proto.Marshaler) err
 //                    Load
 //
 
-func LoadOne(db *bolt.DB, bucket string, key string, obj proto.Unmarshaler) error {
+func LoadOne(db *bolt.DB, bucketName []byte, key string, obj proto.Unmarshaler) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucket))
+		bucket := tx.Bucket(bucketName)
 		if bucket == nil {
 			return fmt.Errorf("Bucket not found: '%s'", bucket)
 		}
@@ -74,9 +74,9 @@ func LoadOneBoltTx(bucket *bolt.Bucket, key string, obj proto.Unmarshaler) error
 	return nil
 }
 
-func LoadMany(db *bolt.DB, bucket string, objs map[string]proto.Unmarshaler) error {
+func LoadMany(db *bolt.DB, bucketName []byte, objs map[string]proto.Unmarshaler) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucket))
+		bucket := tx.Bucket(bucketName)
 		if bucket == nil { // pragma: nocover
 			return fmt.Errorf("create bucket: '%s'", bucket)
 		}
@@ -98,9 +98,9 @@ func LoadManyBoltTx(bucket *bolt.Bucket, objs map[string]proto.Unmarshaler) erro
 //                      Depersist
 //
 
-func DepersistOne(db *bolt.DB, bucket string, key string) error {
+func DepersistOne(db *bolt.DB, bucketName []byte, key string) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucket))
+		bucket := tx.Bucket(bucketName)
 		if bucket == nil {
 			return fmt.Errorf("Bucket not found: '%s'", bucket)
 		}
@@ -112,9 +112,9 @@ func DepersistOneBoltTx(bucket *bolt.Bucket, key string) error {
 	return bucket.Delete([]byte(key))
 }
 
-func DepersistMany(db *bolt.DB, bucket string, keys map[string]bool) error {
+func DepersistMany(db *bolt.DB, bucketName []byte, keys map[string]bool) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(bucket))
+		bucket := tx.Bucket(bucketName)
 		if bucket == nil { // pragma: nocover
 			return fmt.Errorf("create bucket: '%s'", bucket)
 		}

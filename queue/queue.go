@@ -113,8 +113,12 @@ func (q *Queue) MarshalJSON() ([]byte, error) {
 	})
 }
 
+func (q *Queue) Persist(db *bolt.DB) error {
+	return persist.PersistOne(db, QUEUE_BUCKET_NAME, q.Name, q)
+}
+
 func (q *Queue) Depersist(db *bolt.DB) error {
-	return persist.DepersistOne(db, "queues", q.Name)
+	return persist.DepersistOne(db, QUEUE_BUCKET_NAME, q.Name)
 }
 
 func (q *Queue) DepersistBoltTx(tx *bolt.Tx) error {

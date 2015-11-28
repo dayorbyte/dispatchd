@@ -246,23 +246,6 @@ func (server *Server) addExchange(ex *exchange.Exchange, diskLoad bool) error {
 	return nil
 }
 
-func (server *Server) persistQueue(method *amqp.QueueDeclare) {
-	err := server.db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte("queues"))
-		if err != nil {
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
-		method.Write(buffer)
-		// trim off the first four bytes, they're the class/method, which we
-		// already know
-		return bucket.Put([]byte(method.Queue), buffer.Bytes()[4:])
-	})
-	if err != nil {
-		fmt.Printf("********** FAILED TO PERSIST QUEUE '%s': %s\n", method.Queue, err.Error())
-	}
-}
-
 func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, fromDisk bool) (string, error) {
 	if !method.Exclusive {
 		connId = -1
@@ -294,7 +277,7 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 	defaultExchange.AddBinding(defaultBinding, connId, fromDisk)
 	// TODO: queue should store bindings too?
 	if method.Durable && !fromDisk {
-		server.persistQueue(method)
+		queue.Persist(server.db)
 	}
 	queue.Start()
 	return queue.Name, nil

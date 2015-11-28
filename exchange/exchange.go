@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+var EXCHANGES_BUCKET_NAME = []byte("exchanges")
+
 const (
 	EX_TYPE_DIRECT  uint8 = 1
 	EX_TYPE_FANOUT  uint8 = 2
@@ -198,12 +200,12 @@ func (exchange *Exchange) Persist(db *bolt.DB) error {
 	if key == "" {
 		key = "~"
 	}
-	return persist.PersistOne(db, "exchanges", key, &exchange.ExchangeState)
+	return persist.PersistOne(db, EXCHANGES_BUCKET_NAME, key, &exchange.ExchangeState)
 }
 
 func NewFromDisk(db *bolt.DB, key string, deleteChan chan *Exchange) (ex *Exchange, err error) {
 	err = db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("exchanges"))
+		bucket := tx.Bucket(EXCHANGES_BUCKET_NAME)
 		if bucket == nil {
 			return fmt.Errorf("Bucket not found: 'exchanges'")
 		}
@@ -232,7 +234,7 @@ func NewFromDiskBoltTx(bucket *bolt.Bucket, key []byte, deleteChan chan *Exchang
 
 func (exchange *Exchange) Depersist(db *bolt.DB) error {
 	return db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("exchanges"))
+		bucket := tx.Bucket(EXCHANGES_BUCKET_NAME)
 		if bucket == nil {
 			return fmt.Errorf("Bucket not found: '%s'", bucket)
 		}

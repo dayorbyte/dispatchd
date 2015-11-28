@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+var BINDINGS_BUCKET_NAME = []byte("bindings")
+
 type Binding struct {
 	gen.BindingState
 	topicMatcher *regexp.Regexp
@@ -39,11 +41,11 @@ func (binding *Binding) Equals(other *Binding) bool {
 }
 
 func (binding *Binding) Depersist(db *bolt.DB) error {
-	return persist.DepersistOne(db, "bindings", string(binding.Id))
+	return persist.DepersistOne(db, BINDINGS_BUCKET_NAME, string(binding.Id))
 }
 
 func (binding *Binding) DepersistBoltTx(tx *bolt.Tx) error {
-	bucket, err := tx.CreateBucketIfNotExists([]byte("bindings"))
+	bucket, err := tx.CreateBucketIfNotExists(BINDINGS_BUCKET_NAME)
 	if err != nil { // pragma: nocover
 		// If we're hitting this it means the disk is full, the db is readonly,
 		// or something else has gone irrecoverably wrong
@@ -92,7 +94,7 @@ func NewBinding(queueName string, exchangeName string, key string, arguments *am
 }
 
 func (b *Binding) Persist(db *bolt.DB) error {
-	return persist.PersistOne(db, "bindings", string(b.Id), b)
+	return persist.PersistOne(db, BINDINGS_BUCKET_NAME, string(b.Id), b)
 }
 
 func (b *Binding) MatchDirect(message *amqp.BasicPublish) bool {
