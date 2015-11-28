@@ -207,8 +207,6 @@ func (exchange *Exchange) Persist(db *bolt.DB) error {
 		if name == "" {
 			name = "~"
 		}
-		// trim off the first four bytes, they're the class/method, which we
-		// already know
 		return bucket.Put([]byte(name), exBytes)
 	})
 }
