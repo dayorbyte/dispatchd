@@ -1,0 +1,21 @@
+package gen;
+
+import "github.com/jeffjenkins/mq/amqp/amqp.proto";
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+
+message ExchangeState {
+  option (gogoproto.goproto_unrecognized) = false;
+  option (gogoproto.goproto_getters) = false;
+  optional string name = 1 [(gogoproto.nullable) = false];
+  optional uint32 ex_type = 2 [(gogoproto.casttype) = "uint8", (gogoproto.nullable) = false];
+  optional bool passive = 3 [(gogoproto.nullable) = false];
+  optional bool durable = 4 [(gogoproto.nullable) = false];
+  optional bool auto_delete = 5 [(gogoproto.nullable) = false];
+  optional bool internal = 6 [(gogoproto.nullable) = false];
+  optional bool system = 7 [(gogoproto.nullable) = false];
+  optional amqp.Table arguments = 8;
+}

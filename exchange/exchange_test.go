@@ -1,9 +1,7 @@
 package exchange
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/binding"
@@ -13,15 +11,10 @@ import (
 	"time"
 )
 
-// EX_TYPE_DIRECT
-// EX_TYPE_FANOUT
-// EX_TYPE_TOPIC
-// EX_TYPE_HEADERS
-
-func TestClose(t *testing.T) {
-	var ex = NewExchange(
-		"ex",
-		EX_TYPE_TOPIC,
+func exchangeForTest(name string, typ uint8) *Exchange {
+	return NewExchange(
+		name,
+		typ,
 		false,
 		false,
 		false,
@@ -29,6 +22,10 @@ func TestClose(t *testing.T) {
 		false,
 		make(chan *Exchange),
 	)
+}
+
+func TestClose(t *testing.T) {
+	var ex = exchangeForTest("ex", EX_TYPE_TOPIC)
 	if ex.Closed {
 		t.Errorf("Exchange closed when it shouldn't be!")
 	}
@@ -39,16 +36,7 @@ func TestClose(t *testing.T) {
 }
 
 func TestJSON(t *testing.T) {
-	var ex = NewExchange(
-		"ex",
-		EX_TYPE_TOPIC,
-		false,
-		false,
-		false,
-		amqp.NewTable(),
-		false,
-		make(chan *Exchange),
-	)
+	var ex = exchangeForTest("ex", EX_TYPE_TOPIC)
 	var expected, err = json.Marshal(map[string]interface{}{
 		"type":     "topic",
 		"bindings": make([]int, 0),
@@ -64,7 +52,7 @@ func TestJSON(t *testing.T) {
 	if !reflect.DeepEqual(expected, got) {
 		t.Errorf("unequal!\nexpected:%v\ngot     :%v", expected, got)
 	}
-	ex.Extype = Extype(123)
+	ex.ExType = 123
 	_, err = json.Marshal(ex)
 	if err == nil {
 		t.Errorf("Didn't get error in json.Marshal with an invalid extype")
@@ -100,7 +88,7 @@ func TestExchangeTypes(t *testing.T) {
 	if ext, err := exchangeTypeToName(EX_TYPE_HEADERS); ext != "headers" || err != nil {
 		t.Errorf("Error converting type")
 	}
-	if _, err := exchangeTypeToName(Extype(123)); err == nil {
+	if _, err := exchangeTypeToName(123); err == nil {
 		t.Errorf("No error converting bad type")
 	}
 }
@@ -138,17 +126,17 @@ func TestEquivalentExchanges(t *testing.T) {
 	ex2.Name = "ex1"
 
 	// extype
-	ex2.Extype = EX_TYPE_TOPIC
+	ex2.ExType = EX_TYPE_TOPIC
 	if ex.EquivalentExchanges(ex2) {
 		t.Errorf("Different exchanges are equal!")
 	}
-	ex2.Extype = EX_TYPE_DIRECT
+	ex2.ExType = EX_TYPE_DIRECT
 	// internal
-	ex2.internal = false
+	ex2.Internal = false
 	if ex.EquivalentExchanges(ex2) {
 		t.Errorf("Different exchanges are equal!")
 	}
-	ex2.internal = true
+	ex2.Internal = true
 	// durable
 	ex2.Durable = false
 	if ex.EquivalentExchanges(ex2) {
@@ -158,14 +146,14 @@ func TestEquivalentExchanges(t *testing.T) {
 	// args
 	var newTable = amqp.NewTable()
 	newTable.SetKey("stuff", true)
-	ex2.arguments = newTable
+	ex2.Arguments = newTable
 	if ex.EquivalentExchanges(ex2) {
 		t.Errorf("Different exchanges are equal!")
 	}
-	ex2.arguments = amqp.NewTable()
+	ex2.Arguments = amqp.NewTable()
 	// test other diffs ok
 	ex2.System = false
-	ex2.autodelete = false
+	ex2.AutoDelete = false
 	if !ex.EquivalentExchanges(ex2) {
 		t.Errorf("Same exchanges aren't equal!")
 	}
@@ -311,67 +299,25 @@ func TestPersistence(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to create db")
 	}
-	var ex = &amqp.ExchangeDeclare{
-		Exchange:   "ex1",
-		Type:       "topic",
-		Passive:    false,
-		Durable:    true,
-		AutoDelete: false,
-		Internal:   false,
-		NoWait:     false,
-		Arguments:  amqp.NewTable(),
+	var ex = exchangeForTest("ex1", EX_TYPE_TOPIC)
+	ex.Durable = true
+	err = ex.Persist(db)
+	if err != nil {
+		t.Errorf("Could not persist exchange %s", ex.Name)
 	}
-	err = PersistExchange(db, ex, false)
-	ex.Exchange = ""
-	err = PersistExchange(db, ex, true)
+	ex.Name = ""
+	err = ex.Persist(db)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
 	// Read
-	err = db.View(func(tx *bolt.Tx) error {
-		// Check non-system exchange
-		bucket := tx.Bucket([]byte("exchanges"))
-		exBytes := bucket.Get([]byte("ex1"))
-		if exBytes == nil {
-			return fmt.Errorf("ex1 not found")
-		}
-		var decl = &amqp.ExchangeDeclare{}
-		var buf = bytes.NewBuffer(exBytes)
-		err = decl.Read(buf)
-		if err != nil {
-			return err
-		}
-		system, err := amqp.ReadOctet(buf)
-		if err != nil {
-			return err
-		}
-		if system != 0 {
-			t.Errorf("System was persisted wrong")
-		}
-		if decl.Type != "topic" {
-			return fmt.Errorf("Different exchange types after persisting!")
-		}
-		// Check system exchange
-		exBytes = bucket.Get([]byte("~"))
-		if exBytes == nil {
-			return fmt.Errorf("ex1 not found")
-		}
-		decl = &amqp.ExchangeDeclare{}
-		buf = bytes.NewBuffer(exBytes)
-		err = decl.Read(buf)
-		if err != nil {
-			return err
-		}
-		system, err = amqp.ReadOctet(buf)
-		if err != nil {
-			return err
-		}
-		if system != 1 {
-			t.Errorf("System was persisted wrong")
-		}
-		return nil
-	})
+	deleteChan := make(chan *Exchange)
+	_, err = NewFromDisk(db, "ex1", deleteChan)
+	if err != nil {
+		t.Errorf("Error loading persisted exchage %s", err.Error())
+	}
+	_, err = NewFromDisk(db, "", deleteChan)
 	if err != nil {
 		t.Errorf("Error loading persisted exchage %s", err.Error())
 	}
@@ -387,16 +333,9 @@ func TestPersistence(t *testing.T) {
 	realEx.Depersist(db)
 
 	// Verify
-	err = db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("exchanges"))
-		exBytes := bucket.Get([]byte("ex1"))
-		if exBytes != nil {
-			return fmt.Errorf("ex1 found!")
-		}
-		return nil
-	})
-	if err != nil {
-		t.Errorf("Error loading persisted exchage %s", err.Error())
+	_, err = NewFromDisk(db, "ex1", deleteChan)
+	if err == nil {
+		t.Errorf("Failed to delete exchange 'ex1'")
 	}
 }
 

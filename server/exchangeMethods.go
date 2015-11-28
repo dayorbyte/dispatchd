@@ -3,6 +3,8 @@ package main
 import (
 	_ "fmt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/exchange"
+	"strings"
 )
 
 func (channel *Channel) exchangeRoute(methodFrame amqp.MethodFrame) *amqp.AMQPError {
@@ -37,9 +39,52 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.AMQP
 	}
 
 	// Declare!
-	errCode, err := channel.server.declareExchange(method, false, false)
+	var ex, amqpErr = exchange.NewFromMethod(method, false, channel.server.exchangeDeleter)
+	if amqpErr != nil {
+		return amqpErr
+	}
+	tp, err := exchange.ExchangeNameToType(method.Type)
+	if err != nil || tp == exchange.EX_TYPE_HEADERS {
+		return amqp.NewHardError(503, err.Error(), classId, methodId)
+	}
+	existing, hasKey := channel.server.exchanges[ex.Name]
+	if !hasKey && method.Passive {
+		return amqp.NewSoftError(404, "Exchange does not exist", classId, methodId)
+	}
+	if hasKey {
+		// if diskLoad {
+		// 	panic(fmt.Sprintf("Can't disk load a key that exists: %s", ex.Name))
+		// }
+		if existing.ExType != ex.ExType {
+			return amqp.NewHardError(530, "Cannot redeclare an exchange with a different type", classId, methodId)
+		}
+		if existing.EquivalentExchanges(ex) {
+			if !method.NoWait {
+				channel.SendMethod(&amqp.ExchangeDeclareOk{})
+			}
+			return nil
+		}
+		// Not equivalent, error in passive mode
+		if method.Passive {
+			return amqp.NewSoftError(406, "Exchange with this name already exists", classId, methodId)
+		}
+	}
+	if method.Passive {
+		if !method.NoWait {
+			channel.SendMethod(&amqp.ExchangeDeclareOk{})
+		}
+		return nil
+	}
+
+	// outside of passive mode you can't create an exchange starting with
+	// amq.
+	if strings.HasPrefix(method.Exchange, "amq.") {
+		return amqp.NewSoftError(403, "Exchange names starting with 'amq.' are reserved", classId, methodId)
+	}
+
+	err = channel.server.addExchange(ex, false)
 	if err != nil {
-		return amqp.NewSoftError(errCode, err.Error(), classId, methodId)
+		return amqp.NewSoftError(500, err.Error(), classId, methodId)
 	}
 	if !method.NoWait {
 		channel.SendMethod(&amqp.ExchangeDeclareOk{})
