@@ -76,6 +76,17 @@ func NewQueue(
 	}
 }
 
+func NewFromPersistedState(state *gen.QueueState, msgStore *msgstore.MessageStore, deleteChan chan *Queue) *Queue {
+	return &Queue{
+		QueueState: *state,
+		exclusive:  false,
+		autoDelete: false,
+		ConnId:     -1,
+		msgStore:   msgStore,
+		deleteChan: deleteChan,
+	}
+}
+
 func equivalentQueues(q1 *Queue, q2 *Queue) bool {
 	// Note: autodelete is not included since the spec says to ignore
 	// the field if the queue is already created
@@ -134,6 +145,18 @@ func (q *Queue) DepersistBoltTx(tx *bolt.Tx) error {
 		return fmt.Errorf("create bucket: %s", err)
 	}
 	return persist.DepersistOneBoltTx(bucket, q.Name)
+}
+
+func LoadAllQueues(db *bolt.DB, msgStore *msgstore.MessageStore, deleteChan chan *Queue) (map[string]*Queue, error) {
+	queueStateMap, err := persist.LoadAll(db, QUEUE_BUCKET_NAME, &QueueStateFactory{})
+	if err != nil {
+		return nil, err
+	}
+	var ret = make(map[string]*Queue)
+	for key, state := range queueStateMap {
+		ret[key] = NewFromPersistedState(state.(*gen.QueueState), msgStore, deleteChan)
+	}
+	return ret, nil
 }
 
 func (q *Queue) LoadFromMsgStore(msgStore *msgstore.MessageStore) {

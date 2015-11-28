@@ -133,38 +133,20 @@ func (server *Server) initBindings() {
 }
 
 func (server *Server) initQueues() {
-	fmt.Printf("Loading queues from disk\n")
-	// LOAD FROM PERSISTENT STORAGE
-	err := server.db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("queues"))
-		if bucket == nil {
-			return nil
-		}
-		// iterate through queues
-		cursor := bucket.Cursor()
-		for name, data := cursor.First(); name != nil; name, data = cursor.Next() {
-			var method = &amqp.QueueDeclare{}
-			var reader = bytes.NewReader(data)
-			var err = method.Read(reader)
-			if err != nil {
-				panic(fmt.Sprintf("Failed to read queue '%s': %s", name, err.Error()))
-			}
-			fmt.Printf("Got queue from disk: %s\n", method.Queue)
-			_, err = server.declareQueue(method, -1, true)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	// Load queues
+	queues, err := queue.LoadAllQueues(server.db, server.msgStore, server.queueDeleter)
 	if err != nil {
-		panic("********** FAILED TO LOAD QUEUES: " + err.Error())
+		panic("Couldn't load queues!")
 	}
-	for name, queue := range server.queues {
-		fmt.Printf("Loading persistent messages for queue '%s'\n", name)
+	for _, queue := range queues {
+		err = server.addQueue(queue, true)
+		if err != nil {
+			panic("Couldn't load queues!")
+		}
+	}
+	// Load queue data
+	for _, queue := range server.queues {
 		queue.LoadFromMsgStore(server.msgStore)
-
-		fmt.Printf("Loaded %d messages from queue\n", queue.Len())
 	}
 }
 
@@ -232,6 +214,26 @@ func (server *Server) addExchange(ex *exchange.Exchange, diskLoad bool) error {
 	return nil
 }
 
+func (server *Server) addQueue(q *queue.Queue, fromDisk bool) error {
+	server.serverLock.Lock()
+	defer server.serverLock.Unlock()
+	server.queues[q.Name] = q
+	var defaultExchange = server.exchanges[""]
+	var defaultBinding = &amqp.QueueBind{
+		Queue:      q.Name,
+		Exchange:   "",
+		RoutingKey: q.Name,
+		Arguments:  amqp.NewTable(),
+	}
+	defaultExchange.AddBinding(defaultBinding, q.ConnId, fromDisk)
+	// TODO: queue should store bindings too?
+	if q.Durable && !fromDisk {
+		q.Persist(server.db)
+	}
+	q.Start()
+	return nil
+}
+
 func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, fromDisk bool) (string, error) {
 	if !method.Exclusive {
 		connId = -1
@@ -246,26 +248,11 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 		server.msgStore,
 		server.queueDeleter,
 	)
-	server.serverLock.Lock()
-	defer server.serverLock.Unlock()
 	_, hasKey := server.queues[queue.Name]
 	if hasKey {
 		return queue.Name, nil
 	}
-	server.queues[queue.Name] = queue
-	var defaultExchange = server.exchanges[""]
-	var defaultBinding = &amqp.QueueBind{
-		Queue:      queue.Name,
-		Exchange:   "",
-		RoutingKey: queue.Name,
-		Arguments:  amqp.NewTable(),
-	}
-	defaultExchange.AddBinding(defaultBinding, connId, fromDisk)
-	// TODO: queue should store bindings too?
-	if method.Durable && !fromDisk {
-		queue.Persist(server.db)
-	}
-	queue.Start()
+	server.addQueue(queue, fromDisk)
 	return queue.Name, nil
 }
 
