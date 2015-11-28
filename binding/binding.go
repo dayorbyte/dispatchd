@@ -91,25 +91,8 @@ func NewBinding(queueName string, exchangeName string, key string, arguments *am
 	}, nil
 }
 
-func PersistBinding(db *bolt.DB, method *amqp.QueueBind) error {
-	return db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte("bindings"))
-		if err != nil { // pragma: nocover
-			// If we're hitting this it means the disk is full, the db is readonly,
-			// or something else has gone irrecoverably wrong
-			panic(fmt.Sprintf("create bucket: %s", err))
-		}
-		var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
-		method.Write(buffer)
-		// trim off the first four bytes, they're the class/method, which we
-		// already know
-		var value = buffer.Bytes()[4:]
-		// bindings aren't named, so we hash the bytes we were given. I wonder
-		// if we could make make the bytes the key and use no value?
-		hash := sha1.New()
-		hash.Write(value)
-		return bucket.Put([]byte(hash.Sum(nil)), value)
-	})
+func (b *Binding) Persist(db *bolt.DB) error {
+	return persist.PersistOne(db, "bindings", string(b.Id), b)
 }
 
 func (b *Binding) MatchDirect(message *amqp.BasicPublish) bool {
