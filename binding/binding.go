@@ -6,12 +6,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/gogo/protobuf/proto"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/gen"
 	"github.com/jeffjenkins/mq/persist"
 	"regexp"
 	"strings"
 )
+
+type BindingStateFactory struct{}
+
+func (bsf *BindingStateFactory) New() proto.Unmarshaler {
+	return &gen.BindingState{}
+}
 
 var BINDINGS_BUCKET_NAME = []byte("bindings")
 
@@ -88,9 +95,28 @@ func NewBinding(queueName string, exchangeName string, key string, arguments *am
 			ExchangeName: exchangeName,
 			Key:          key,
 			Arguments:    arguments,
+			Topic:        topic,
 		},
 		topicMatcher: re,
 	}, nil
+}
+
+func LoadAllBindings(db *bolt.DB) (map[string]*Binding, error) {
+	exStateMap, err := persist.LoadAll(db, BINDINGS_BUCKET_NAME, &BindingStateFactory{})
+	if err != nil {
+		return nil, err
+	}
+	var ret = make(map[string]*Binding)
+	for key, state := range exStateMap {
+		var sb = state.(*gen.BindingState)
+		// TODO: we don't actually know if topic is true, so this is extra work
+		// for other exchange binding types
+		ret[key], err = NewBinding(sb.QueueName, sb.ExchangeName, sb.Key, sb.Arguments, sb.Topic)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return ret, nil
 }
 
 func (b *Binding) Persist(db *bolt.DB) error {

@@ -89,13 +89,14 @@ func (channel *Channel) queueBind(method *amqp.QueueBind) *amqp.AMQPError {
 		return amqp.NewSoftError(405, fmt.Sprintf("Queue is locked to another connection"), classId, methodId)
 	}
 
+	// Create binding
 	b, err := binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, exchange.IsTopic())
 	if err != nil {
 		return amqp.NewSoftError(500, err.Error(), classId, methodId)
 	}
 
 	// Add binding
-	err = exchange.AddBinding(method, channel.conn.id, false)
+	err = exchange.AddBinding(b, channel.conn.id)
 	if err != nil {
 		return amqp.NewSoftError(500, err.Error(), classId, methodId)
 	}

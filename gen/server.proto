@@ -28,6 +28,7 @@ message BindingState {
   optional string exchange_name = 3 [(gogoproto.nullable) = false];
   optional string key = 4 [(gogoproto.nullable) = false];
   optional amqp.Table arguments = 5;
+  optional bool topic = 6 [(gogoproto.nullable) = false];
 }
 
 message QueueState {

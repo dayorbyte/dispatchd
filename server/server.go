@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -98,37 +97,22 @@ func (server *Server) queueDeleteMonitor() {
 
 // TODO: move most of this into the bindings file
 func (server *Server) initBindings() {
-	fmt.Printf("Loading bindings from disk\n")
-	// LOAD FROM PERSISTENT STORAGE
-	err := server.db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("bindings"))
-		if bucket == nil {
-			return nil
-		}
-		// iterate through queues
-		cursor := bucket.Cursor()
-		for name, data := cursor.First(); name != nil; name, data = cursor.Next() {
-			// Read
-			var method = &amqp.QueueBind{}
-			var reader = bytes.NewReader(data)
-			var err = method.Read(reader)
-			if err != nil {
-				panic(fmt.Sprintf("Failed to read binding '%s': %s", name, err.Error()))
-			}
-
-			// Get Exchange
-			var exchange, foundExchange = server.exchanges[method.Exchange]
-			if !foundExchange {
-				return fmt.Errorf("Couldn't bind non-existant exchange %s", method.Exchange)
-			}
-
-			// Add Binding
-			exchange.AddBinding(method, -1, true)
-		}
-		return nil
-	})
+	// Load bindings
+	bindings, err := binding.LoadAllBindings(server.db)
 	if err != nil {
-		panic("********** FAILED TO LOAD BINDINGS: " + err.Error())
+		panic("Couldn't load bindings!")
+	}
+	for _, b := range bindings {
+		// Get Exchange
+		var exchange, foundExchange = server.exchanges[b.ExchangeName]
+		if !foundExchange {
+			panic("Couldn't bind non-existant exchange " + b.ExchangeName)
+		}
+		// Add Binding
+		err = exchange.AddBinding(b, -1)
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 }
 
@@ -209,13 +193,11 @@ func (server *Server) addQueue(q *queue.Queue, fromDisk bool) error {
 	defer server.serverLock.Unlock()
 	server.queues[q.Name] = q
 	var defaultExchange = server.exchanges[""]
-	var defaultBinding = &amqp.QueueBind{
-		Queue:      q.Name,
-		Exchange:   "",
-		RoutingKey: q.Name,
-		Arguments:  amqp.NewTable(),
+	var defaultBinding, err = binding.NewBinding(q.Name, "", q.Name, amqp.NewTable(), false)
+	if err != nil {
+		return err
 	}
-	defaultExchange.AddBinding(defaultBinding, q.ConnId, fromDisk)
+	defaultExchange.AddBinding(defaultBinding, q.ConnId)
 	// TODO: queue should store bindings too?
 	if q.Durable && !fromDisk {
 		q.Persist(server.db)

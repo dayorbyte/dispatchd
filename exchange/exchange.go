@@ -15,7 +15,7 @@ import (
 
 type ExchangeStateFactory struct{}
 
-func (qsf *ExchangeStateFactory) New() proto.Unmarshaler {
+func (esf *ExchangeStateFactory) New() proto.Unmarshaler {
 	return &gen.ExchangeState{}
 }
 
@@ -270,17 +270,12 @@ func (exchange *Exchange) IsTopic() bool {
 	return exchange.ExType == EX_TYPE_TOPIC
 }
 
-func (exchange *Exchange) AddBinding(method *amqp.QueueBind, connId int64, fromDisk bool) error {
+func (exchange *Exchange) AddBinding(b *binding.Binding, connId int64) error {
 	exchange.bindingsLock.Lock()
 	defer exchange.bindingsLock.Unlock()
 
-	var binding, err = binding.NewBinding(method.Queue, method.Exchange, method.RoutingKey, method.Arguments, exchange.IsTopic())
-	if err != nil {
-		return err
-	}
-
-	for _, b := range exchange.bindings {
-		if binding.Equals(b) {
+	for _, b2 := range exchange.bindings {
+		if b.Equals(b2) {
 			return nil
 		}
 	}
@@ -288,7 +283,7 @@ func (exchange *Exchange) AddBinding(method *amqp.QueueBind, connId int64, fromD
 	if exchange.AutoDelete {
 		exchange.deleteActive = time.Unix(0, 0)
 	}
-	exchange.bindings = append(exchange.bindings, binding)
+	exchange.bindings = append(exchange.bindings, b)
 	return nil
 }
 
