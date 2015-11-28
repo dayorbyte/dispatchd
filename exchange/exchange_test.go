@@ -2,6 +2,7 @@ package exchange
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/binding"
@@ -506,5 +507,68 @@ func TestAutoDeleteTimeout(t *testing.T) {
 	var toDelete = <-deleter
 	if ex.Name != toDelete.Name {
 		t.Errorf("Integrity error in delete")
+	}
+}
+
+func TestNoExchangesBucket(t *testing.T) {
+	var dbFile = "TestNoExchangeBucket.db"
+	os.Remove(dbFile)
+	defer os.Remove(dbFile)
+	db, err := bolt.Open(dbFile, 0600, nil)
+	if err != nil {
+		t.Errorf("Failed to create db")
+	}
+	_, err = NewFromDisk(db, "does-not-exist", make(chan *Exchange))
+	if err == nil {
+		t.Errorf("No error trying to load an non-existent bucket")
+	}
+}
+
+func TestBadExchangeBytesBucket(t *testing.T) {
+	var dbFile = "TestBadExchangeBytes.db"
+	os.Remove(dbFile)
+	defer os.Remove(dbFile)
+	db, err := bolt.Open(dbFile, 0600, nil)
+	err = db.Update(func(tx *bolt.Tx) error {
+		bucket, err := tx.CreateBucketIfNotExists([]byte("exchanges"))
+		if err != nil {
+			return fmt.Errorf("create bucket: %s", err)
+		}
+		return bucket.Put([]byte("bad-bytes"), []byte{0, 1, 2, 3})
+	})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	NewFromDisk(db, "bad-bytes", make(chan *Exchange))
+}
+
+func TestNewFromMethod(t *testing.T) {
+	var method = &amqp.ExchangeDeclare{
+		Reserved_1: 0,
+		Exchange:   "ex-method",
+		Type:       "topic",
+		Passive:    true,
+		Durable:    true,
+		AutoDelete: true,
+		Internal:   true,
+		NoWait:     false,
+		Arguments:  amqp.NewTable(),
+	}
+	exMethod, err := NewFromMethod(method, true, make(chan *Exchange))
+	if err != nil {
+		t.Errorf(err.Msg)
+	}
+	exNormal := NewExchange("ex-method", EX_TYPE_TOPIC, true, true, true, amqp.NewTable(), true, make(chan *Exchange))
+	if !exNormal.EquivalentExchanges(exMethod) {
+		t.Errorf("Inconsistency between NewExchange and NewFromMethod")
+	}
+	// Bad exchange type
+	method.Type = "headers"
+	exMethod, err = NewFromMethod(method, true, make(chan *Exchange))
+	if err == nil {
+		t.Errorf("Parsed bad exchange method")
+	}
+	if err.Code != 503 {
+		t.Errorf("Wrong error code on bad exchange parse")
 	}
 }

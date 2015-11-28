@@ -199,7 +199,7 @@ func (exchange *Exchange) Persist(db *bolt.DB) error {
 			return fmt.Errorf("create bucket: %s", err)
 		}
 		exBytes, err := exchange.ExchangeState.Marshal()
-		if err != nil {
+		if err != nil { // pragma: nocover -- no idea how to produce this error
 			return fmt.Errorf("Could not marshal exchange %s", exchange.Name)
 		}
 
