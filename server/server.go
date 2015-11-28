@@ -141,7 +141,7 @@ func (server *Server) initExchanges() {
 		panic("Couldn't load exchanges!")
 	}
 	for _, ex := range exchanges {
-		err = server.addExchange(ex, true)
+		err = server.addExchange(ex)
 		if err != nil {
 			panic("Couldn't load queues!")
 		}
@@ -170,20 +170,16 @@ func (server *Server) genDefaultExchange(name string, typ uint8) {
 			true,
 			server.exchangeDeleter,
 		)
-		err := server.addExchange(ex, true)
+		// Persist
+		ex.Persist(server.db)
+		err := server.addExchange(ex)
 		if err != nil {
 			panic(err.Error())
 		}
 	}
 }
 
-func (server *Server) addExchange(ex *exchange.Exchange, diskLoad bool) error {
-	if ex.Durable && !diskLoad {
-		var err = ex.Persist(server.db)
-		if err != nil {
-			return err
-		}
-	}
+func (server *Server) addExchange(ex *exchange.Exchange) error {
 	server.exchanges[ex.Name] = ex
 	return nil
 }

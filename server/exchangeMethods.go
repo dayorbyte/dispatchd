@@ -82,7 +82,11 @@ func (channel *Channel) exchangeDeclare(method *amqp.ExchangeDeclare) *amqp.AMQP
 		return amqp.NewSoftError(403, "Exchange names starting with 'amq.' are reserved", classId, methodId)
 	}
 
-	err = channel.server.addExchange(ex, false)
+	err = channel.server.addExchange(ex)
+	if err != nil {
+		return amqp.NewSoftError(500, err.Error(), classId, methodId)
+	}
+	err = ex.Persist(channel.server.db)
 	if err != nil {
 		return amqp.NewSoftError(500, err.Error(), classId, methodId)
 	}
