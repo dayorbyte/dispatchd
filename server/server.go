@@ -178,19 +178,11 @@ func (server *Server) initExchanges() {
 		}
 		// iterate through exchanges
 		cursor := bucket.Cursor()
-		for name, data := cursor.First(); name != nil; name, data = cursor.Next() {
-			// TODO: maybe convert the name ~ to empty string?
-			var method = &amqp.ExchangeDeclare{}
-			var reader = bytes.NewReader(data)
-			var err = method.Read(reader)
-			if err != nil {
-				panic(fmt.Sprintf("Failed to read exchange '%s': %s", name, err.Error()))
-			}
-			system, err := amqp.ReadOctet(reader)
-			// fmt.Printf("Got exchange from disk: %s (%s)\n", method.Exchange, method.Type)
-			ex, amqpErr := exchange.NewFromMethod(method, system == 1, server.exchangeDeleter)
-			if amqpErr != nil {
-				panic(amqpErr.Msg)
+		for name, _ := cursor.First(); name != nil; name, _ = cursor.Next() {
+			// Duplicate work since we already have the data
+			ex, err := exchange.NewFromDiskBoltTx(bucket, name, server.exchangeDeleter)
+			if err != nil { // pragma: nocover
+				panic(err.Error())
 			}
 			if server.addExchange(ex, true) != nil {
 				return err
@@ -203,16 +195,6 @@ func (server *Server) initExchanges() {
 	}
 
 	// DECLARE MISSING SYSEM EXCHANGES
-	// NewExchange(
-	// 	name string,
-	// 	extype Extype,
-	// 	durable bool,
-	// 	autodelete bool,
-	// 	internal bool,
-	// 	arguments *amqp.Table,
-	// 	system bool,
-	// 	deleteChan chan *Exchange,
-	// )
 	var _, hasKey = server.exchanges[""]
 	if !hasKey {
 		var defEx = exchange.NewExchange("", exchange.EX_TYPE_DIRECT, true, false, false, amqp.NewTable(), true, server.exchangeDeleter)

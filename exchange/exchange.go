@@ -219,23 +219,27 @@ func NewFromDisk(db *bolt.DB, key string, deleteChan chan *Exchange) (ex *Exchan
 		if bucket == nil {
 			return fmt.Errorf("Bucket not found: 'exchanges'")
 		}
-		var lookupKey = key
-		if key == "" {
-			lookupKey = "~"
-		}
-		exBytes := bucket.Get([]byte(lookupKey))
-		if exBytes == nil {
-			return fmt.Errorf("Key not found: '%s'", key)
-		}
-		exState := gen.ExchangeState{}
-		err = exState.Unmarshal(exBytes)
-		if err != nil {
-			return fmt.Errorf("Could not unmarshal exchange %s", key)
-		}
-		ex = NewFromExchangeState(exState, deleteChan)
-		return nil
+		ex, err = NewFromDiskBoltTx(bucket, []byte(key), deleteChan)
+		return err
 	})
 	return
+}
+
+func NewFromDiskBoltTx(bucket *bolt.Bucket, key []byte, deleteChan chan *Exchange) (ex *Exchange, err error) {
+	var lookupKey = key
+	if len(key) == 0 {
+		lookupKey = []byte{'~'}
+	}
+	exBytes := bucket.Get(lookupKey)
+	if exBytes == nil {
+		return nil, fmt.Errorf("Key not found: '%s'", key)
+	}
+	exState := gen.ExchangeState{}
+	err = exState.Unmarshal(exBytes)
+	if err != nil {
+		return nil, fmt.Errorf("Could not unmarshal exchange %s", key)
+	}
+	return NewFromExchangeState(exState, deleteChan), nil
 }
 
 func (exchange *Exchange) Depersist(db *bolt.DB) error {
