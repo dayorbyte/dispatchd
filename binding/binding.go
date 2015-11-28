@@ -7,15 +7,13 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/mq/gen"
 	"regexp"
 	"strings"
 )
 
 type Binding struct {
-	QueueName    string
-	ExchangeName string
-	Key          string
-	Arguments    *amqp.Table
+	gen.BindingState
 	topicMatcher *regexp.Regexp
 }
 
@@ -98,10 +96,12 @@ func NewBinding(queueName string, exchangeName string, key string, arguments *am
 	}
 
 	return &Binding{
-		QueueName:    queueName,
-		ExchangeName: exchangeName,
-		Key:          key,
-		Arguments:    arguments,
+		BindingState: gen.BindingState{
+			QueueName:    queueName,
+			ExchangeName: exchangeName,
+			Key:          key,
+			Arguments:    arguments,
+		},
 		topicMatcher: re,
 	}, nil
 }
