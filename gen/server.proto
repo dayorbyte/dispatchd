@@ -23,8 +23,9 @@ message ExchangeState {
 message BindingState {
   option (gogoproto.goproto_unrecognized) = false;
   option (gogoproto.goproto_getters) = false;
-  optional string queue_name = 1[(gogoproto.nullable) = false];
-  optional string exchange_name = 2[(gogoproto.nullable) = false];
-  optional string key = 3 [(gogoproto.nullable) = false];
-  optional amqp.Table arguments = 4;
+  optional bytes id = 1;
+  optional string queue_name = 2 [(gogoproto.nullable) = false];
+  optional string exchange_name = 3 [(gogoproto.nullable) = false];
+  optional string key = 4 [(gogoproto.nullable) = false];
+  optional amqp.Table arguments = 5;
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/gen"
+	"github.com/jeffjenkins/mq/persist"
 	"regexp"
 	"strings"
 )
@@ -38,39 +39,22 @@ func (binding *Binding) Equals(other *Binding) bool {
 }
 
 func (binding *Binding) Depersist(db *bolt.DB) error {
-	// TODO: record if these are durable and only depersist if they are
-	return db.Update(func(tx *bolt.Tx) error {
-		return binding.DepersistBoltTx(tx)
-	})
+	return persist.DepersistOne(db, "bindings", string(binding.Id))
 }
 
 func (binding *Binding) DepersistBoltTx(tx *bolt.Tx) error {
-	var method = &amqp.QueueBind{
-		Exchange:   binding.ExchangeName,
-		Queue:      binding.QueueName,
-		RoutingKey: binding.Key,
-		Arguments:  binding.Arguments,
-	}
 	bucket, err := tx.CreateBucketIfNotExists([]byte("bindings"))
 	if err != nil { // pragma: nocover
 		// If we're hitting this it means the disk is full, the db is readonly,
 		// or something else has gone irrecoverably wrong
 		panic(fmt.Sprintf("create bucket: %s", err))
 	}
-	var buffer = bytes.NewBuffer(make([]byte, 0, 50)) // TODO: don't I know the size?
-	method.Write(buffer)
-	// trim off the first four bytes, they're the class/method, which we
-	// already know
-	var value = buffer.Bytes()[4:]
-	// bindings aren't named, so we hash the bytes we were given. I wonder
-	// if we could make make the bytes the key and use no value?
-	hash := sha1.New()
-	hash.Write(value)
-	return bucket.Delete([]byte(hash.Sum(nil)))
+	return persist.DepersistOneBoltTx(bucket, string(binding.Id))
 }
 
 func NewBinding(queueName string, exchangeName string, key string, arguments *amqp.Table, topic bool) (*Binding, error) {
 	var re *regexp.Regexp = nil
+	// Topic routing key
 	if topic {
 		if !topicRoutingPatternPattern.MatchString(key) {
 			return nil, fmt.Errorf("Topic exchange routing key can only have a-zA-Z0-9, or # or *")
@@ -97,6 +81,7 @@ func NewBinding(queueName string, exchangeName string, key string, arguments *am
 
 	return &Binding{
 		BindingState: gen.BindingState{
+			Id:           calcId(queueName, exchangeName, key, arguments),
 			QueueName:    queueName,
 			ExchangeName: exchangeName,
 			Key:          key,
@@ -139,4 +124,24 @@ func (b *Binding) MatchTopic(message *amqp.BasicPublish) bool {
 	var ex = b.ExchangeName == message.Exchange
 	var match = b.topicMatcher.MatchString(message.RoutingKey)
 	return ex && match
+}
+
+// Calculate an ID by encoding the QueueBind call that created this binding and
+// taking a hash of it.
+func calcId(queueName string, exchangeName string, key string, arguments *amqp.Table) []byte {
+	var method = &amqp.QueueBind{
+		Queue:      queueName,
+		Exchange:   exchangeName,
+		RoutingKey: key,
+		Arguments:  arguments,
+	}
+	var buffer = bytes.NewBuffer(make([]byte, 0))
+	method.Write(buffer)
+	// trim off the first four bytes, they're the class/method, which we
+	// already know
+	var value = buffer.Bytes()[4:]
+	// bindings aren't named, so we hash the bytes we encoded
+	hash := sha1.New()
+	hash.Write(value)
+	return []byte(hash.Sum(nil))
 }
