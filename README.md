@@ -1,6 +1,12 @@
-# mq - An AMQP Server Written in Go
+# dispatchd - A Message Broker and Queue Server
 
 ## Status
+
+`dispatchd` is in alpha.
+
+It generally works but is not hardened enough for production use. More on what it can and can't do below
+
+## What's done?
 
 * The wire protcol is complete. It can read or write any frame or data type.
   * A python script uses the XML spec to generate a lot of what's needed
