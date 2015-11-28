@@ -233,8 +233,10 @@ func (server *Server) deleteQueue(method *amqp.QueueDelete, connId int64) (uint3
 	// Close to stop anything from changing
 	queue.Close()
 	// Delete for storage
-	server.depersistQueue(queue)
+	bindings := server.bindingsForQueue(queue.Name)
 	server.removeBindingsForQueue(method.Queue)
+	server.depersistQueue(queue, bindings)
+
 	// Cleanup
 	numPurged, err := queue.Delete(method.IfUnused, method.IfEmpty)
 	delete(server.queues, method.Queue)
@@ -245,8 +247,7 @@ func (server *Server) deleteQueue(method *amqp.QueueDelete, connId int64) (uint3
 
 }
 
-func (server *Server) depersistQueue(queue *queue.Queue) error {
-	bindings := server.bindingsForQueue(queue.Name)
+func (server *Server) depersistQueue(queue *queue.Queue, bindings []*binding.Binding) error {
 	return server.db.Update(func(tx *bolt.Tx) error {
 		for _, binding := range bindings {
 			if err := binding.DepersistBoltTx(tx); err != nil {
