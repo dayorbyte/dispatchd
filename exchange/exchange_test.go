@@ -517,6 +517,7 @@ func TestRemoveBinding(t *testing.T) {
 		RoutingKey: "a.b.c",
 		Arguments:  amqp.NewTable(),
 	}
+
 	// Add bindings
 	ex.AddBinding(b, -1, false)
 	b.RoutingKey = "d.e.f"
@@ -527,6 +528,13 @@ func TestRemoveBinding(t *testing.T) {
 	ex.AddBinding(b, -1, false)
 	b.RoutingKey = "j.k.l"
 	ex.AddBinding(b, -1, false)
+
+	// Remove a binding that doesn't exist
+	b3, _ := binding.NewBinding("q2", "ex1", "does.not.exist", amqp.NewTable(), true)
+	ex.RemoveBinding(b3)
+	if len(ex.bindings) != 5 {
+		t.Errorf("Wrong number of bindings: %d", len(ex.bindings))
+	}
 
 	// Remove the Q2 bindings
 	b1, _ := binding.NewBinding("q2", "ex1", "g.h.i", amqp.NewTable(), true)
@@ -541,6 +549,7 @@ func TestRemoveBinding(t *testing.T) {
 	if len(ex.BindingsForQueue("q2")) != 0 {
 		t.Errorf("Wrong number of bindings")
 	}
+
 }
 
 func TestAutoDeleteTimeout(t *testing.T) {
