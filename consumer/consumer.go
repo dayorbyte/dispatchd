@@ -37,10 +37,7 @@ type Consumer struct {
 }
 
 type ConsumerQueue interface {
-	GetOne(
-		channel amqp.MessageResourceHolder,
-		consumer amqp.MessageResourceHolder,
-	) (*amqp.QueueMessage, *amqp.Message)
+	GetOne(rhs ...amqp.MessageResourceHolder) (*amqp.QueueMessage, *amqp.Message)
 	MaybeReady() chan bool
 }
 

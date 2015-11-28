@@ -328,7 +328,7 @@ func (q *Queue) GetOneForced() *amqp.QueueMessage {
 	return qMsg
 }
 
-func (q *Queue) GetOne(channel amqp.MessageResourceHolder, consumer amqp.MessageResourceHolder) (*amqp.QueueMessage, *amqp.Message) {
+func (q *Queue) GetOne(rhs ...amqp.MessageResourceHolder) (*amqp.QueueMessage, *amqp.Message) {
 	q.queueLock.Lock()
 	defer q.queueLock.Unlock()
 	// Empty check
@@ -340,10 +340,6 @@ func (q *Queue) GetOne(channel amqp.MessageResourceHolder, consumer amqp.Message
 	// from the channel.
 	var qm = q.queue.Front().Value.(*amqp.QueueMessage)
 
-	var rhs = []amqp.MessageResourceHolder{
-		channel,
-		consumer,
-	}
 	var msg, acquired = q.msgStore.Get(qm, rhs)
 	if acquired {
 		q.queue.Remove(q.queue.Front())
