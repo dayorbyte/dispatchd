@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/binding"
+	"github.com/jeffjenkins/mq/queue"
 	"github.com/jeffjenkins/mq/util"
 )
 
@@ -52,19 +53,41 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.AMQPError 
 	}
 
 	// Add
-	q, err := channel.conn.server.declareQueue(method, channel.conn.id)
+
+	var connId = channel.conn.id
+	if !method.Exclusive {
+		connId = -1
+	}
+	var queue = queue.NewQueue(
+		method.Queue,
+		method.Durable,
+		method.Exclusive,
+		method.AutoDelete,
+		method.Arguments,
+		connId,
+		channel.server.msgStore,
+		channel.server.queueDeleter,
+	)
+	existing, hasKey := channel.server.queues[queue.Name]
+	if hasKey {
+		if !existing.EquivalentQueues(queue) {
+			return amqp.NewSoftError(406, "Queues exists and is not equivalent to existing", classId, methodId)
+		}
+		return nil
+	}
+	err = channel.server.addQueue(queue)
 	if err != nil {
 		return amqp.NewSoftError(500, "Error creating queue", classId, methodId)
 	}
 
 	// Persist
-	if q.Durable {
-		q.Persist(channel.server.db)
+	if queue.Durable {
+		queue.Persist(channel.server.db)
 	}
 
 	channel.lastQueueName = method.Queue
 	if !method.NoWait {
-		channel.SendMethod(&amqp.QueueDeclareOk{q.Name, uint32(0), uint32(0)})
+		channel.SendMethod(&amqp.QueueDeclareOk{queue.Name, uint32(0), uint32(0)})
 	}
 	return nil
 }

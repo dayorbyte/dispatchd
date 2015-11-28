@@ -87,7 +87,14 @@ func NewFromPersistedState(state *gen.QueueState, msgStore *msgstore.MessageStor
 	}
 }
 
-func equivalentQueues(q1 *Queue, q2 *Queue) bool {
+func (q1 *Queue) EquivalentQueues(q2 *Queue) bool {
+	if q1 == nil {
+		return q2 == nil
+	}
+	if q2 == nil {
+		return false
+	}
+
 	// Note: autodelete is not included since the spec says to ignore
 	// the field if the queue is already created
 	if q1.Name != q2.Name {

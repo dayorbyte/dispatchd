@@ -180,6 +180,8 @@ func (server *Server) genDefaultExchange(name string, typ uint8) {
 }
 
 func (server *Server) addExchange(ex *exchange.Exchange) error {
+	server.serverLock.Lock()
+	defer server.serverLock.Unlock()
 	server.exchanges[ex.Name] = ex
 	return nil
 }
@@ -196,28 +198,6 @@ func (server *Server) addQueue(q *queue.Queue) error {
 	defaultExchange.AddBinding(defaultBinding, q.ConnId)
 	q.Start()
 	return nil
-}
-
-func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64) (*queue.Queue, error) {
-	if !method.Exclusive {
-		connId = -1
-	}
-	var queue = queue.NewQueue(
-		method.Queue,
-		method.Durable,
-		method.Exclusive,
-		method.AutoDelete,
-		method.Arguments,
-		connId,
-		server.msgStore,
-		server.queueDeleter,
-	)
-	existing, hasKey := server.queues[queue.Name]
-	if hasKey {
-		return existing, nil
-	}
-	server.addQueue(queue)
-	return queue, nil
 }
 
 func (server *Server) deleteQueuesForConn(connId int64) {
