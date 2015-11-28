@@ -195,40 +195,26 @@ func (server *Server) initExchanges() {
 	}
 
 	// DECLARE MISSING SYSEM EXCHANGES
-	var _, hasKey = server.exchanges[""]
-	if !hasKey {
-		var defEx = exchange.NewExchange("", exchange.EX_TYPE_DIRECT, true, false, false, amqp.NewTable(), true, server.exchangeDeleter)
-		err := server.addExchange(defEx, true)
-		if err != nil {
-			panic(err.Error())
-		}
-	}
+	server.genDefaultExchange("", exchange.EX_TYPE_DIRECT)
+	server.genDefaultExchange("amq.direct", exchange.EX_TYPE_DIRECT)
+	server.genDefaultExchange("amq.fanout", exchange.EX_TYPE_FANOUT)
+	server.genDefaultExchange("amq.topic", exchange.EX_TYPE_TOPIC)
+}
 
-	// amq.direct
-	_, hasKey = server.exchanges["amq.direct"]
+func (server *Server) genDefaultExchange(name string, typ uint8) {
+	_, hasKey := server.exchanges[name]
 	if !hasKey {
-		var dirEx = exchange.NewExchange("amq.direct", exchange.EX_TYPE_DIRECT, true, false, false, amqp.NewTable(), true, server.exchangeDeleter)
-		err := server.addExchange(dirEx, true)
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-
-	// amqp.fanout
-	_, hasKey = server.exchanges["amq.fanout"]
-	if !hasKey {
-		var dirEx = exchange.NewExchange("amq.fanout", exchange.EX_TYPE_FANOUT, true, false, false, amqp.NewTable(), true, server.exchangeDeleter)
-		err := server.addExchange(dirEx, true)
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-
-	// amqp.topic
-	_, hasKey = server.exchanges["amq.topic"]
-	if !hasKey {
-		var dirEx = exchange.NewExchange("amq.topic", exchange.EX_TYPE_TOPIC, true, false, false, amqp.NewTable(), true, server.exchangeDeleter)
-		err := server.addExchange(dirEx, true)
+		var ex = exchange.NewExchange(
+			name,
+			exchange.EX_TYPE_TOPIC,
+			true,
+			false,
+			false,
+			amqp.NewTable(),
+			true,
+			server.exchangeDeleter,
+		)
+		err := server.addExchange(ex, true)
 		if err != nil {
 			panic(err.Error())
 		}
