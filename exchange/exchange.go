@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/gogo/protobuf/proto"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/binding"
 	"github.com/jeffjenkins/mq/gen"
@@ -11,6 +12,12 @@ import (
 	"sync"
 	"time"
 )
+
+type ExchangeStateFactory struct{}
+
+func (qsf *ExchangeStateFactory) New() proto.Unmarshaler {
+	return &gen.ExchangeState{}
+}
 
 var EXCHANGES_BUCKET_NAME = []byte("exchanges")
 

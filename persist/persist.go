@@ -6,6 +6,10 @@ import (
 	"github.com/gogo/protobuf/proto"
 )
 
+type UnmarshalerFactory interface {
+	New() proto.Unmarshaler
+}
+
 //
 //            Persist
 //
@@ -92,6 +96,31 @@ func LoadManyBoltTx(bucket *bolt.Bucket, objs map[string]proto.Unmarshaler) erro
 		}
 	}
 	return nil
+}
+
+func LoadAll(db *bolt.DB, bucket []byte, factory UnmarshalerFactory) (map[string]proto.Unmarshaler, error) {
+	ret := make(map[string]proto.Unmarshaler)
+	err := db.View(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket(bucket)
+		if bucket == nil {
+			return nil
+		}
+		// iterate through queues
+		cursor := bucket.Cursor()
+		for name, data := cursor.First(); name != nil; name, data = cursor.Next() {
+			obj := factory.New()
+			err := obj.Unmarshal(data)
+			if err != nil {
+				return fmt.Errorf("Could not unmarshal key %s", string(name))
+			}
+			ret[string(name)] = obj
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 
 //

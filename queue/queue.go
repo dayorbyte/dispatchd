@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/boltdb/bolt"
+	"github.com/gogo/protobuf/proto"
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/consumer"
 	"github.com/jeffjenkins/mq/gen"
@@ -17,6 +18,12 @@ import (
 )
 
 var QUEUE_BUCKET_NAME = []byte("queues")
+
+type QueueStateFactory struct{}
+
+func (qsf *QueueStateFactory) New() proto.Unmarshaler {
+	return &gen.QueueState{}
+}
 
 type Queue struct {
 	gen.QueueState
