@@ -73,16 +73,15 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.AMQPError 
 		if !existing.EquivalentQueues(queue) {
 			return amqp.NewSoftError(406, "Queues exists and is not equivalent to existing", classId, methodId)
 		}
-		return nil
-	}
-	err = channel.server.addQueue(queue)
-	if err != nil {
-		return amqp.NewSoftError(500, "Error creating queue", classId, methodId)
-	}
-
-	// Persist
-	if queue.Durable {
-		queue.Persist(channel.server.db)
+	} else {
+		err = channel.server.addQueue(queue)
+		if err != nil {
+			return amqp.NewSoftError(500, "Error creating queue", classId, methodId)
+		}
+		// Persist
+		if queue.Durable {
+			queue.Persist(channel.server.db)
+		}
 	}
 
 	channel.lastQueueName = method.Queue
