@@ -3,7 +3,7 @@ package amqp
 import (
 	"errors"
 	"fmt"
-	"github.com/jeffjenkins/mq/util"
+	"github.com/jeffjenkins/dispatchd/util"
 	"io"
 	"regexp"
 )

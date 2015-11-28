@@ -2,9 +2,9 @@ package consumer
 
 import (
 	"encoding/json"
-	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/msgstore"
-	"github.com/jeffjenkins/mq/stats"
+	"github.com/jeffjenkins/dispatchd/amqp"
+	"github.com/jeffjenkins/dispatchd/msgstore"
+	"github.com/jeffjenkins/dispatchd/stats"
 	"sync"
 )
 

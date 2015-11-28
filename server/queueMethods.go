@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/binding"
-	"github.com/jeffjenkins/mq/queue"
-	"github.com/jeffjenkins/mq/util"
+	"github.com/jeffjenkins/dispatchd/amqp"
+	"github.com/jeffjenkins/dispatchd/binding"
+	"github.com/jeffjenkins/dispatchd/queue"
+	"github.com/jeffjenkins/dispatchd/util"
 )
 
 func (channel *Channel) queueRoute(methodFrame amqp.MethodFrame) *amqp.AMQPError {

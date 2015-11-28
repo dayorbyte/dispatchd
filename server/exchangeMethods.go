@@ -2,8 +2,8 @@ package main
 
 import (
 	_ "fmt"
-	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/exchange"
+	"github.com/jeffjenkins/dispatchd/amqp"
+	"github.com/jeffjenkins/dispatchd/exchange"
 	"strings"
 )
 

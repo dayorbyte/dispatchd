@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/gogo/protobuf/proto"
-	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/gen"
-	"github.com/jeffjenkins/mq/persist"
+	"github.com/jeffjenkins/dispatchd/amqp"
+	"github.com/jeffjenkins/dispatchd/gen"
+	"github.com/jeffjenkins/dispatchd/persist"
 	"regexp"
 	"strings"
 )

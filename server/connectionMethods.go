@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/dispatchd/amqp"
 	"time"
 )
 
@@ -90,13 +90,13 @@ func (channel *Channel) startConnection() *amqp.AMQPError {
 	// TODO: the java rabbitmq client I'm using for load testing doesn't like these string
 	//       fields even though the go/python clients do. If they are set as longstr (bytes)
 	//       instead they work, so I'm doing that for now
-	serverProps.SetKey("product", []byte("mq"))
+	serverProps.SetKey("product", []byte("dispatchd"))
 	serverProps.SetKey("version", []byte("0.1"))
 	serverProps.SetKey("copyright", []byte("Jeffrey Jenkins, 2015"))
 	serverProps.SetKey("capabilities", capabilities)
 	serverProps.SetKey("platform", []byte("TODO"))
 	serverProps.SetKey("host", []byte("TODO"))
-	serverProps.SetKey("information", []byte("https://github.com/jeffjenkins/mq"))
+	serverProps.SetKey("information", []byte("https://github.com/jeffjenkins/dispatchd"))
 
 	channel.SendMethod(&amqp.ConnectionStart{0, 9, serverProps, []byte("PLAIN"), []byte("en_US")})
 	return nil

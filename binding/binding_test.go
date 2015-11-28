@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/boltdb/bolt"
-	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/dispatchd/amqp"
 	"os"
 	"testing"
 )

@@ -16,7 +16,7 @@ func handleConnection(server *Server, conn net.Conn) {
 
 func main() {
 	runtime.SetBlockProfileRate(1)
-	var server = NewServer("mq.db")
+	var server = NewServer("dispatchd.db")
 	ln, err := net.Listen("tcp", ":1111")
 	if err != nil {
 		fmt.Printf("Error!\n")

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/gogo/protobuf/proto"
-	"github.com/jeffjenkins/mq/amqp"
-	"github.com/jeffjenkins/mq/stats"
+	"github.com/jeffjenkins/dispatchd/amqp"
+	"github.com/jeffjenkins/dispatchd/stats"
 	"sync"
 )
 

@@ -1,6 +1,6 @@
 package gen;
 
-import "github.com/jeffjenkins/mq/amqp/amqp.proto";
+import "github.com/jeffjenkins/dispatchd/amqp/amqp.proto";
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 option (gogoproto.marshaler_all) = true;

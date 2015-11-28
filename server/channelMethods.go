@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/dispatchd/amqp"
 )
 
 func (channel *Channel) channelRoute(methodFrame amqp.MethodFrame) *amqp.AMQPError {

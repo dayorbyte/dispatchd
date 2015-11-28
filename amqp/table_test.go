@@ -21,7 +21,7 @@ func TestBasicFieldArray(t *testing.T) {
 func TestBasicTable(t *testing.T) {
 	// Create
 	var table = NewTable()
-	table.SetKey("product", "mq")
+	table.SetKey("product", "dispatchd")
 	table.SetKey("version", uint8(7))
 	table.SetKey("version", uint8(6))               // for code coverage, reset a value
 	err := table.SetKey("bad", make(map[bool]bool)) // for code coverage, a type it doesn't understand

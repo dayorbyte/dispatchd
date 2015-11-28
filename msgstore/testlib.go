@@ -3,7 +3,7 @@ package msgstore
 import (
 	"fmt"
 	"github.com/boltdb/bolt"
-	"github.com/jeffjenkins/mq/amqp"
+	"github.com/jeffjenkins/dispatchd/amqp"
 	"reflect"
 )
 
