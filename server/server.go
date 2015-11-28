@@ -152,25 +152,16 @@ func (server *Server) initQueues() {
 
 func (server *Server) initExchanges() {
 	// LOAD FROM PERSISTENT STORAGE
-	err := server.db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("exchanges"))
-		if bucket == nil {
-			return nil
+	exchanges, err := exchange.LoadAllExchanges(server.db, server.exchangeDeleter)
+	if err != nil {
+		panic("Couldn't load exchanges!")
+	}
+	for _, ex := range exchanges {
+		err = server.addExchange(ex, true)
+		if err != nil {
+			panic("Couldn't load queues!")
 		}
-		// iterate through exchanges
-		cursor := bucket.Cursor()
-		for name, _ := cursor.First(); name != nil; name, _ = cursor.Next() {
-			// Duplicate work since we already have the data
-			ex, err := exchange.NewFromDiskBoltTx(bucket, name, server.exchangeDeleter)
-			if err != nil { // pragma: nocover
-				panic(err.Error())
-			}
-			if server.addExchange(ex, true) != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	}
 	if err != nil {
 		panic("FAILED TO LOAD EXCHANGES: " + err.Error())
 	}

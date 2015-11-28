@@ -82,9 +82,9 @@ func NewExchange(
 	}
 }
 
-func NewFromExchangeState(exState gen.ExchangeState, deleteChan chan *Exchange) *Exchange {
+func NewFromExchangeState(exState *gen.ExchangeState, deleteChan chan *Exchange) *Exchange {
 	return &Exchange{
-		ExchangeState:    exState,
+		ExchangeState:    *exState,
 		deleteChan:       deleteChan,
 		incoming:         make(chan amqp.Frame),
 		bindings:         make([]*binding.Binding, 0),
@@ -164,6 +164,18 @@ func exchangeTypeToName(et uint8) (string, error) {
 	}
 }
 
+func LoadAllExchanges(db *bolt.DB, deleteChan chan *Exchange) (map[string]*Exchange, error) {
+	exStateMap, err := persist.LoadAll(db, EXCHANGES_BUCKET_NAME, &ExchangeStateFactory{})
+	if err != nil {
+		return nil, err
+	}
+	var ret = make(map[string]*Exchange)
+	for key, state := range exStateMap {
+		ret[key] = NewFromExchangeState(state.(*gen.ExchangeState), deleteChan)
+	}
+	return ret, nil
+}
+
 func (exchange *Exchange) QueuesForPublish(msg *amqp.Message) (map[string]bool, *amqp.AMQPError) {
 	var queues = make(map[string]bool)
 	if msg.Method.Exchange != exchange.Name {
@@ -236,7 +248,7 @@ func NewFromDiskBoltTx(bucket *bolt.Bucket, key []byte, deleteChan chan *Exchang
 	if err != nil {
 		return nil, fmt.Errorf("Could not unmarshal exchange %s", key)
 	}
-	return NewFromExchangeState(exState, deleteChan), nil
+	return NewFromExchangeState(&exState, deleteChan), nil
 }
 
 func (exchange *Exchange) Depersist(db *bolt.DB) error {
