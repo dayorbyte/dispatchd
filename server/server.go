@@ -151,7 +151,6 @@ func (server *Server) initQueues() {
 }
 
 func (server *Server) initExchanges() {
-	fmt.Printf("Loading exchanges from disk\n")
 	// LOAD FROM PERSISTENT STORAGE
 	err := server.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte("exchanges"))
@@ -173,7 +172,7 @@ func (server *Server) initExchanges() {
 		return nil
 	})
 	if err != nil {
-		panic("********** FAILED TO LOAD EXCHANGES: " + err.Error())
+		panic("FAILED TO LOAD EXCHANGES: " + err.Error())
 	}
 
 	// DECLARE MISSING SYSEM EXCHANGES
