@@ -7,6 +7,7 @@ import (
 	"github.com/jeffjenkins/mq/amqp"
 	"github.com/jeffjenkins/mq/binding"
 	"github.com/jeffjenkins/mq/gen"
+	"github.com/jeffjenkins/mq/persist"
 	"sync"
 	"time"
 )
@@ -193,22 +194,11 @@ func (exchange *Exchange) QueuesForPublish(msg *amqp.Message) (map[string]bool, 
 }
 
 func (exchange *Exchange) Persist(db *bolt.DB) error {
-	return db.Update(func(tx *bolt.Tx) error {
-		bucket, err := tx.CreateBucketIfNotExists([]byte("exchanges"))
-		if err != nil { // pragma: nocover
-			return fmt.Errorf("create bucket: %s", err)
-		}
-		exBytes, err := exchange.ExchangeState.Marshal()
-		if err != nil { // pragma: nocover -- no idea how to produce this error
-			return fmt.Errorf("Could not marshal exchange %s", exchange.Name)
-		}
-
-		var name = exchange.Name
-		if name == "" {
-			name = "~"
-		}
-		return bucket.Put([]byte(name), exBytes)
-	})
+	var key = exchange.Name
+	if key == "" {
+		key = "~"
+	}
+	return persist.PersistOne(db, "exchanges", key, &exchange.ExchangeState)
 }
 
 func NewFromDisk(db *bolt.DB, key string, deleteChan chan *Exchange) (ex *Exchange, err error) {
