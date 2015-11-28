@@ -21,19 +21,20 @@ const (
 )
 
 type Exchange struct {
-	Name         string
-	Extype       Extype
-	Durable      bool
-	autodelete   bool
-	internal     bool
-	arguments    *amqp.Table
-	System       bool
-	bindings     []*binding.Binding
-	bindingsLock sync.Mutex
-	incoming     chan amqp.Frame
-	Closed       bool
-	deleteActive time.Time
-	deleteChan   chan *Exchange
+	Name             string
+	Extype           Extype
+	Durable          bool
+	autodelete       bool
+	internal         bool
+	arguments        *amqp.Table
+	System           bool
+	bindings         []*binding.Binding
+	bindingsLock     sync.Mutex
+	incoming         chan amqp.Frame
+	Closed           bool
+	deleteActive     time.Time
+	deleteChan       chan *Exchange
+	autodeletePeriod time.Duration
 }
 
 func (exchange *Exchange) Close() {
@@ -71,8 +72,9 @@ func NewExchange(
 		System:     system,
 		deleteChan: deleteChan,
 		// not passed in
-		incoming: make(chan amqp.Frame),
-		bindings: make([]*binding.Binding, 0),
+		incoming:         make(chan amqp.Frame),
+		bindings:         make([]*binding.Binding, 0),
+		autodeletePeriod: 5 * time.Second,
 	}
 }
 
@@ -281,7 +283,7 @@ func (exchange *Exchange) autodeleteTimeout() {
 	// I think this is probably safe enough.
 	var now = time.Now()
 	exchange.deleteActive = now
-	time.Sleep(5 * time.Second)
+	time.Sleep(exchange.autodeletePeriod)
 	if exchange.deleteActive == now {
 		exchange.deleteChan <- exchange
 	}

@@ -529,22 +529,34 @@ func TestRemoveBinding(t *testing.T) {
 	ex.AddBinding(b, -1, false)
 
 	// Remove the Q2 bindings
-	b1, err := binding.NewBinding("q2", "ex1", "g.h.i", amqp.NewTable(), true)
-	if err != nil {
-		t.Errorf("Error creating binding")
-	}
+	b1, _ := binding.NewBinding("q2", "ex1", "g.h.i", amqp.NewTable(), true)
 	ex.RemoveBinding(b1)
 	if len(ex.bindings) != 4 {
 		t.Errorf("Wrong number of bindings: %d", len(ex.bindings))
 	}
-	b2, err := binding.NewBinding("q2", "ex1", "j.k.l", amqp.NewTable(), true)
-	if err != nil {
-		t.Errorf("Error creating binding")
-	}
+	b2, _ := binding.NewBinding("q2", "ex1", "j.k.l", amqp.NewTable(), true)
 	ex.RemoveBinding(b2)
 
 	// Check that all q2 bindings are gone
 	if len(ex.BindingsForQueue("q2")) != 0 {
 		t.Errorf("Wrong number of bindings")
+	}
+}
+
+func TestAutoDeleteTimeout(t *testing.T) {
+	var deleter = make(chan *Exchange)
+	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, deleter)
+	ex.autodeletePeriod = 10 * time.Millisecond
+	ex.AddBinding(&amqp.QueueBind{
+		Queue:      "q1",
+		Exchange:   "ex1",
+		RoutingKey: "a.b.c",
+		Arguments:  amqp.NewTable(),
+	}, -1, false)
+	var b, _ = binding.NewBinding("q1", "ex1", "a.b.c", amqp.NewTable(), true)
+	ex.RemoveBinding(b)
+	var toDelete = <-deleter
+	if ex.Name != toDelete.Name {
+		t.Errorf("Integrity error in delete")
 	}
 }
