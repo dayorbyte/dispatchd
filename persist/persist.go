@@ -93,3 +93,41 @@ func LoadManyBoltTx(bucket *bolt.Bucket, objs map[string]proto.Unmarshaler) erro
 	}
 	return nil
 }
+
+//
+//                      Depersist
+//
+
+func DepersistOne(db *bolt.DB, bucket string, key string, obj proto.Unmarshaler) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucket))
+		if bucket == nil {
+			return fmt.Errorf("Bucket not found: '%s'", bucket)
+		}
+		return DepersistOneBoltTx(bucket, key, obj)
+	})
+}
+
+func DepersistOneBoltTx(bucket *bolt.Bucket, key string, obj proto.Unmarshaler) error {
+	return bucket.Delete([]byte(key))
+}
+
+func DepersistMany(db *bolt.DB, bucket string, objs map[string]proto.Unmarshaler) error {
+	return db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(bucket))
+		if bucket == nil { // pragma: nocover
+			return fmt.Errorf("create bucket: '%s'", bucket)
+		}
+		return DepersistManyBoltTx(bucket, objs)
+	})
+}
+
+func DepersistManyBoltTx(bucket *bolt.Bucket, objs map[string]proto.Unmarshaler) error {
+	for key, obj := range objs {
+		err := DepersistOneBoltTx(bucket, key, obj)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
