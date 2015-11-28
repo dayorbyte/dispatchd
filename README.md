@@ -11,7 +11,8 @@ It generally works but is not hardened enough for production use. More on what i
 * The wire protcol (amqp 0-9-1) is complete. It can read or write any frame or data type.
   * A python script uses the XML spec to generate a lot of what's needed
   * It seems like it has trouble talking to the rabbitmq perf testing
-    tool when a non-empty table is sent. Unclear why since pika is OK with it.
+    tool when a a shortstr is sent. Unclear why since pika is OK with it and
+    the bytes seem to be as per the spec
 * Other than transactions, all amqp 0.9.1 methods are implemented
 * Some rabbitmq extensions are implemented:
   * nack (currently the same consumer could receive the message again)
