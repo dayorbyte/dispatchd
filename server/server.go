@@ -123,7 +123,7 @@ func (server *Server) initQueues() {
 		panic("Couldn't load queues!")
 	}
 	for _, queue := range queues {
-		err = server.addQueue(queue, true)
+		err = server.addQueue(queue)
 		if err != nil {
 			panic("Couldn't load queues!")
 		}
@@ -188,7 +188,7 @@ func (server *Server) addExchange(ex *exchange.Exchange, diskLoad bool) error {
 	return nil
 }
 
-func (server *Server) addQueue(q *queue.Queue, fromDisk bool) error {
+func (server *Server) addQueue(q *queue.Queue) error {
 	server.serverLock.Lock()
 	defer server.serverLock.Unlock()
 	server.queues[q.Name] = q
@@ -198,15 +198,11 @@ func (server *Server) addQueue(q *queue.Queue, fromDisk bool) error {
 		return err
 	}
 	defaultExchange.AddBinding(defaultBinding, q.ConnId)
-	// TODO: queue should store bindings too?
-	if q.Durable && !fromDisk {
-		q.Persist(server.db)
-	}
 	q.Start()
 	return nil
 }
 
-func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, fromDisk bool) (string, error) {
+func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64) (*queue.Queue, error) {
 	if !method.Exclusive {
 		connId = -1
 	}
@@ -220,12 +216,12 @@ func (server *Server) declareQueue(method *amqp.QueueDeclare, connId int64, from
 		server.msgStore,
 		server.queueDeleter,
 	)
-	_, hasKey := server.queues[queue.Name]
+	existing, hasKey := server.queues[queue.Name]
 	if hasKey {
-		return queue.Name, nil
+		return existing, nil
 	}
-	server.addQueue(queue, fromDisk)
-	return queue.Name, nil
+	server.addQueue(queue)
+	return queue, nil
 }
 
 func (server *Server) deleteQueuesForConn(connId int64) {

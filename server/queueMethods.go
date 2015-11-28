@@ -51,13 +51,20 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.AMQPError 
 		return amqp.NewSoftError(404, "Queue not found", classId, methodId)
 	}
 
-	name, err := channel.conn.server.declareQueue(method, channel.conn.id, false)
+	// Add
+	q, err := channel.conn.server.declareQueue(method, channel.conn.id)
 	if err != nil {
 		return amqp.NewSoftError(500, "Error creating queue", classId, methodId)
 	}
+
+	// Persist
+	if q.Durable {
+		q.Persist(channel.server.db)
+	}
+
 	channel.lastQueueName = method.Queue
 	if !method.NoWait {
-		channel.SendMethod(&amqp.QueueDeclareOk{name, uint32(0), uint32(0)})
+		channel.SendMethod(&amqp.QueueDeclareOk{q.Name, uint32(0), uint32(0)})
 	}
 	return nil
 }
