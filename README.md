@@ -8,7 +8,7 @@ It generally works but is not hardened enough for production use. More on what i
 
 ## What's done?
 
-* The wire protcol is complete. It can read or write any frame or data type.
+* The wire protcol (amqp 0-9-1) is complete. It can read or write any frame or data type.
   * A python script uses the XML spec to generate a lot of what's needed
   * It seems like it has trouble talking to the rabbitmq perf testing
     tool when a non-empty table is sent. Unclear why since pika is OK with it.
