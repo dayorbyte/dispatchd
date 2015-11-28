@@ -232,21 +232,17 @@ func NewFromDiskBoltTx(bucket *bolt.Bucket, key []byte, deleteChan chan *Exchang
 
 func (exchange *Exchange) Depersist(db *bolt.DB) error {
 	return db.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte("exchanges"))
+		if bucket == nil {
+			return fmt.Errorf("Bucket not found: '%s'", bucket)
+		}
 		for _, binding := range exchange.bindings {
 			if err := binding.DepersistBoltTx(tx); err != nil { // pragma: nocover
 				return err
 			}
 		}
-		return DepersistExchangeBoltTx(tx, exchange)
+		return persist.DepersistOneBoltTx(bucket, exchange.Name)
 	})
-}
-
-func DepersistExchangeBoltTx(tx *bolt.Tx, exchange *Exchange) error {
-	bucket, err := tx.CreateBucketIfNotExists([]byte("exchanges"))
-	if err != nil { // pragma: nocover
-		return fmt.Errorf("create bucket: %s", err)
-	}
-	return bucket.Delete([]byte(exchange.Name))
 }
 
 func (exchange *Exchange) IsTopic() bool {
