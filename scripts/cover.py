@@ -78,9 +78,6 @@ def cover_summary(cover_names):
     if ranges is not None:
       ranges = sorted(ranges)
       ranges = ['{}-{}'.format(x,y) for x, y in ranges]
-      if len(ranges) > 20:
-        ranges = ranges[:20]
-        ranges.append('Report Truncated.')
       if len(ranges) == 0:
         print Colors.GREEN, file+':', Colors.ENDC, 'Full coverage!'
       print Colors.RED, file+':', Colors.ENDC, ', '.join(ranges)
