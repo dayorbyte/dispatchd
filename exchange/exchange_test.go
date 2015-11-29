@@ -160,6 +160,14 @@ func TestEquivalentExchanges(t *testing.T) {
 	}
 }
 
+func bindingHelper(queue string, exchange string, key string, topic bool) *binding.Binding {
+	b, err := binding.NewBinding(queue, exchange, key, amqp.NewTable(), topic)
+	if err != nil {
+		panic(err.Error())
+	}
+	return b
+}
+
 func TestExchangeRoutingDirect(t *testing.T) {
 	// Make exchange ang binding
 	var exDirect = NewExchange(
@@ -172,7 +180,7 @@ func TestExchangeRoutingDirect(t *testing.T) {
 		false,
 		make(chan *Exchange),
 	)
-	exDirect.AddBinding(&amqp.QueueBind{Queue: "q1", Exchange: "exd", RoutingKey: "rk-1"}, -1, false)
+	exDirect.AddBinding(bindingHelper("q1", "exd", "rk-1", false), -1)
 
 	// Create a random message, won't route by default
 	var msg = amqp.RandomMessage(false)
@@ -219,8 +227,8 @@ func TestExchangeRoutingFanout(t *testing.T) {
 		false,
 		make(chan *Exchange),
 	)
-	exFanout.AddBinding(&amqp.QueueBind{Queue: "q1", Exchange: "exf", RoutingKey: "rk-1"}, -1, false)
-	exFanout.AddBinding(&amqp.QueueBind{Queue: "q2", Exchange: "exf", RoutingKey: "rk-2"}, -1, false)
+	exFanout.AddBinding(bindingHelper("q1", "exf", "rk-1", false), -1)
+	exFanout.AddBinding(bindingHelper("q2", "exf", "rk-2", false), -1)
 
 	// Create a random message, won't route by default
 	var msg = amqp.RandomMessage(false)
@@ -233,7 +241,7 @@ func TestExchangeRoutingFanout(t *testing.T) {
 	_, foundQ1 := res["q1"]
 	_, foundQ2 := res["q2"]
 	if !foundQ1 || !foundQ2 {
-		t.Errorf("Failed to route fanout message")
+		t.Errorf("Failed to route fanout message %v %v", foundQ1, foundQ2)
 	}
 }
 
@@ -248,10 +256,10 @@ func TestExchangeRoutingTopic(t *testing.T) {
 		false,
 		make(chan *Exchange),
 	)
-	exTopic.AddBinding(&amqp.QueueBind{Queue: "q1", Exchange: "ext", RoutingKey: "api.msg.*.json"}, -1, false)
-	exTopic.AddBinding(&amqp.QueueBind{Queue: "q1", Exchange: "ext", RoutingKey: "api.*.home.json"}, -1, false)
-	exTopic.AddBinding(&amqp.QueueBind{Queue: "q2", Exchange: "ext", RoutingKey: "api.msg.home.json"}, -1, false)
-	exTopic.AddBinding(&amqp.QueueBind{Queue: "q3", Exchange: "ext", RoutingKey: "log.#"}, -1, false)
+	exTopic.AddBinding(bindingHelper("q1", "ext", "api.msg.*.json", true), -1)
+	exTopic.AddBinding(bindingHelper("q1", "ext", "api.*.home.json", true), -1)
+	exTopic.AddBinding(bindingHelper("q2", "ext", "api.msg.home.json", true), -1)
+	exTopic.AddBinding(bindingHelper("q3", "ext", "log.#", true), -1)
 
 	// Create a random message, won't route by default
 	var msg = amqp.RandomMessage(false)
@@ -325,12 +333,7 @@ func TestPersistence(t *testing.T) {
 
 	// Depersist
 	realEx := NewExchange("ex1", EX_TYPE_TOPIC, true, false, false, amqp.NewTable(), false, make(chan *Exchange))
-	realEx.AddBinding(&amqp.QueueBind{
-		Queue:      "q1",
-		Exchange:   "ex1",
-		RoutingKey: "api.msg.*.json",
-		Arguments:  amqp.NewTable(),
-	}, -1, false)
+	realEx.AddBinding(bindingHelper("q1", "ex1", "api.msg.*.json", true), -1)
 	realEx.Depersist(db)
 
 	// Verify
@@ -344,12 +347,7 @@ func TestAddBinding(t *testing.T) {
 	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, make(chan *Exchange))
 	ex.deleteActive = time.Now()
 	// bad binding
-	err := ex.AddBinding(&amqp.QueueBind{
-		Queue:      "q1",
-		Exchange:   "ex1",
-		RoutingKey: "~!@#",
-		Arguments:  amqp.NewTable(),
-	}, -1, false)
+	_, err := binding.NewBinding("q1", "ex1", "~!@", amqp.NewTable(), true)
 	if err == nil {
 		t.Errorf("No error with bad binding!")
 	}
@@ -357,20 +355,15 @@ func TestAddBinding(t *testing.T) {
 		t.Errorf("Bad binding was added despite error")
 	}
 	// duplicate binding
-	var b = &amqp.QueueBind{
-		Queue:      "q1",
-		Exchange:   "ex1",
-		RoutingKey: "a.b.c",
-		Arguments:  amqp.NewTable(),
-	}
-	err = ex.AddBinding(b, -1, false)
+	var b = bindingHelper("q1", "ex1", "a.b.c", true)
+	err = ex.AddBinding(b, -1)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 	if len(ex.bindings) != 1 {
 		t.Errorf("Wrong number of bindings")
 	}
-	err = ex.AddBinding(b, -1, false)
+	err = ex.AddBinding(b, -1)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -385,22 +378,17 @@ func TestAddBinding(t *testing.T) {
 
 func TestBindingsForQueue(t *testing.T) {
 	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, make(chan *Exchange))
-	var b = &amqp.QueueBind{
-		Queue:      "q1",
-		Exchange:   "ex1",
-		RoutingKey: "a.b.c",
-		Arguments:  amqp.NewTable(),
-	}
+	var b1 = bindingHelper("q1", "ex1", "a.b.c", true)
+	var b2 = bindingHelper("q1", "ex1", "d.e.f", true)
+	var b3 = bindingHelper("q1", "ex1", "g.h.i", true)
+	var b4 = bindingHelper("q2", "ex1", "g.h.i", true)
+	var b5 = bindingHelper("q2", "ex1", "j.k.l", true)
 	//
-	ex.AddBinding(b, -1, false)
-	b.RoutingKey = "d.e.f"
-	ex.AddBinding(b, -1, false)
-	b.RoutingKey = "g.h.i"
-	ex.AddBinding(b, -1, false)
-	b.Queue = "q2"
-	ex.AddBinding(b, -1, false)
-	b.RoutingKey = "j.k.l"
-	ex.AddBinding(b, -1, false)
+	ex.AddBinding(b1, -1)
+	ex.AddBinding(b2, -1)
+	ex.AddBinding(b3, -1)
+	ex.AddBinding(b4, -1)
+	ex.AddBinding(b5, -1)
 
 	if len(ex.BindingsForQueue("q1")) != 3 {
 		t.Errorf("Wrong number of bindings for q1")
@@ -415,22 +403,17 @@ func TestBindingsForQueue(t *testing.T) {
 
 func TestRemoveBindingsForQueue(t *testing.T) {
 	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, make(chan *Exchange))
-	var b = &amqp.QueueBind{
-		Queue:      "q1",
-		Exchange:   "ex1",
-		RoutingKey: "a.b.c",
-		Arguments:  amqp.NewTable(),
-	}
+	var b1 = bindingHelper("q1", "ex1", "a.b.c", true)
+	var b2 = bindingHelper("q1", "ex1", "d.e.f", true)
+	var b3 = bindingHelper("q1", "ex1", "g.h.i", true)
+	var b4 = bindingHelper("q2", "ex1", "g.h.i", true)
+	var b5 = bindingHelper("q2", "ex1", "j.k.l", true)
 	//
-	ex.AddBinding(b, -1, false)
-	b.RoutingKey = "d.e.f"
-	ex.AddBinding(b, -1, false)
-	b.RoutingKey = "g.h.i"
-	ex.AddBinding(b, -1, false)
-	b.Queue = "q2"
-	ex.AddBinding(b, -1, false)
-	b.RoutingKey = "j.k.l"
-	ex.AddBinding(b, -1, false)
+	ex.AddBinding(b1, -1)
+	ex.AddBinding(b2, -1)
+	ex.AddBinding(b3, -1)
+	ex.AddBinding(b4, -1)
+	ex.AddBinding(b5, -1)
 
 	ex.RemoveBindingsForQueue("q0")
 	if len(ex.bindings) != 5 {
@@ -451,39 +434,31 @@ func TestRemoveBindingsForQueue(t *testing.T) {
 
 func TestRemoveBinding(t *testing.T) {
 	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, make(chan *Exchange))
-	var b = &amqp.QueueBind{
-		Queue:      "q1",
-		Exchange:   "ex1",
-		RoutingKey: "a.b.c",
-		Arguments:  amqp.NewTable(),
-	}
-
-	// Add bindings
-	ex.AddBinding(b, -1, false)
-	b.RoutingKey = "d.e.f"
-	ex.AddBinding(b, -1, false)
-	b.RoutingKey = "g.h.i"
-	ex.AddBinding(b, -1, false)
-	b.Queue = "q2"
-	ex.AddBinding(b, -1, false)
-	b.RoutingKey = "j.k.l"
-	ex.AddBinding(b, -1, false)
+	var b1 = bindingHelper("q1", "ex1", "a.b.c", true)
+	var b2 = bindingHelper("q1", "ex1", "d.e.f", true)
+	var b3 = bindingHelper("q1", "ex1", "g.h.i", true)
+	var b4 = bindingHelper("q2", "ex1", "g.h.i", true)
+	var b5 = bindingHelper("q2", "ex1", "j.k.l", true)
+	//
+	ex.AddBinding(b1, -1)
+	ex.AddBinding(b2, -1)
+	ex.AddBinding(b3, -1)
+	ex.AddBinding(b4, -1)
+	ex.AddBinding(b5, -1)
 
 	// Remove a binding that doesn't exist
-	b3, _ := binding.NewBinding("q2", "ex1", "does.not.exist", amqp.NewTable(), true)
-	ex.RemoveBinding(b3)
+	bNone := bindingHelper("q2", "ex1", "does.not.exist", true)
+	ex.RemoveBinding(bNone)
 	if len(ex.bindings) != 5 {
 		t.Errorf("Wrong number of bindings: %d", len(ex.bindings))
 	}
 
 	// Remove the Q2 bindings
-	b1, _ := binding.NewBinding("q2", "ex1", "g.h.i", amqp.NewTable(), true)
-	ex.RemoveBinding(b1)
+	ex.RemoveBinding(b4)
 	if len(ex.bindings) != 4 {
 		t.Errorf("Wrong number of bindings: %d", len(ex.bindings))
 	}
-	b2, _ := binding.NewBinding("q2", "ex1", "j.k.l", amqp.NewTable(), true)
-	ex.RemoveBinding(b2)
+	ex.RemoveBinding(b5)
 
 	// Check that all q2 bindings are gone
 	if len(ex.BindingsForQueue("q2")) != 0 {
@@ -496,12 +471,7 @@ func TestAutoDeleteTimeout(t *testing.T) {
 	var deleter = make(chan *Exchange)
 	var ex = NewExchange("ex1", EX_TYPE_TOPIC, true, true, false, amqp.NewTable(), false, deleter)
 	ex.autodeletePeriod = 10 * time.Millisecond
-	ex.AddBinding(&amqp.QueueBind{
-		Queue:      "q1",
-		Exchange:   "ex1",
-		RoutingKey: "a.b.c",
-		Arguments:  amqp.NewTable(),
-	}, -1, false)
+	ex.AddBinding(bindingHelper("q1", "ex1", "a.b.c", true), -1)
 	var b, _ = binding.NewBinding("q1", "ex1", "a.b.c", amqp.NewTable(), true)
 	ex.RemoveBinding(b)
 	var toDelete = <-deleter
