@@ -38,6 +38,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.AMQPError 
 		return amqp.NewSoftError(406, err.Error(), classId, methodId)
 	}
 
+	// If this is a passive request, do the appropriate checks and return
 	if method.Passive {
 		queue, found := channel.conn.server.queues[method.Queue]
 		if found {
@@ -52,8 +53,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.AMQPError 
 		return amqp.NewSoftError(404, "Queue not found", classId, methodId)
 	}
 
-	// Add
-
+	// Create the new queue
 	var connId = channel.conn.id
 	if !method.Exclusive {
 		connId = -1
@@ -68,6 +68,9 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.AMQPError 
 		channel.server.msgStore,
 		channel.server.queueDeleter,
 	)
+
+	// If the new queue exists already, ensure the settings are the same. If it
+	// doesn't, add it and optionally persist it
 	existing, hasKey := channel.server.queues[queue.Name]
 	if hasKey {
 		if !existing.EquivalentQueues(queue) {
