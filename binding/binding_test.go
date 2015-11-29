@@ -1,11 +1,10 @@
 package binding
 
 import (
-	"bytes"
 	"encoding/json"
-	"fmt"
 	"github.com/boltdb/bolt"
 	"github.com/jeffjenkins/dispatchd/amqp"
+	// "github.com/jeffjenkins/dispatchd/persist"
 	"os"
 	"testing"
 )
@@ -133,73 +132,38 @@ func TestPersistence(t *testing.T) {
 	}
 
 	// Persist
-	var bind = &amqp.QueueBind{
-		Exchange:   "ex1",
-		Queue:      "q1",
-		RoutingKey: "rk1",
-		Arguments:  amqp.NewTable(),
+	b, err := NewBinding("q1", "ex1", "rk1", amqp.NewTable(), true)
+	if err != nil {
+		t.Errorf("Error in NewBinding")
 	}
-	PersistBinding(db, bind)
+	err = b.Persist(db)
+	if err != nil {
+		t.Errorf("Error in NewBinding")
+	}
 
 	// Read
-	err = db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("bindings"))
-		if bucket == nil {
-			return fmt.Errorf("No bucket!")
-		}
-		// iterate through queues
-		cursor := bucket.Cursor()
-		var count = 0
-		for name, data := cursor.First(); name != nil; name, data = cursor.Next() {
-			count += 1
-			// Read
-			var method = &amqp.QueueBind{}
-			var reader = bytes.NewReader(data)
-			var err = method.Read(reader)
-			if err != nil {
-				return err
-			}
-			if !(method.Queue == bind.Queue && method.Exchange == bind.Exchange && method.RoutingKey == bind.RoutingKey) {
-				return fmt.Errorf("Loaded binding did not match")
-			}
-		}
-		if count != 1 {
-			return fmt.Errorf("Too many database bindings. Expected 1")
-		}
-		if count == 0 {
-			return fmt.Errorf("Too few database bindings. Expected 1")
-		}
-		return nil
-	})
+	bMap, err := LoadAllBindings(db)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("Error in LoadAllBindings")
+	}
+	if len(bMap) != 1 {
+		t.Errorf("Wrong number of bindings")
+	}
+	for _, b2 := range bMap {
+		if !b2.Equals(b) {
+			t.Errorf("Did not get the same binding from the db")
+		}
 	}
 
 	// Depersist
-	b, err := NewBinding(bind.Queue, bind.Exchange, bind.RoutingKey, amqp.NewTable(), false)
-	if err != nil {
-		t.Errorf("Error constructing binding")
-	}
 	b.Depersist(db)
 
-	err = db.View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte("bindings"))
-		if bucket == nil {
-			return fmt.Errorf("No bucket!")
-		}
-		// iterate through queues
-		cursor := bucket.Cursor()
-		var count = 0
-		for name, _ := cursor.First(); name != nil; name, _ = cursor.Next() {
-			count += 1
-		}
-		if count != 0 {
-			return fmt.Errorf("Too many database bindings. Expected 0")
-		}
-		return nil
-	})
+	bMap, err = LoadAllBindings(db)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Errorf("Error in LoadAllBindings")
+	}
+	if len(bMap) != 0 {
+		t.Errorf("Wrong number of bindings")
 	}
 
 }
