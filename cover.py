@@ -3,7 +3,7 @@ import sys
 import subprocess
 import os
 
-PREFIX = 'github.com/jeffjenkins/mq/'
+PREFIX = 'github.com/jeffjenkins/dispatchd/'
 
 class Colors(object):
   PURPLE = '\033[95m'
