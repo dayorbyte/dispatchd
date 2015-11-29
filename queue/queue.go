@@ -330,7 +330,6 @@ func (q *Queue) AddConsumer(c *consumer.Consumer, exclusive bool) (uint16, error
 }
 
 func (q *Queue) Start() {
-	fmt.Println("Queue started!")
 	go func() {
 		for _ = range q.maybeReady {
 			if q.Closed {

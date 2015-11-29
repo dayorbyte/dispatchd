@@ -2,17 +2,22 @@ package main
 
 import (
 	"bytes"
-	// "fmt"
 	"encoding/json"
 	"github.com/jeffjenkins/dispatchd/amqp"
 	"github.com/jeffjenkins/dispatchd/util"
 	"net"
-	"os"
 	"testing"
 )
 
 func dbPath() string {
-	return "/tmp/" + util.RandomId()
+	return "/tmp/" + util.RandomId() + ".dispatchd.test.db"
+}
+
+func connFromServer(s *Server) *AMQPConnection {
+	for _, conn := range s.conns {
+		return conn
+	}
+	panic("no connections!")
 }
 
 func fromServerHelper(c net.Conn, fromServer chan *amqp.WireFrame) {
@@ -53,13 +58,14 @@ func wireFrameToMethod(frame *amqp.WireFrame) amqp.MethodFrame {
 	return methodFrame
 }
 
-func logResponse(t *testing.T, fromServer chan *amqp.WireFrame) {
+func logResponse(t *testing.T, fromServer chan *amqp.WireFrame) amqp.MethodFrame {
 	var method = wireFrameToMethod(<-fromServer)
 	var js, err = json.Marshal(method)
 	if err != nil {
 		panic("could not encode json, testing error!")
 	}
 	t.Logf(">>>> RECV '%s': %s", method.MethodName(), string(js))
+	return method
 }
 
 func sendAndLogMethod(t *testing.T, channelId uint16, toServer chan *amqp.WireFrame, method amqp.MethodFrame) {
@@ -71,13 +77,13 @@ func sendAndLogMethod(t *testing.T, channelId uint16, toServer chan *amqp.WireFr
 	toServer <- methodToWireFrame(channelId, method)
 }
 
-func testServerHelper(t *testing.T, path string) (s *Server, toServer chan *amqp.WireFrame, fromServer chan *amqp.WireFrame) {
+func testServerHelper(t *testing.T, dbPath string, msgPath string) (s *Server, toServer chan *amqp.WireFrame, fromServer chan *amqp.WireFrame) {
 	// Make channels
 	// TODO: reduce these once we're reading/writng to the server
 	toServer = make(chan *amqp.WireFrame, 500)
 	fromServer = make(chan *amqp.WireFrame, 500)
 	// Make server
-	s = NewServer(path)
+	s = NewServer(dbPath, msgPath)
 	s.init()
 
 	// Make fake connection
@@ -99,40 +105,4 @@ func testServerHelper(t *testing.T, path string) (s *Server, toServer chan *amqp
 	sendAndLogMethod(t, 0, toServer, &amqp.ConnectionOpen{})
 	logResponse(t, fromServer) // openok
 	return
-}
-
-func TestAddChannel(t *testing.T) {
-	// Setup
-	path := dbPath()
-	defer os.Remove(path)
-	s, toServer, fromServer := testServerHelper(t, path)
-	if len(s.conns) != 1 {
-		t.Errorf("Wrong number of open connections: %d", len(s.conns))
-	}
-	// Create channel
-	var chid = uint16(1)
-	sendAndLogMethod(t, chid, toServer, &amqp.ChannelOpen{})
-	logResponse(t, fromServer)
-
-	// Create exchange
-	sendAndLogMethod(t, chid, toServer, &amqp.ExchangeDeclare{
-		Exchange:  "ex-1",
-		Type:      "topic",
-		Arguments: amqp.NewTable(),
-	})
-	logResponse(t, fromServer)
-	if len(s.exchanges) != 5 {
-		t.Errorf("Wrong number of exchanges: %d", len(s.exchanges))
-	}
-
-	// Create Queue
-	sendAndLogMethod(t, chid, toServer, &amqp.QueueDeclare{
-		Queue:     "q-1",
-		Arguments: amqp.NewTable(),
-	})
-	logResponse(t, fromServer)
-	if len(s.queues) != 1 {
-		t.Errorf("Wrong number of queues: %d", len(s.queues))
-	}
-
 }

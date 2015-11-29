@@ -73,12 +73,15 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.AMQPError 
 	// doesn't, add it and optionally persist it
 	existing, hasKey := channel.server.queues[queue.Name]
 	if hasKey {
+		if existing.ConnId != -1 && existing.ConnId != channel.conn.id {
+			return amqp.NewSoftError(405, "Queue is locked to another connection", classId, methodId)
+		}
 		if !existing.EquivalentQueues(queue) {
 			return amqp.NewSoftError(406, "Queue exists and is not equivalent to existing", classId, methodId)
 		}
 	} else {
 		err = channel.server.addQueue(queue)
-		if err != nil {
+		if err != nil { // pragma: nocover
 			return amqp.NewSoftError(500, "Error creating queue", classId, methodId)
 		}
 		// Persist

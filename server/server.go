@@ -41,13 +41,13 @@ func (server *Server) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewServer(dbPath string) *Server {
+func NewServer(dbPath string, msgStorePath string) *Server {
 	db, err := bolt.Open(dbPath, 0600, nil)
 	if err != nil {
 		panic(err.Error())
 
 	}
-	msgStore, err := msgstore.NewMessageStore("msg_store.db")
+	msgStore, err := msgstore.NewMessageStore(msgStorePath)
 	if err != nil {
 		panic("Could not create message store!")
 	}
