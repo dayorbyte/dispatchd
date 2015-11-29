@@ -8,9 +8,31 @@ import (
 	"github.com/boltdb/bolt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/jeffjenkins/dispatchd/amqp"
+	"github.com/jeffjenkins/dispatchd/persist"
 	"github.com/jeffjenkins/dispatchd/stats"
 	"sync"
 )
+
+var MESSAGE_INDEX_BUCKET = []byte("message_index")
+var MESSAGE_CONTENT_BUCKET = []byte("message_content_bucket")
+
+type IndexMessageFactory struct{}
+
+func (imf *IndexMessageFactory) New() proto.Unmarshaler {
+	return &amqp.IndexMessage{}
+}
+
+type MessageContentFactory struct{}
+
+func (mcf *MessageContentFactory) New() proto.Unmarshaler {
+	return &amqp.Message{}
+}
+
+type QueueMessageFactory struct{}
+
+func (qmf *QueueMessageFactory) New() proto.Unmarshaler {
+	return &amqp.QueueMessage{}
+}
 
 type MessageStore struct {
 	index         map[int64]*amqp.IndexMessage
@@ -64,55 +86,39 @@ func isDurable(msg *amqp.Message) bool {
 	return dm != nil && *dm == byte(2)
 }
 
+func (ms *MessageStore) LoadMessages() error {
+	// Index
+	imMap, err := persist.LoadAll(ms.db, MESSAGE_INDEX_BUCKET, &IndexMessageFactory{})
+	if err != nil {
+		return err
+	}
+	for _, unmarshaler := range imMap {
+		var im = unmarshaler.(*amqp.IndexMessage)
+		ms.index[im.Id] = im
+	}
+	// Content
+	// TODO: don't load all content if it won't fit in memory
+	mMap, err := persist.LoadAll(ms.db, MESSAGE_CONTENT_BUCKET, &MessageContentFactory{})
+	if err != nil {
+		return err
+	}
+	for _, unmarshaler := range mMap {
+		var msg = unmarshaler.(*amqp.Message)
+		ms.messages[msg.Id] = msg
+	}
+	return nil
+}
+
 func (ms *MessageStore) LoadQueueFromDisk(queueName string) (*list.List, error) { // list[amqp.QueueMessage]
 	var ret = list.New()
-	var err = ms.db.View(func(tx *bolt.Tx) error {
-		bucket_index := tx.Bucket([]byte("message_index"))
-		bucket_contents := tx.Bucket([]byte("message_contents"))
-		bucket_queue := tx.Bucket([]byte(fmt.Sprintf("queue_%s", queueName)))
-		if bucket_index == nil || bucket_contents == nil || bucket_queue == nil {
-			return nil
-		}
-		cursor_queue := bucket_queue.Cursor()
-
-		for k, qmBytes := cursor_queue.First(); k != nil; k, qmBytes = cursor_queue.Next() {
-			// Load QM
-			qm := &amqp.QueueMessage{}
-			if err := proto.Unmarshal(qmBytes, qm); err != nil {
-				return err
-			}
-			// -1 won't ever be a valid LocalId since they're based on unix timestamps
-			qm.LocalId = -1
-			ret.PushFront(qm)
-			// Load Index
-			var bId = binaryId(qm.Id)
-			var iBytes = bucket_index.Get(bId)
-			if iBytes == nil {
-				panic(fmt.Sprintf("Integrity error! Couldn't find an index message: %d", qm.Id))
-			}
-			var im = &amqp.IndexMessage{}
-			if err := proto.Unmarshal(iBytes, im); err != nil {
-				panic(err.Error())
-			}
-			ms.index[qm.Id] = im
-
-			// Load content
-			// TODO: make it possible to only partially load content
-			var cBytes = bucket_contents.Get(bId)
-			if cBytes == nil {
-				panic(fmt.Sprintf("Integrity error! Couldn't find message content for: %d", qm.Id))
-			}
-			var cm = &amqp.Message{}
-			if err := proto.Unmarshal(cBytes, cm); err != nil {
-				panic(err.Error())
-			}
-			ms.messages[qm.Id] = cm
-
-		}
-		return nil
-	})
+	qmMap, err := persist.LoadAll(ms.db, []byte(fmt.Sprintf("queue_%s", queueName)), &QueueMessageFactory{})
 	if err != nil {
-		return list.New(), err
+		return nil, err
+	}
+	for _, unmarshaler := range qmMap {
+		var qm = unmarshaler.(*amqp.QueueMessage)
+		qm.LocalId = -1
+		ret.PushFront(qm)
 	}
 	return ret, nil
 }
@@ -389,7 +395,7 @@ func bytesToInt64(bId []byte) int64 {
 }
 
 func persistMessage(tx *bolt.Tx, msg *amqp.Message) error {
-	content_bucket, err := tx.CreateBucketIfNotExists([]byte("message_contents"))
+	content_bucket, err := tx.CreateBucketIfNotExists(MESSAGE_CONTENT_BUCKET)
 	b, err := proto.Marshal(msg)
 	if err != nil {
 		return err
@@ -398,7 +404,7 @@ func persistMessage(tx *bolt.Tx, msg *amqp.Message) error {
 }
 
 func persistIndexMessage(tx *bolt.Tx, im *amqp.IndexMessage) error {
-	content_bucket, err := tx.CreateBucketIfNotExists([]byte("message_index"))
+	content_bucket, err := tx.CreateBucketIfNotExists(MESSAGE_INDEX_BUCKET)
 	b, err := proto.Marshal(im)
 	if err != nil {
 		return err

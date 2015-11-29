@@ -68,9 +68,10 @@ func NewServer(dbPath string) *Server {
 }
 
 func (server *Server) init() {
+	server.msgStore.LoadMessages() //this must be before initQueues
 	server.initExchanges()
 	server.initQueues()
-	server.initBindings()
+	server.initBindings() // this must be after init{Exchanges,Queues}
 	go server.exchangeDeleteMonitor()
 	go server.queueDeleteMonitor()
 }
