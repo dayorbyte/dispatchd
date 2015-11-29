@@ -15,8 +15,10 @@ func WriteFrame(buf io.Writer, frame *WireFrame) {
 	WriteLongstr(buf2, frame.Payload)
 	// buf.Write(frame.Payload.Bytes())
 	WriteFrameEnd(buf2)
+
 	// binary.LittleEndian since we want to stick to the system
 	// byte order and the other write functions are writing BigEndian
+	// TODO: error checking
 	binary.Write(buf, binary.LittleEndian, buf2.Bytes())
 }
 
