@@ -10,6 +10,9 @@ func NewTable() *Table {
 }
 
 func EquivalentTables(t1 *Table, t2 *Table) bool {
+	if len(t1.Table) == 0 && len(t2.Table) == 0 {
+		return true
+	}
 	return reflect.DeepEqual(t1, t2)
 }
 

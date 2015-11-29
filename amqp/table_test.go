@@ -2,11 +2,37 @@ package amqp
 
 import (
 	"bytes"
+	"github.com/gogo/protobuf/proto"
 	"math/rand"
 	"reflect"
 	"testing"
-	// "unsafe"
 )
+
+func TestPersistRoundtripEmpty(t *testing.T) {
+	// Protobuf returns a nil Table.Table if there are no entries.
+	// This test makes sure equality with a NewTable() table works
+	var table = NewTable()
+	var bb, _ = proto.Marshal(table)
+	var table2 = &Table{}
+	proto.Unmarshal(bb, table2)
+	if !EquivalentTables(table, table2) {
+		t.Errorf("%#v, %#v\n", table, table2)
+	}
+}
+
+func TestNilTableSet(t *testing.T) {
+	// Protobuf returns a nil Table.Table if there are no entries.
+	// This test makes sure setting keys on a nil table works
+	table := Table{Table: nil}
+	err := table.SetKey("a", uint32(1))
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	val := table.GetKey("a")
+	if val == nil {
+		t.Errorf("No value returned for key 'a'")
+	}
+}
 
 func TestBasicFieldArray(t *testing.T) {
 	// TODO: test this more thoroughly. it gets some working out in other tests
