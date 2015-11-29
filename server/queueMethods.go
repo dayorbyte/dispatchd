@@ -74,7 +74,7 @@ func (channel *Channel) queueDeclare(method *amqp.QueueDeclare) *amqp.AMQPError 
 	existing, hasKey := channel.server.queues[queue.Name]
 	if hasKey {
 		if !existing.EquivalentQueues(queue) {
-			return amqp.NewSoftError(406, "Queues exists and is not equivalent to existing", classId, methodId)
+			return amqp.NewSoftError(406, "Queue exists and is not equivalent to existing", classId, methodId)
 		}
 	} else {
 		err = channel.server.addQueue(queue)
