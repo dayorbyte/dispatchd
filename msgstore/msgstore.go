@@ -14,7 +14,7 @@ import (
 )
 
 var MESSAGE_INDEX_BUCKET = []byte("message_index")
-var MESSAGE_CONTENT_BUCKET = []byte("message_content_bucket")
+var MESSAGE_CONTENT_BUCKET = []byte("message_content")
 
 type IndexMessageFactory struct{}
 
@@ -213,7 +213,6 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 		)
 		queueMessages[msg.QueueName] = append(queues, qm)
 	}
-
 	// if any are durable, persist those ones
 	if anyDurable {
 		err := ms.db.Update(func(tx *bolt.Tx) error {
@@ -321,7 +320,7 @@ func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs [
 }
 
 func depersistMessage(tx *bolt.Tx, id int64) error {
-	content_bucket, err := tx.CreateBucketIfNotExists([]byte("message_contents"))
+	content_bucket, err := tx.CreateBucketIfNotExists(MESSAGE_CONTENT_BUCKET)
 	if err != nil {
 		return err
 	}
@@ -330,7 +329,7 @@ func depersistMessage(tx *bolt.Tx, id int64) error {
 
 func decrIndexMessage(tx *bolt.Tx, id int64) (int32, error) {
 	// bucket
-	index_bucket, err := tx.CreateBucketIfNotExists([]byte("message_index"))
+	index_bucket, err := tx.CreateBucketIfNotExists(MESSAGE_INDEX_BUCKET)
 	if err != nil {
 		return -1, err
 	}

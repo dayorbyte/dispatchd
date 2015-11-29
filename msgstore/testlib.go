@@ -12,7 +12,7 @@ func idsToMap() {
 
 }
 
-// Check if the msg store is composed of exactly
+// Check if the msg store is composed of exactly these keys
 func assertKeys(dbName string, keys map[int64]bool) error {
 	// Open DB
 	db, err := bolt.Open(dbName, 0600, nil)
@@ -28,8 +28,8 @@ func assertKeys(dbName string, keys map[int64]bool) error {
 		}
 
 		// get from db
-		var indexKeys, err1 = keysForBucket(tx, "message_index")
-		var contentKeys, err2 = keysForBucket(tx, "message_contents")
+		var indexKeys, err1 = keysForBucket(tx, MESSAGE_INDEX_BUCKET)
+		var contentKeys, err2 = keysForBucket(tx, MESSAGE_CONTENT_BUCKET)
 		if err1 != nil {
 			return err1
 		}
@@ -41,12 +41,14 @@ func assertKeys(dbName string, keys map[int64]bool) error {
 		// TODO: return key diff
 		indexNotKeys := subtract(indexKeys, keys)
 		keysNotIndex := subtract(keys, indexKeys)
+		contentNotKeys := subtract(contentKeys, keys)
+		keysNotContent := subtract(keys, contentKeys)
 
 		if !reflect.DeepEqual(keys, indexKeys) {
 			return fmt.Errorf("Different values in index!\nindexNotKeys:%q\nkeysNotIndex:%q", indexNotKeys, keysNotIndex)
 		}
 		if !reflect.DeepEqual(keys, contentKeys) {
-			return fmt.Errorf("Different values in content!")
+			return fmt.Errorf("Different values in content!\ncontentNotKeys:%q\nkeysNotContent:%q", contentNotKeys, keysNotContent)
 		}
 		return nil
 	})
@@ -67,9 +69,9 @@ func subtract(original map[int64]bool, subtractThis map[int64]bool) []int64 {
 	return ret
 }
 
-func keysForBucket(tx *bolt.Tx, bucketName string) (map[int64]bool, error) {
+func keysForBucket(tx *bolt.Tx, bucketName []byte) (map[int64]bool, error) {
 	// Check index
-	bucket := tx.Bucket([]byte(bucketName))
+	bucket := tx.Bucket(bucketName)
 	if bucket == nil {
 		return nil, fmt.Errorf("No bucket!")
 	}

@@ -12,6 +12,7 @@ func TestWrite(t *testing.T) {
 	// Setup
 	var dbFile = "TestWrite.db"
 	os.Remove(dbFile)
+	defer os.Remove(dbFile)
 	rhs := []amqp.MessageResourceHolder{&TestResourceHolder{}}
 	ms, err := NewMessageStore(dbFile)
 	// Create messages
@@ -20,7 +21,9 @@ func TestWrite(t *testing.T) {
 	fmt.Printf("Creating ids: %d, %d\n", msg1.Id, msg2.Id)
 
 	// Store messages and delete one
+	fmt.Println("Adding message 1")
 	ms.AddMessage(msg1, []string{"some-queue", "some-other-queue"})
+	fmt.Println("Adding message 2")
 	qm2Map, err := ms.AddMessage(msg2, []string{"some-queue"})
 	_, err = ms.GetAndDecrRef(qm2Map["some-queue"][0], "some-queue", rhs)
 	if err != nil {
