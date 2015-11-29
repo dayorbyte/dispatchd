@@ -221,32 +221,36 @@ func (conn *AMQPConnection) handleIncoming() {
 			break
 		}
 		stats.RecordHisto(conn.statInNetwork, start)
-
-		// Upkeep. Remove things which have expired, etc
-		conn.cleanUp()
-		conn.ttl = time.Now().Add(conn.receiveHeartbeatInterval * 2)
-
-		switch {
-		case frame.FrameType == 8:
-			// TODO(MUST): Update last heartbeat time
-			continue
-		}
-
-		if !conn.connectStatus.open && frame.Channel != 0 {
-			fmt.Println("Non-0 channel for unopened connection")
-			conn.hardClose()
-			break
-		}
-		var channel, ok = conn.channels[frame.Channel]
-		// TODO(MUST): Check that the channel number if in the valid range
-		if !ok {
-			channel = NewChannel(frame.Channel, conn)
-			conn.channels[frame.Channel] = channel
-			conn.channels[frame.Channel].start()
-		}
-		// Dispatch
-		start = stats.Start()
-		channel.incoming <- frame
-		stats.RecordHisto(conn.statInBlocked, start)
+		conn.handleFrame(frame)
 	}
+}
+
+func (conn *AMQPConnection) handleFrame(frame *amqp.WireFrame) {
+
+	// Upkeep. Remove things which have expired, etc
+	conn.cleanUp()
+	conn.ttl = time.Now().Add(conn.receiveHeartbeatInterval * 2)
+
+	switch {
+	case frame.FrameType == 8:
+		// TODO(MUST): Update last heartbeat time
+		return
+	}
+
+	if !conn.connectStatus.open && frame.Channel != 0 {
+		fmt.Println("Non-0 channel for unopened connection")
+		conn.hardClose()
+		return
+	}
+	var channel, ok = conn.channels[frame.Channel]
+	// TODO(MUST): Check that the channel number if in the valid range
+	if !ok {
+		channel = NewChannel(frame.Channel, conn)
+		conn.channels[frame.Channel] = channel
+		conn.channels[frame.Channel].start()
+	}
+	// Dispatch
+	start := stats.Start()
+	channel.incoming <- frame
+	stats.RecordHisto(conn.statInBlocked, start)
 }
