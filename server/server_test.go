@@ -130,9 +130,9 @@ func TestAddChannel(t *testing.T) {
 		Queue:     "q-1",
 		Arguments: amqp.NewTable(),
 	})
+	logResponse(t, fromServer)
 	if len(s.queues) != 1 {
 		t.Errorf("Wrong number of queues: %d", len(s.queues))
 	}
-	logResponse(t, fromServer)
 
 }
