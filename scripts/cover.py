@@ -18,11 +18,14 @@ class Colors(object):
 def main(args):
   # Gather packages
   gopath = os.environ['GOPATH']
+  output_dir = os.path.join(gopath, 'cover')
+  if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
   package_dir = os.path.join(gopath, 'src', PREFIX)
 
   test_packages = []
   for path in os.listdir(package_dir):
-    if path in ('.git','scripts', 'static'):
+    if path in ('.git','scripts', 'static', 'gen'):
       continue
     if os.path.isdir(path):
       test_packages.append(path)
@@ -30,7 +33,7 @@ def main(args):
 
   cover_names = []
   for pkg in test_packages:
-    cover_name = 'cover-{}.cover'.format(pkg)
+    cover_name = os.path.join(output_dir, 'cover-{}.cover'.format(pkg))
     cover_names.append((pkg, cover_name))
     test_target = os.path.join(PREFIX, pkg)
     subprocess.check_call([
@@ -39,7 +42,14 @@ def main(args):
       '-coverprofile={}'.format(cover_name),
       test_target,
     ])
-  cover_summary(cover_names)
+
+  merge_call = [os.path.join(gopath, 'bin', 'gocovmerge')]
+  merge_call.extend([n for _, n in cover_names])
+  output = subprocess.check_output(merge_call)
+  all = os.path.join(output_dir, 'all.cover')
+  with open(all, 'w') as f:
+    f.write(output)
+  cover_summary([all])
 
 def nocover(file, line):
   with open(os.path.join(os.environ['GOPATH'], 'src', file)) as inf:
@@ -52,10 +62,10 @@ def cover_summary(cover_names):
   print Colors.BLUE, '=====  Missing Coverage =====', Colors.ENDC
   count = defaultdict(list)
   missing = defaultdict(list)
-  for pkg, name in cover_names:
-    if not os.path.exists(name):
-      missing[pkg + '/*.go'] = None
-      continue
+  for name in cover_names:
+    # if not os.path.exists(name):
+    #   missing[pkg + '/*.go'] = None
+    #   continue
     with open(name) as inf:
       for line in inf.readlines():
         line = line.strip()
