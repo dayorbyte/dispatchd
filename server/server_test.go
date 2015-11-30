@@ -143,3 +143,23 @@ func (tc *testClient) sendAndLogMethodWithChannel(channelId uint16, method amqp.
 	tc.t.Logf("<<<< SENT '%s': %s", method.MethodName(), string(js))
 	tc.toServer <- methodToWireFrame(channelId, method)
 }
+
+func (tc *testClient) simplePublish(ex string, key string, msg string, durable bool) {
+	// Send method
+	tc.sendAndLogMethod(&amqp.BasicPublish{
+		Exchange:   ex,
+		RoutingKey: key,
+	})
+	// Send headers
+	var buf = bytes.NewBuffer(make([]byte, 0))
+	amqp.WriteShort(buf, uint16(60))
+	amqp.WriteShort(buf, 0)
+	amqp.WriteLonglong(buf, uint64(len(msg)))
+
+	// TODO: write props. this sets all to not present
+	amqp.WriteShort(buf, 0)
+
+	tc.toServer <- &amqp.WireFrame{uint8(amqp.FrameHeader), 1, buf.Bytes()}
+	// Send body
+	tc.toServer <- &amqp.WireFrame{uint8(amqp.FrameBody), 1, []byte(msg)}
+}
