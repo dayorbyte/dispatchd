@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/jeffjenkins/dispatchd/amqp"
 	"testing"
+	"time"
 )
 
 func TestQueueMethods(t *testing.T) {
@@ -105,6 +106,50 @@ func TestPassiveNotFound(t *testing.T) {
 	resp := tc.logResponse().(*amqp.ChannelClose)
 	if resp.ReplyCode != 404 {
 		t.Errorf("Wrong response code")
+	}
+}
+
+func TestPurge(t *testing.T) {
+	tc := newTestClient(t)
+	defer tc.cleanup()
+
+	// Create Queue
+	tc.sendAndLogMethod(&amqp.QueueDeclare{
+		Queue:     "q1",
+		Arguments: amqp.NewTable(),
+		Exclusive: true,
+	})
+	tc.logResponse()
+
+	tc.sendAndLogMethod(&amqp.QueueBind{
+		Exchange:   "amq.topic",
+		Queue:      "q1",
+		RoutingKey: "a.b.c",
+		Arguments:  amqp.NewTable(),
+	})
+	tc.logResponse()
+
+	tc.simplePublish("amq.topic", "a.b.c", "hello world")
+
+	// TODO: handle this more elegantly than a sleep. Best bet is probably sending
+	// a random method and waiting for the response since messages are processed
+	// in order
+	time.Sleep(5 * time.Millisecond)
+	if tc.s.queues["q1"].Len() == 0 {
+		t.Fatalf("Message did not make it into queue")
+	}
+
+	tc.sendAndLogMethod(&amqp.QueuePurge{
+		Queue: "q1",
+	})
+	resp := tc.logResponse().(*amqp.QueuePurgeOk)
+
+	if tc.s.queues["q1"].Len() != 0 {
+		t.Fatalf("Message did not get purged from queue. Got %d", tc.s.queues["q1"].Len())
+	}
+
+	if resp.MessageCount != 1 {
+		t.Fatalf("Purge did not return the right number of messages deleted")
 	}
 }
 

@@ -126,6 +126,22 @@ func (tc *testClient) logResponse() amqp.MethodFrame {
 	return method
 }
 
+// Gets the parts of a return with a single frame
+func (tc *testClient) logReturn1() (amqp.MethodFrame, *amqp.ContentHeaderFrame, *amqp.WireFrame) {
+	// Method
+	var method = tc.logResponse()
+	// Headers
+	var headerWireFrame = <-tc.fromServer
+	var headers = &amqp.ContentHeaderFrame{}
+	var err = headers.Read(bytes.NewReader(headerWireFrame.Payload))
+	if err != nil {
+		panic("Failed to read header frame from server! Maybe it's something else?")
+	}
+	// Body
+	var body = <-tc.fromServer
+	return method, headers, body
+}
+
 func (tc *testClient) sendAndLogMethod(method amqp.MethodFrame) {
 	var js, err = json.Marshal(method)
 	if err != nil {
@@ -144,12 +160,39 @@ func (tc *testClient) sendAndLogMethodWithChannel(channelId uint16, method amqp.
 	tc.toServer <- methodToWireFrame(channelId, method)
 }
 
-func (tc *testClient) simplePublish(ex string, key string, msg string, durable bool) {
+func (tc *testClient) declareQueue(name string) amqp.MethodFrame {
+	tc.sendAndLogMethod(&amqp.QueueDeclare{
+		Queue:     name,
+		Arguments: amqp.NewTable(),
+	})
+	return tc.logResponse().(*amqp.QueueDeclareOk)
+}
+
+func (tc *testClient) bindQueue(ex string, q string, key string) amqp.MethodFrame {
+	tc.sendAndLogMethod(&amqp.QueueBind{
+		Exchange:   ex,
+		Queue:      q,
+		RoutingKey: key,
+		Arguments:  amqp.NewTable(),
+	})
+	return tc.logResponse().(*amqp.QueueBindOk)
+}
+
+func (tc *testClient) simplePublish(ex string, key string, msg string) {
 	// Send method
 	tc.sendAndLogMethod(&amqp.BasicPublish{
 		Exchange:   ex,
 		RoutingKey: key,
 	})
+	tc.sendSimpleContentHeader(msg)
+	tc.sendMessageFrames(msg)
+}
+
+func (tc *testClient) sendMessageFrames(msg string) {
+	tc.toServer <- &amqp.WireFrame{uint8(amqp.FrameBody), 1, []byte(msg)}
+}
+
+func (tc *testClient) sendSimpleContentHeader(msg string) {
 	// Send headers
 	var buf = bytes.NewBuffer(make([]byte, 0))
 	amqp.WriteShort(buf, uint16(60))
@@ -160,6 +203,4 @@ func (tc *testClient) simplePublish(ex string, key string, msg string, durable b
 	amqp.WriteShort(buf, 0)
 
 	tc.toServer <- &amqp.WireFrame{uint8(amqp.FrameHeader), 1, buf.Bytes()}
-	// Send body
-	tc.toServer <- &amqp.WireFrame{uint8(amqp.FrameBody), 1, []byte(msg)}
 }

@@ -30,4 +30,9 @@ func TestExchangeMethods(t *testing.T) {
 		t.Errorf("Wrong number of queues: %d", len(tc.s.queues))
 	}
 
+	tc.sendAndLogMethod(&amqp.ExchangeDelete{
+		Exchange: "ex-1",
+	})
+	// check that we got delete ok
+	_ = tc.logResponse().(*amqp.ExchangeDeleteOk)
 }
