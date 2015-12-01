@@ -58,14 +58,18 @@ def nocover(file, line):
       return True
     return False
 
+def count_lines(file):
+  with open(os.path.join(os.environ['GOPATH'], 'src', file)) as inf:
+    return len(inf.readlines())
+
 def cover_summary(cover_names):
   print Colors.BLUE, '=====  Missing Coverage =====', Colors.ENDC
   count = defaultdict(list)
   missing = defaultdict(list)
+  total_missing = 0
+  total_lines = 0
+  seen = set()
   for name in cover_names:
-    # if not os.path.exists(name):
-    #   missing[pkg + '/*.go'] = None
-    #   continue
     with open(name) as inf:
       for line in inf.readlines():
         line = line.strip()
@@ -80,9 +84,14 @@ def cover_summary(cover_names):
         first_line, _, _ = first.partition('.')
         second_line, _, _ = second.partition('.')
         range = (int(first_line), int(second_line))
+        if full_file not in seen:
+          total_lines += count_lines(full_file)
+          seen.add(full_file)
+        total_missing += range[1] - range[0] + 1
         if nocover(full_file, first_line):
           continue
         missing[file].append(range)
+
 
   for file, ranges in sorted(missing.items()):
     if ranges is not None:
@@ -93,6 +102,7 @@ def cover_summary(cover_names):
       print Colors.RED, file+':', Colors.ENDC, ', '.join(ranges)
     else:
       print Colors.RED, file+':', Colors.ENDC, 'No coverage'
+  print Colors.RED, 'Remaining lines on files without full coverage:', total_missing, '/', total_lines, Colors.ENDC
 
 
 
