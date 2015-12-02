@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/jeffjenkins/dispatchd/amqp"
 	"testing"
 )
 
@@ -9,30 +8,26 @@ func TestExchangeMethods(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
 
+	channel, err := tc.client.Channel()
+	if err != nil {
+		panic(err.Error())
+	}
+	channel.ExchangeDeclare("ex-1", "topic", false, false, false, false, NO_ARGS)
+
 	// Create exchange
-	tc.sendAndLogMethod(&amqp.ExchangeDeclare{
-		Exchange:  "ex-1",
-		Type:      "topic",
-		Arguments: amqp.NewTable(),
-	})
-	tc.logResponse()
 	if len(tc.s.exchanges) != 5 {
 		t.Errorf("Wrong number of exchanges: %d", len(tc.s.exchanges))
 	}
 
 	// Create Queue
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "q-1",
-		Arguments: amqp.NewTable(),
-	})
-	tc.logResponse()
+	channel.QueueDeclare("q-1", false, false, false, false, NO_ARGS)
 	if len(tc.s.queues) != 1 {
 		t.Errorf("Wrong number of queues: %d", len(tc.s.queues))
 	}
 
-	tc.sendAndLogMethod(&amqp.ExchangeDelete{
-		Exchange: "ex-1",
-	})
-	// check that we got delete ok
-	_ = tc.logResponse().(*amqp.ExchangeDeleteOk)
+	// Delete exchange
+	channel.ExchangeDelete("ex-1", false, false)
+	if len(tc.s.exchanges) != 4 {
+		t.Errorf("Wrong number of exchanges: %d", len(tc.s.exchanges))
+	}
 }

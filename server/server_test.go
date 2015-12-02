@@ -3,12 +3,17 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/jeffjenkins/dispatchd/amqp"
 	"github.com/jeffjenkins/dispatchd/util"
+	amqpclient "github.com/streadway/amqp"
 	"net"
 	"os"
 	"testing"
+	"time"
 )
+
+var NO_ARGS = make(amqpclient.Table)
 
 type testClient struct {
 	t          *testing.T
@@ -19,6 +24,7 @@ type testClient struct {
 	extConn    net.Conn
 	serverDb   string
 	msgDb      string
+	client     *amqpclient.Connection
 }
 
 func newTestClient(t *testing.T) *testClient {
@@ -34,7 +40,25 @@ func newTestClient(t *testing.T) *testClient {
 	internal, external := net.Pipe()
 	go s.openConnection(internal)
 	// Set up connection
-	external.Write([]byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1})
+	// external.Write([]byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1})
+	clientconfig := amqpclient.Config{
+		SASL:            nil,
+		Vhost:           "/",
+		ChannelMax:      100000,
+		FrameSize:       100000,
+		Heartbeat:       time.Duration(0),
+		TLSClientConfig: nil,
+		Properties:      make(amqpclient.Table),
+		Dial: func(network, addr string) (net.Conn, error) {
+			return external, nil
+		},
+	}
+
+	var client, err = amqpclient.DialConfig("amqp://localhost:1234", clientconfig)
+
+	if err != nil {
+		panic(err.Error())
+	}
 	tc := &testClient{
 		t:          t,
 		s:          s,
@@ -44,24 +68,8 @@ func newTestClient(t *testing.T) *testClient {
 		extConn:    external,
 		serverDb:   serverDb,
 		msgDb:      msgDb,
+		client:     client,
 	}
-	go tc.fromServerHelper()
-	go tc.toServerHelper()
-
-	tc.logResponse() // start
-	tc.sendAndLogMethodWithChannel(0, &amqp.ConnectionStartOk{
-		ClientProperties: amqp.NewTable(),
-		Mechanism:        "PLAIN",
-		Response:         []byte("guest\x00guest"),
-		Locale:           "en_US",
-	})
-	tc.logResponse() // tune
-	tc.sendAndLogMethodWithChannel(0, &amqp.ConnectionTuneOk{})
-	tc.sendAndLogMethodWithChannel(0, &amqp.ConnectionOpen{})
-	tc.logResponse() // openok
-	// open channel
-	tc.sendAndLogMethod(&amqp.ChannelOpen{})
-	tc.logResponse()
 	return tc
 }
 
