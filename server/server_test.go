@@ -1,10 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"github.com/jeffjenkins/dispatchd/amqp"
 	"github.com/jeffjenkins/dispatchd/util"
 	amqpclient "github.com/streadway/amqp"
 	"net"
@@ -14,17 +10,15 @@ import (
 )
 
 var NO_ARGS = make(amqpclient.Table)
+var TEST_TRANSIENT_MSG = amqpclient.Publishing{
+	Body: []byte("dispatchd"),
+}
 
 type testClient struct {
-	t          *testing.T
-	s          *Server
-	toServer   chan *amqp.WireFrame
-	fromServer chan *amqp.WireFrame
-	intConn    net.Conn
-	extConn    net.Conn
-	serverDb   string
-	msgDb      string
-	client     *amqpclient.Connection
+	t        *testing.T
+	s        *Server
+	serverDb string
+	msgDb    string
 }
 
 func newTestClient(t *testing.T) *testClient {
@@ -32,15 +26,38 @@ func newTestClient(t *testing.T) *testClient {
 	msgDb := dbPath()
 	s := NewServer(serverDb, msgDb)
 	s.init()
-	// Large buffers so we don't accidentally lock
-	toServer := make(chan *amqp.WireFrame, 1000)
-	fromServer := make(chan *amqp.WireFrame, 1000)
+	tc := &testClient{
+		t:        t,
+		s:        s,
+		serverDb: serverDb,
+		msgDb:    msgDb,
+	}
+	return tc
+}
 
-	// Make fake connection
+func channelHelper(
+	tc *testClient,
+	conn *amqpclient.Connection,
+) (
+	*amqpclient.Channel,
+	chan amqpclient.Return,
+	chan *amqpclient.Error,
+) {
+	ch, err := conn.Channel()
+	if err != nil {
+		panic("Bad channel!")
+	}
+	retChan := make(chan amqpclient.Return)
+	closeChan := make(chan *amqpclient.Error)
+	ch.NotifyReturn(retChan)
+	ch.NotifyClose(closeChan)
+	return ch, retChan, closeChan
+}
+
+func (tc *testClient) connect() *amqpclient.Connection {
 	internal, external := net.Pipe()
-	go s.openConnection(internal)
+	go tc.s.openConnection(internal)
 	// Set up connection
-	// external.Write([]byte{'A', 'M', 'Q', 'P', 0, 0, 9, 1})
 	clientconfig := amqpclient.Config{
 		SASL:            nil,
 		Vhost:           "/",
@@ -54,28 +71,17 @@ func newTestClient(t *testing.T) *testClient {
 		},
 	}
 
-	var client, err = amqpclient.DialConfig("amqp://localhost:1234", clientconfig)
-
+	client, err := amqpclient.DialConfig("amqp://localhost:1234", clientconfig)
 	if err != nil {
 		panic(err.Error())
 	}
-	tc := &testClient{
-		t:          t,
-		s:          s,
-		toServer:   toServer,
-		fromServer: fromServer,
-		intConn:    internal,
-		extConn:    external,
-		serverDb:   serverDb,
-		msgDb:      msgDb,
-		client:     client,
-	}
-	return tc
+	return client
 }
 
 func (tc *testClient) cleanup() {
 	os.Remove(tc.msgDb)
 	os.Remove(tc.serverDb)
+	// tc.client.Close()
 }
 
 func dbPath() string {
@@ -87,128 +93,4 @@ func (tc *testClient) connFromServer() *AMQPConnection {
 		return conn
 	}
 	panic("no connections!")
-}
-
-func (tc *testClient) fromServerHelper() {
-	for {
-		frame, err := amqp.ReadFrame(tc.extConn)
-		if err != nil {
-			panic("Invalid frame from server! Check the wire protocol tests")
-		}
-		if frame.FrameType == 8 {
-			// Skip heartbeats
-			continue
-		}
-		tc.fromServer <- frame
-	}
-}
-
-func (tc *testClient) toServerHelper() {
-	for frame := range tc.toServer {
-		amqp.WriteFrame(tc.extConn, frame)
-	}
-}
-
-func methodToWireFrame(channelId uint16, method amqp.MethodFrame) *amqp.WireFrame {
-	var buf = bytes.NewBuffer([]byte{})
-	method.Write(buf)
-	return &amqp.WireFrame{uint8(amqp.FrameMethod), channelId, buf.Bytes()}
-}
-
-func wireFrameToMethod(frame *amqp.WireFrame) amqp.MethodFrame {
-	var methodReader = bytes.NewReader(frame.Payload)
-	var methodFrame, err = amqp.ReadMethod(methodReader)
-	if err != nil {
-		panic("Failed to read method from server. Maybe not a method?")
-	}
-	return methodFrame
-}
-
-func (tc *testClient) logResponse() amqp.MethodFrame {
-	var method = wireFrameToMethod(<-tc.fromServer)
-	var js, err = json.Marshal(method)
-	if err != nil {
-		panic("could not encode json, testing error!")
-	}
-	tc.t.Logf(">>>> RECV '%s': %s", method.MethodName(), string(js))
-	return method
-}
-
-// Gets the parts of a return with a single frame
-func (tc *testClient) logReturn1() (amqp.MethodFrame, *amqp.ContentHeaderFrame, *amqp.WireFrame) {
-	// Method
-	var method = tc.logResponse()
-	// Headers
-	var headerWireFrame = <-tc.fromServer
-	var headers = &amqp.ContentHeaderFrame{}
-	var err = headers.Read(bytes.NewReader(headerWireFrame.Payload))
-	if err != nil {
-		panic("Failed to read header frame from server! Maybe it's something else?")
-	}
-	// Body
-	var body = <-tc.fromServer
-	return method, headers, body
-}
-
-func (tc *testClient) sendAndLogMethod(method amqp.MethodFrame) {
-	var js, err = json.Marshal(method)
-	if err != nil {
-		panic("")
-	}
-	tc.t.Logf("<<<< SENT '%s': %s", method.MethodName(), string(js))
-	tc.toServer <- methodToWireFrame(1, method)
-}
-
-func (tc *testClient) sendAndLogMethodWithChannel(channelId uint16, method amqp.MethodFrame) {
-	var js, err = json.Marshal(method)
-	if err != nil {
-		panic("")
-	}
-	tc.t.Logf("<<<< SENT '%s': %s", method.MethodName(), string(js))
-	tc.toServer <- methodToWireFrame(channelId, method)
-}
-
-func (tc *testClient) declareQueue(name string) amqp.MethodFrame {
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     name,
-		Arguments: amqp.NewTable(),
-	})
-	return tc.logResponse().(*amqp.QueueDeclareOk)
-}
-
-func (tc *testClient) bindQueue(ex string, q string, key string) amqp.MethodFrame {
-	tc.sendAndLogMethod(&amqp.QueueBind{
-		Exchange:   ex,
-		Queue:      q,
-		RoutingKey: key,
-		Arguments:  amqp.NewTable(),
-	})
-	return tc.logResponse().(*amqp.QueueBindOk)
-}
-
-func (tc *testClient) simplePublish(ex string, key string, msg string) {
-	// Send method
-	tc.sendAndLogMethod(&amqp.BasicPublish{
-		Exchange:   ex,
-		RoutingKey: key,
-	})
-	tc.sendSimpleContentHeader(msg)
-	tc.sendMessageFrames(msg)
-}
-
-func (tc *testClient) sendMessageFrames(msg string) {
-	tc.toServer <- &amqp.WireFrame{uint8(amqp.FrameBody), 1, []byte(msg)}
-}
-
-func (tc *testClient) sendSimpleContentHeader(msg string) {
-	// Send headers
-	var buf = bytes.NewBuffer(make([]byte, 0))
-	amqp.WriteShort(buf, uint16(60))
-	amqp.WriteShort(buf, 0)
-	amqp.WriteLonglong(buf, uint64(len(msg)))
-
-	// TODO: write props. this sets all to not present
-	amqp.WriteShort(buf, 0)
-
-	tc.toServer <- &amqp.WireFrame{uint8(amqp.FrameHeader), 1, buf.Bytes()}
 }

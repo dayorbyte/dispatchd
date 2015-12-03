@@ -7,11 +7,9 @@ import (
 func TestExchangeMethods(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	channel, _, _ := channelHelper(tc, conn)
 
-	channel, err := tc.client.Channel()
-	if err != nil {
-		panic(err.Error())
-	}
 	channel.ExchangeDeclare("ex-1", "topic", false, false, false, false, NO_ARGS)
 
 	// Create exchange

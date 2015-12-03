@@ -1,31 +1,25 @@
 package main
 
 import (
-	"github.com/jeffjenkins/dispatchd/amqp"
 	"testing"
 )
 
 func TestImmediate(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	ch, retChan, _ := channelHelper(tc, conn)
 
-	tc.declareQueue("q1")
-	tc.bindQueue("amq.direct", "q1", "abc")
+	ch.QueueDeclare("q1", false, false, false, false, NO_ARGS)
+	ch.QueueBind("q1", "abc", "amq.direct", false, NO_ARGS)
+	ch.Publish("amq.direct", "abc", false, true, TEST_TRANSIENT_MSG)
 
-	tc.sendAndLogMethod(&amqp.BasicPublish{
-		Exchange:   "amq.direct",
-		RoutingKey: "abc",
-		Immediate:  true,
-	})
-	var msg = "dispatchd"
-	tc.sendSimpleContentHeader(msg)
-	tc.sendMessageFrames(msg)
+	ret := <-retChan
 
-	var method, _, body = tc.logReturn1()
-	if method.(*amqp.BasicReturn).ReplyCode != 313 {
+	if ret.ReplyCode != 313 {
 		t.Fatalf("Wrong reply code with Immediate return")
 	}
-	if string(body.Payload) != msg {
+	if string(ret.Body) != string(TEST_TRANSIENT_MSG.Body) {
 		t.Fatalf("Did not get same payload back in BasicReturn")
 	}
 }
@@ -33,21 +27,17 @@ func TestImmediate(t *testing.T) {
 func TestMandatory(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	ch, retChan, _ := channelHelper(tc, conn)
 
-	tc.sendAndLogMethod(&amqp.BasicPublish{
-		Exchange:   "amq.direct",
-		RoutingKey: "abc",
-		Mandatory:  true,
-	})
-	var msg = "dispatchd"
-	tc.sendSimpleContentHeader(msg)
-	tc.sendMessageFrames(msg)
+	ch.Publish("amq.direct", "abc", false, true, TEST_TRANSIENT_MSG)
 
-	var method, _, body = tc.logReturn1()
-	if method.(*amqp.BasicReturn).ReplyCode != 313 {
-		t.Fatalf("Wrong reply code with Immediate return")
+	ret := <-retChan
+
+	if ret.ReplyCode != 313 {
+		t.Fatalf("Wrong reply code with Mandatory return")
 	}
-	if string(body.Payload) != msg {
+	if string(ret.Body) != string(TEST_TRANSIENT_MSG.Body) {
 		t.Fatalf("Did not get same payload back in BasicReturn")
 	}
 }

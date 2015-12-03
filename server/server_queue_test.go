@@ -1,63 +1,40 @@
 package main
 
 import (
-	"github.com/jeffjenkins/dispatchd/amqp"
 	"testing"
-	"time"
 )
 
 func TestQueueMethods(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	ch, _, _ := channelHelper(tc, conn)
 
 	// Create Queue
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "q1",
-		Arguments: amqp.NewTable(),
-	})
-	tc.logResponse()
+	ch.QueueDeclare("q1", false, false, false, false, NO_ARGS)
+
 	if len(tc.s.queues) != 1 {
 		t.Errorf("Wrong number of queues: %d", len(tc.s.queues))
 	}
 
 	// Passive Check
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "q1",
-		Arguments: amqp.NewTable(),
-		Durable:   true,
-		Passive:   true,
-	})
-	tc.logResponse()
+	ch.QueueDeclarePassive("q1", true, false, false, false, NO_ARGS)
 
 	// Bind
-	tc.sendAndLogMethod(&amqp.QueueBind{
-		Queue:      "q1",
-		Exchange:   "amq.topic",
-		RoutingKey: "rk.*.#",
-		Arguments:  amqp.NewTable(),
-	})
-	tc.logResponse()
+	ch.QueueBind("q1", "rk.*.#", "amq.topic", false, NO_ARGS)
 	if len(tc.s.exchanges["amq.topic"].BindingsForQueue("q1")) != 1 {
 		t.Errorf("Failed to bind to q1")
 	}
 
 	// Unbind
-	tc.sendAndLogMethod(&amqp.QueueUnbind{
-		Queue:      "q1",
-		Exchange:   "amq.topic",
-		RoutingKey: "rk.*.#",
-		Arguments:  amqp.NewTable(),
-	})
-	tc.logResponse()
+	ch.QueueUnbind("q1", "rk.*.#", "amq.topic", NO_ARGS)
+
 	if len(tc.s.exchanges["amq.topic"].BindingsForQueue("q1")) != 0 {
 		t.Errorf("Failed to unbind from q1")
 	}
 
 	// Delete
-	tc.sendAndLogMethod(&amqp.QueueDelete{
-		Queue: "q1",
-	})
-	tc.logResponse()
+	ch.QueueDelete("q1", false, false, false)
 	if len(tc.s.queues) != 0 {
 		t.Errorf("Wrong number of queues: %d", len(tc.s.queues))
 	}
@@ -66,14 +43,15 @@ func TestQueueMethods(t *testing.T) {
 func TestAutoAssignedQueue(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	ch, _, _ := channelHelper(tc, conn)
 
 	// Create Queue
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "",
-		Arguments: amqp.NewTable(),
-	})
-	resp := tc.logResponse().(*amqp.QueueDeclareOk)
-	if len(resp.Queue) == 0 {
+	resp, err := ch.QueueDeclare("", false, false, false, false, NO_ARGS)
+	if err != nil {
+		t.Fatalf("Error declaring queue")
+	}
+	if len(resp.Name) == 0 {
 		t.Errorf("Autogenerate queue name failed")
 	}
 }
@@ -81,14 +59,16 @@ func TestAutoAssignedQueue(t *testing.T) {
 func TestBadQueueName(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	ch, _, errChan := channelHelper(tc, conn)
 
 	// Create Queue
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "~",
-		Arguments: amqp.NewTable(),
-	})
-	resp := tc.logResponse().(*amqp.ChannelClose)
-	if resp.ReplyCode != 406 {
+	_, err := ch.QueueDeclare("!", false, false, false, true, NO_ARGS)
+	if err != nil {
+		panic("failed to declare queue")
+	}
+	resp := <-errChan
+	if resp.Code != 406 {
 		t.Errorf("Wrong response code")
 	}
 }
@@ -96,15 +76,16 @@ func TestBadQueueName(t *testing.T) {
 func TestPassiveNotFound(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	ch, _, errChan := channelHelper(tc, conn)
 
 	// Create Queue
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "does.not.exist",
-		Arguments: amqp.NewTable(),
-		Passive:   true,
-	})
-	resp := tc.logResponse().(*amqp.ChannelClose)
-	if resp.ReplyCode != 404 {
+	_, err := ch.QueueDeclarePassive("does.not.exist", true, false, false, true, NO_ARGS)
+	if err != nil {
+		panic("failed to declare queue")
+	}
+	resp := <-errChan
+	if resp.Code != 404 {
 		t.Errorf("Wrong response code")
 	}
 }
@@ -112,43 +93,31 @@ func TestPassiveNotFound(t *testing.T) {
 func TestPurge(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	ch, _, _ := channelHelper(tc, conn)
 
-	// Create Queue
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "q1",
-		Arguments: amqp.NewTable(),
-		Exclusive: true,
-	})
-	tc.logResponse()
+	ch.QueueDeclare("q1", false, false, false, false, NO_ARGS)
+	ch.QueueBind("q1", "a.b.c", "amq.topic", false, NO_ARGS)
 
-	tc.sendAndLogMethod(&amqp.QueueBind{
-		Exchange:   "amq.topic",
-		Queue:      "q1",
-		RoutingKey: "a.b.c",
-		Arguments:  amqp.NewTable(),
-	})
-	tc.logResponse()
+	ch.Publish("amq.topic", "a.b.c", false, false, TEST_TRANSIENT_MSG)
 
-	tc.simplePublish("amq.topic", "a.b.c", "hello world")
-
-	// TODO: handle this more elegantly than a sleep. Best bet is probably sending
-	// a random method and waiting for the response since messages are processed
-	// in order
-	time.Sleep(5 * time.Millisecond)
+	// This unbind is just to block us on the message being processed by the
+	// channel so that the server has it.
+	ch.QueueUnbind("q1", "a.b.c", "amq.topic", NO_ARGS)
 	if tc.s.queues["q1"].Len() == 0 {
 		t.Fatalf("Message did not make it into queue")
 	}
 
-	tc.sendAndLogMethod(&amqp.QueuePurge{
-		Queue: "q1",
-	})
-	resp := tc.logResponse().(*amqp.QueuePurgeOk)
+	resp, err := ch.QueuePurge("q1", false)
+	if err != nil {
+		t.Fatalf("Failed to call QueuePurge")
+	}
 
 	if tc.s.queues["q1"].Len() != 0 {
 		t.Fatalf("Message did not get purged from queue. Got %d", tc.s.queues["q1"].Len())
 	}
 
-	if resp.MessageCount != 1 {
+	if resp != 1 {
 		t.Fatalf("Purge did not return the right number of messages deleted")
 	}
 }
@@ -156,37 +125,30 @@ func TestPurge(t *testing.T) {
 func TestExclusive(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	ch, _, errChan := channelHelper(tc, conn)
 
 	// Create Queue
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "q1",
-		Arguments: amqp.NewTable(),
-		Exclusive: true,
-	})
-	tc.logResponse()
+	ch.QueueDeclare("q1", false, false, true, false, NO_ARGS)
 
 	// Check conn id
-	conn := tc.connFromServer()
+	serverConn := tc.connFromServer()
 	q, ok := tc.s.queues["q1"]
 	if !ok {
-		t.Errorf("Could not find q1")
-		return
+		t.Fatalf("Could not find q1")
 	}
-	if conn.id != q.ConnId {
-		t.Errorf("Exclusive queue does not have connId set")
+	if serverConn.id != q.ConnId {
+		t.Fatalf("Exclusive queue does not have connId set")
 	}
 
 	// Cheat and change the connection id so we don't need a second conn
 	// for this test
 	q.ConnId = 54321
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "q1",
-		Arguments: amqp.NewTable(),
-		Exclusive: true,
-	})
+	// NOTE: if nowait isn't true this blocks forever
+	ch.QueueDeclare("q1", false, false, true, true, NO_ARGS)
 
-	resp := tc.logResponse().(*amqp.ChannelClose)
-	if resp.ReplyCode != 405 {
+	resp := <-errChan
+	if resp.Code != 405 {
 		t.Errorf("Wrong response code")
 	}
 }
@@ -194,22 +156,17 @@ func TestExclusive(t *testing.T) {
 func TestNonMatchingQueue(t *testing.T) {
 	tc := newTestClient(t)
 	defer tc.cleanup()
+	conn := tc.connect()
+	ch, _, errChan := channelHelper(tc, conn)
 
 	// Create Queue
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "q1",
-		Arguments: amqp.NewTable(),
-	})
-	tc.logResponse()
+	ch.QueueDeclare("q1", false, false, false, false, NO_ARGS)
 
 	// Create queue again with different args
-	tc.sendAndLogMethod(&amqp.QueueDeclare{
-		Queue:     "q1",
-		Arguments: amqp.NewTable(),
-		Durable:   true,
-	})
-	resp := tc.logResponse().(*amqp.ChannelClose)
-	if resp.ReplyCode != 406 {
+	// NOTE: if nowait isn't true this blocks forever
+	ch.QueueDeclare("q1", true, false, false, true, NO_ARGS)
+	resp := <-errChan
+	if resp.Code != 406 {
 		t.Errorf("Wrong response code")
 	}
 }
