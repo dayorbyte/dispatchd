@@ -30,18 +30,19 @@ def main(args):
     if os.path.isdir(path):
       test_packages.append(path)
 
-
   cover_names = []
   for pkg in test_packages:
-    cover_name = os.path.join(output_dir, 'cover-{}.cover'.format(pkg))
+    cover_name = os.path.join(output_dir, '{}.cover'.format(pkg))
     cover_names.append((pkg, cover_name))
     test_target = os.path.join(PREFIX, pkg)
-    subprocess.check_call([
+    cmd = [
       'go',
       'test',
+      '-coverpkg=github.com/jeffjenkins/dispatchd/...',
       '-coverprofile={}'.format(cover_name),
       test_target,
-    ])
+    ]
+    subprocess.check_call(cmd)
 
   merge_call = [os.path.join(gopath, 'bin', 'gocovmerge')]
   merge_call.extend([n for _, n in cover_names])
