@@ -187,3 +187,27 @@ func TestRecover(t *testing.T) {
 		t.Fatalf("Should have 2 message in queue. Found", msgCount)
 	}
 }
+
+func TestGet(t *testing.T) {
+	//
+	// Setup
+	//
+	tc := newTestClient(t)
+	defer tc.cleanup()
+	conn := tc.connect()
+	ch, _, _ := channelHelper(tc, conn)
+
+	ch.QueueDeclare("q1", false, false, false, false, NO_ARGS)
+	ch.QueueBind("q1", "abc", "amq.direct", false, NO_ARGS)
+	ch.Publish("amq.direct", "abc", false, false, TEST_TRANSIENT_MSG)
+	msg, ok, err := ch.Get("q1", false)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	if !ok {
+		t.Fatalf("Did not receive message")
+	}
+	if string(msg.Body) != string(TEST_TRANSIENT_MSG.Body) {
+		t.Fatalf("wrong message response in get")
+	}
+}
