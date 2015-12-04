@@ -216,6 +216,8 @@ func (consumer *Consumer) consumeOne() {
 	}, msg)
 	stats.RecordHisto(consumer.statConsumeOneSend, start)
 	consumer.StatCount += 1
+	// Since we succeeded in processing a message, ping so that we try again
+	consumer.Ping()
 }
 
 func (consumer *Consumer) SendCancel() {
