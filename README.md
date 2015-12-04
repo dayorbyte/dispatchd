@@ -6,45 +6,54 @@
 
 It generally works but is not hardened enough for production use. More on what it can and can't do below
 
-## What's done?
+## Features
 
-* The wire protcol (amqp 0-9-1) is complete. It can read or write any frame or data type.
-  * A python script uses the XML spec to generate a lot of what's needed
-  * It seems like it has trouble talking to the rabbitmq perf testing
-    tool when a a shortstr is sent. Unclear why since pika is OK with it and
-    the bytes seem to be as per the spec
-* Other than transactions, all amqp 0.9.1 methods are implemented
+* Basically all (and many optional) amqp 0-9-1 features are supported
 * Some rabbitmq extensions are implemented:
-  * nack (currently the same consumer could receive the message again)
+  * nack (almost: the same consumer could receive the message again)
   * internal exchanges (flag exists, but currently unused)
   * auto-delete exchanges
-  * The reinterpretation of basic.qos
-* Durability of server settings is supported. Durable messages are not persisted
-* No security or auth mechanisms exist (you must use PLAIN auth with
-  guest/guest)
-* Useful assertions are missing (e.g. declaring a durable auto-delete queue)
-* A performance test using rabbitmq's performance testing program showed
-  slower throughput for small message sizes and faster throughput for larger
-  ones on a direct exchange without acks
+  * Rabbit's reinterpretation of basic.qos
 * There is a simple admin page that can show basic info about what's
   happening in the server
-* Transactions are supported
-* Durability of messages is supported, although currently buggy
 
-## Next
+Notably missing from the features in the amqp spec are:
 
-* More tests. I'm aiming for full test coverage. I'm about ~1/3 of the way
-  there and all work right now is writing tests
-* Faster persistent messages. Right now it's like ~200qps with peristence
-  on. I also think I can not persist messages which I can send off right
-  away if the response is fast enough
-* Faster consumption. I can't seem to get more than 8000qps from a single
-  consumer, but I can do like 30000 with producers
+* support for multiple priority levels
+* handling of queue/memory limits being exceeded
 
-## Later
+## Security/Auth
 
-* Github issues: https://github.com/jeffjenkins/mq/issues
-* Tests, and probably refactoring to make testing more tractible
-* Add flow control so an overactive producer can't swamp the server
-* Come up with a real project name
-* Performance tuning. The server can do ~20k messages per second with persistence turned off.
+No security or auth mechanisms exist at present. You must use PLAIN auth and the user and password are ignored.
+
+## Performance compared to RabbitMQ
+
+All perf testing is done with RabbitMQ's Java perf testing tool. Generally using this command line:
+
+    ./runjava.sh com.rabbitmq.examples.PerfTest --exchange perf-test -uri amqp://guest:guest@localhost:5672 --queue some-queue --consumers 4 --producers 2 --qos 100
+
+On a late 2014 i7 mac mini the results were as follows:
+
+    RabbitMQ Send: ~13000 msg/s, consistent
+    RabbitMQ Recv: ~10000 msg/s, consistent
+    Dispatchd Send: ~18000 msg/s, varying between 15k and 22k
+    Dispatchd Recv: ~18000 msg/s, consistent
+
+It is unclear whether this difference in performance would go away if the server had complete feature parity with Rabbit. Based on the feature diff it isn't clear why it would, but Rabbit is highly tuned and extremely performant.
+
+With the `-flag persistent` performance drops considerably:
+
+    RabbitMQ Send: ~8k msg/s, varying between 0 and 12k
+    RabbitMQ Recv: ~6k msg/s, consistent
+    Dispatchd Send: ~1.6k msg/s, varying between 0 and 5000
+    Dispatchd Recv: ~1.6k msg/s, consistent
+
+The most likely reason for dispatchd dropping so much more is that it currently has no optimizations for batching writes (or not writing at all if the message is sent/acked before a write is needed).
+
+## Testing and Code Coverage
+
+Dispatchd has a fairly extensive test suite. Almost all of the major functions are tested and test coverage—ignoring generated code—is around 80%
+
+## What's Next? How do I request changes?
+
+Non-trivial changes are tracked through [github issues](https://github.com/jeffjenkins/dispatchd/issues).
