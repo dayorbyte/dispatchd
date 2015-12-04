@@ -82,7 +82,7 @@ func TestAckNackMany(t *testing.T) {
 
 	ch.QueueDeclare("q1", false, false, false, false, NO_ARGS)
 	ch.QueueBind("q1", "abc", "amq.direct", false, NO_ARGS)
-	var consumerId = "TestAckNackMany-1"
+	var consumerId = util.RandomId()
 
 	// Ack Many
 	// Publish and consume two messages. Acck-multiple the second one and
@@ -125,6 +125,7 @@ func TestAckNackMany(t *testing.T) {
 	// Publish and consume two messages. Nack-multiple the second one and
 	// check that both are acked and the queue is empty
 	//
+	consumerId = util.RandomId()
 	deliveries, err = ch.Consume("q1", consumerId, false, false, false, false, NO_ARGS)
 	ch.Publish("amq.direct", "abc", false, false, TEST_TRANSIENT_MSG)
 	ch.Publish("amq.direct", "abc", false, false, TEST_TRANSIENT_MSG)
