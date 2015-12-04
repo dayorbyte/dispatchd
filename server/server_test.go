@@ -78,6 +78,10 @@ func (tc *testClient) connect() *amqpclient.Connection {
 	return client
 }
 
+func (tc *testClient) wait(ch *amqpclient.Channel) {
+	ch.QueueDeclare(util.RandomId(), false, false, false, false, NO_ARGS)
+}
+
 func (tc *testClient) cleanup() {
 	os.Remove(tc.msgDb)
 	os.Remove(tc.serverDb)
