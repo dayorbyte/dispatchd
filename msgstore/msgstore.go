@@ -11,6 +11,7 @@ import (
 	"github.com/jeffjenkins/dispatchd/persist"
 	"github.com/jeffjenkins/dispatchd/stats"
 	"sync"
+	"time"
 )
 
 var MESSAGE_INDEX_BUCKET = []byte("message_index")
@@ -34,9 +35,25 @@ func (qmf *QueueMessageFactory) New() proto.Unmarshaler {
 	return &amqp.QueueMessage{}
 }
 
+const FLAG_USE_ASYNC_PERSIST = false
+
+const (
+	opAdd           = iota
+	opDelete        = iota
+	opIncrDelivered = iota
+)
+
+type PersistOp struct {
+	id        int64
+	opType    int
+	queueName string
+}
+
 type MessageStore struct {
 	index         map[int64]*amqp.IndexMessage
 	messages      map[int64]*amqp.Message
+	persistOps    []*PersistOp
+	persistLock   sync.Mutex
 	db            *bolt.DB
 	msgLock       sync.RWMutex
 	indexLock     sync.RWMutex
@@ -59,6 +76,10 @@ func NewMessageStore(fileName string) (*MessageStore, error) {
 	ms.statRemoveRef = stats.MakeHistogram("remove-ref")
 
 	return ms, nil
+}
+
+func (ms *MessageStore) Start() {
+	go ms.periodicPersist()
 }
 
 func (ms *MessageStore) MessageCount() int {
@@ -84,6 +105,58 @@ func isDurable(msg *amqp.Message) bool {
 	}
 	dm := msg.Header.Properties.DeliveryMode
 	return dm != nil && *dm == byte(2)
+}
+
+func (ms *MessageStore) periodicPersist() {
+	for {
+		time.Sleep(200 * time.Millisecond)
+		ms.persistOnce()
+	}
+}
+
+func (ms *MessageStore) persistOnce() {
+	ms.persistLock.Lock()
+	defer ms.persistLock.Unlock()
+	if !FLAG_USE_ASYNC_PERSIST {
+		ms.persistOps = make([]*PersistOp, 0)
+		return
+	}
+	err := ms.db.Update(func(tx *bolt.Tx) error {
+		for _, op := range ms.persistOps {
+			t := op.opType
+			switch {
+			case t == opAdd:
+				ms.addOp(tx, op)
+			case t == opDelete:
+				ms.deleteOp(tx, op)
+			case t == opIncrDelivered:
+				ms.incrDeliveredOp(tx, op)
+			}
+		}
+		return nil
+	})
+	if err == nil {
+		panic("Failed to persist")
+	}
+	ms.persistOps = make([]*PersistOp, 0)
+}
+
+func (ms *MessageStore) addOp(tx *bolt.Tx, op *PersistOp) {
+
+}
+
+func (ms *MessageStore) deleteOp(tx *bolt.Tx, op *PersistOp) {
+
+}
+
+func (ms *MessageStore) incrDeliveredOp(tx *bolt.Tx, op *PersistOp) {
+
+}
+
+func (ms *MessageStore) enqueueOp(op *PersistOp) {
+	ms.persistLock.Lock()
+	ms.persistOps = append(ms.persistOps, op)
+	ms.persistLock.Unlock()
 }
 
 func (ms *MessageStore) LoadMessages() error {
@@ -215,6 +288,15 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 	}
 	// if any are durable, persist those ones
 	if anyDurable {
+		for q, qms := range queueMessages {
+			for _, qm := range qms {
+				ms.enqueueOp(&PersistOp{
+					id:        qm.Id,
+					queueName: q,
+					opType:    opAdd,
+				})
+			}
+		}
 		err := ms.db.Update(func(tx *bolt.Tx) error {
 			// Save messages to content/index stores
 			for _, msg := range msgs {
@@ -250,6 +332,7 @@ func (ms *MessageStore) AddTxMessages(msgs []*amqp.TxMessage) (map[string][]*amq
 func (ms *MessageStore) IncrDeliveryCount(queueName string, qm *amqp.QueueMessage) (err error) {
 	qm.DeliveryCount += 1
 	if qm.Durable {
+		ms.enqueueOp(&PersistOp{id: qm.Id, opType: opIncrDelivered, queueName: queueName})
 		err = ms.db.Update(func(tx *bolt.Tx) error {
 			persistQueueMessage(tx, queueName, qm)
 			return nil
@@ -280,6 +363,7 @@ func (ms *MessageStore) RemoveRef(qm *amqp.QueueMessage, queueName string, rhs [
 	}
 	// Update disk
 	if im.Durable {
+		ms.enqueueOp(&PersistOp{id: im.Id, opType: opDelete, queueName: queueName})
 		err := ms.db.Update(func(tx *bolt.Tx) error {
 			// fmt.Printf("Remove from queue: %d '%s'\n", qm.Id, queueName)
 			var err = depersistQueueMessage(tx, queueName, qm.Id)

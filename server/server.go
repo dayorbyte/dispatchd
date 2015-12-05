@@ -48,6 +48,7 @@ func NewServer(dbPath string, msgStorePath string) *Server {
 
 	}
 	msgStore, err := msgstore.NewMessageStore(msgStorePath)
+	msgStore.Start()
 	if err != nil {
 		panic("Could not create message store!")
 	}

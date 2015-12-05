@@ -24,6 +24,7 @@ message IndexMessage {
   optional int32    refs            = 2 [(gogoproto.nullable) = false];
   optional bool     durable         = 3 [(gogoproto.nullable) = false];
   optional int32    deliveryCount   = 4 [(gogoproto.nullable) = false];
+  optional bool     persisted       = 5 [(gogoproto.nullable) = false];
 }
 
 message Message {
