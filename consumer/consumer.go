@@ -174,6 +174,7 @@ func (consumer *Consumer) consume(id uint16) {
 	// TODO: what is this doing?
 	consumer.cqueue.MaybeReady() <- false
 	for _ = range consumer.incoming {
+
 		consumer.consumeOne()
 	}
 }
