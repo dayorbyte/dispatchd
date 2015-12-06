@@ -8,6 +8,7 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"runtime"
 )
 
@@ -18,7 +19,9 @@ func handleConnection(server *Server, conn net.Conn) {
 func main() {
 	flag.Parse()
 	runtime.SetBlockProfileRate(1)
-	var server = NewServer("dispatchd.db", "msg_store.db")
+	serverDbPath := filepath.Join(persistDir, "dispatchd-server.db")
+	msgDbPath := filepath.Join(persistDir, "messages.db")
+	var server = NewServer(serverDbPath, msgDbPath)
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", amqpPort))
 	if err != nil {
 		fmt.Printf("Error!\n")
@@ -45,9 +48,11 @@ func main() {
 var amqpPort int
 var debugPort int
 var adminPort int
+var persistDir string
 
 func init() {
 	flag.IntVar(&amqpPort, "amqp-port", 1111, "Port for amqp protocol messages")
 	flag.IntVar(&debugPort, "debug-port", 6060, "Port for the golang debug handlers")
 	flag.IntVar(&adminPort, "admin-port", 8080, "Port for admin server")
+	flag.StringVar(&persistDir, "persist-dir", "/data/dispatchd/", "Directory for the server and message database files")
 }
