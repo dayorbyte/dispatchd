@@ -110,9 +110,18 @@ func isDurable(msg *amqp.Message) bool {
 }
 
 func (ms *MessageStore) periodicPersist() {
+	var defaultSleepTime = time.Duration(200 * time.Millisecond)
+	var sleepTime = defaultSleepTime
 	for {
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(sleepTime)
+		start := time.Now()
 		ms.persistOnce()
+		var diff = start.Sub(time.Now())
+		if diff > defaultSleepTime {
+			sleepTime = defaultSleepTime
+		} else {
+			sleepTime = defaultSleepTime - diff
+		}
 	}
 }
 
