@@ -25,7 +25,7 @@ func statsJSON(w http.ResponseWriter, r *http.Request, server *Server) {
 	w.Write(b)
 }
 
-func startAdminServer(server *Server) {
+func startAdminServer(server *Server, port int) {
 	// Static files
 	var path = os.Getenv("STATIC_PATH")
 	if len(path) == 0 {
@@ -51,6 +51,6 @@ func startAdminServer(server *Server) {
 	})
 
 	// Boot admin server
-	fmt.Printf("Admin server on port 8080, static files from: %s\n", path)
-	http.ListenAndServe(":8080", nil)
+	fmt.Printf("Admin server on port %d, static files from: %s\n", port, path)
+	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }

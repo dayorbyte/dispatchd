@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -15,19 +16,21 @@ func handleConnection(server *Server, conn net.Conn) {
 }
 
 func main() {
+	flag.Parse()
 	runtime.SetBlockProfileRate(1)
 	var server = NewServer("dispatchd.db", "msg_store.db")
-	ln, err := net.Listen("tcp", ":1111")
+	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", amqpPort))
 	if err != nil {
 		fmt.Printf("Error!\n")
 		os.Exit(1)
 	}
-	fmt.Printf("Listening on port 1111\n")
+	fmt.Printf("Listening on port %d\n", amqpPort)
 	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
+		fmt.Printf("Go perf handlers on port %d\n", debugPort)
+		log.Println(http.ListenAndServe(fmt.Sprintf("localhost:%d", debugPort), nil))
 	}()
 	go func() {
-		startAdminServer(server)
+		startAdminServer(server, adminPort)
 	}()
 	for {
 		conn, err := ln.Accept()
@@ -37,4 +40,14 @@ func main() {
 		}
 		go handleConnection(server, conn)
 	}
+}
+
+var amqpPort int
+var debugPort int
+var adminPort int
+
+func init() {
+	flag.IntVar(&amqpPort, "amqp-port", 1111, "Port for amqp protocol messages")
+	flag.IntVar(&debugPort, "debug-port", 6060, "Port for the golang debug handlers")
+	flag.IntVar(&adminPort, "admin-port", 8080, "Port for admin server")
 }
