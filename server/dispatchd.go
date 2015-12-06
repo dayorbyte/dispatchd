@@ -18,6 +18,7 @@ func handleConnection(server *Server, conn net.Conn) {
 
 func main() {
 	flag.Parse()
+	configure()
 	runtime.SetBlockProfileRate(1)
 	serverDbPath := filepath.Join(persistDir, "dispatchd-server.db")
 	msgDbPath := filepath.Join(persistDir, "messages.db")
@@ -43,16 +44,4 @@ func main() {
 		}
 		go handleConnection(server, conn)
 	}
-}
-
-var amqpPort int
-var debugPort int
-var adminPort int
-var persistDir string
-
-func init() {
-	flag.IntVar(&amqpPort, "amqp-port", 1111, "Port for amqp protocol messages")
-	flag.IntVar(&debugPort, "debug-port", 6060, "Port for the golang debug handlers")
-	flag.IntVar(&adminPort, "admin-port", 8080, "Port for admin server")
-	flag.StringVar(&persistDir, "persist-dir", "/data/dispatchd/", "Directory for the server and message database files")
 }
