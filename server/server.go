@@ -394,3 +394,27 @@ func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*
 	}
 	return nil, nil
 }
+
+var allowedUser = []byte{
+	// auth identity (not present)
+	0,
+	// username
+	'g', 'u', 'e', 's', 't',
+	0,
+	// password
+	'g', 'u', 'e', 's', 't',
+}
+
+func (s *Server) authenticate(mechanism string, blob []byte) bool {
+	// fmt.Printf(">> '%s', %d", blob, len(blob))
+	// fmt.Printf(">> '%s', %d", allowedUser, len(allowedUser))
+	if len(blob) != len(allowedUser) {
+		return false
+	}
+	for i, c := range allowedUser {
+		if c != blob[i] {
+			return false
+		}
+	}
+	return true
+}
