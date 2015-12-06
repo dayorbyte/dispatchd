@@ -41,14 +41,16 @@ On a late 2014 i7 mac mini the results were as follows:
 
 It is unclear whether this difference in performance would go away if the server had complete feature parity with Rabbit. Based on the feature diff it isn't clear why it would, but Rabbit is highly tuned and extremely performant.
 
-With the `-flag persistent` performance drops considerably:
+With the `-flag persistent` performance drops a bit:
 
-    RabbitMQ Send: ~8k msg/s, varying between 0 and 12k
-    RabbitMQ Recv: ~6k msg/s, consistent
-    Dispatchd Send: ~1.6k msg/s, varying between 0 and 5000
-    Dispatchd Recv: ~1.6k msg/s, consistent
+    RabbitMQ Send: ~9000k msg/s, varying between 6 and 12k
+    RabbitMQ Recv: ~7000k msg/s, consistent
+    Dispatchd Send: ~13500k msg/s, varying between 11 and 15k
+    Dispatchd Recv: ~13000k msg/s, varying between 11 and 15k
 
-The most likely reason for dispatchd dropping so much more is that it currently has no optimizations for batching writes (or not writing at all if the message is sent/acked before a write is needed).
+The one thing to note about Dispatchd's send (publish) performance here is that it does not have any internal flow control, so it can get backlogged writing messages to disk. It could be that Rabbit is doing a sustainable 9k and Dispatchd would lose way more messages than come in during one coalesce interval.
+
+On the Receieve (deliver) side, Dispatchd reconciles messages which don't need to by persisted (because they have already been delivered/acked) and so there is no performance hit to persistence if all messages are delivered before the next write to disk happens (every 200ms by default).
 
 ## Testing and Code Coverage
 
