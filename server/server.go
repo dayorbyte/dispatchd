@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +12,7 @@ import (
 	"github.com/jeffjenkins/dispatchd/exchange"
 	"github.com/jeffjenkins/dispatchd/msgstore"
 	"github.com/jeffjenkins/dispatchd/queue"
+	"golang.org/x/crypto/bcrypt"
 	"net"
 	"sync"
 )
@@ -395,26 +398,25 @@ func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*
 	return nil, nil
 }
 
-var allowedUser = []byte{
-	// auth identity (not present)
-	0,
-	// username
-	'g', 'u', 'e', 's', 't',
-	0,
-	// password
-	'g', 'u', 'e', 's', 't',
-}
+// guest/guest
+var allowedUserName = "guest"
+var allowedUserPasswordBase64 = "JDJhJDExJENobGk4dG5rY0RGemJhTjhsV21xR3VNNnFZZ1ZqTzUzQWxtbGtyMHRYN3RkUHMuYjF5SUt5"
 
 func (s *Server) authenticate(mechanism string, blob []byte) bool {
-	// fmt.Printf(">> '%s', %d", blob, len(blob))
-	// fmt.Printf(">> '%s', %d", allowedUser, len(allowedUser))
-	if len(blob) != len(allowedUser) {
+	// Split. SASL PLAIN has three parts
+	parts := bytes.Split(blob, []byte{0})
+	if len(parts) != 3 {
 		return false
 	}
-	for i, c := range allowedUser {
-		if c != blob[i] {
-			return false
-		}
+	// Check Username
+	if string(parts[1]) != allowedUserName {
+		return false
 	}
-	return true
+	// Check Password
+	allowed, err := base64.StdEncoding.DecodeString(allowedUserPasswordBase64)
+	if err != nil {
+		panic("Could not decode base64 password!")
+	}
+	err = bcrypt.CompareHashAndPassword(allowed, parts[2])
+	return err == nil
 }
