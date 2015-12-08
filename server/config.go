@@ -30,7 +30,7 @@ func init() {
 	)
 }
 
-func configure() {
+func configure() map[string]interface{} {
 	// TODO: It's no great that this is manual. I should make/find a small library
 	//       to automate this.
 	var config = make(map[string]interface{})
@@ -41,6 +41,7 @@ func configure() {
 	configureIntParam(&debugPort, debugPortDefault, "debug-port", config)
 	configureIntParam(&adminPort, adminPortDefault, "admin-port", config)
 	configureStringParam(&persistDir, persistDirDefault, "persist-dir", config)
+	return config
 }
 
 func configureIntParam(param *int, defaultValue int, configName string, config map[string]interface{}) {

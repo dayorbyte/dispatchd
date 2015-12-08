@@ -24,7 +24,7 @@ type testClient struct {
 func newTestClient(t *testing.T) *testClient {
 	serverDb := dbPath()
 	msgDb := dbPath()
-	s := NewServer(serverDb, msgDb)
+	s := NewServer(serverDb, msgDb, nil)
 	s.init()
 	tc := &testClient{
 		t:        t,

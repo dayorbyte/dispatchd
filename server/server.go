@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +10,6 @@ import (
 	"github.com/jeffjenkins/dispatchd/exchange"
 	"github.com/jeffjenkins/dispatchd/msgstore"
 	"github.com/jeffjenkins/dispatchd/queue"
-	"golang.org/x/crypto/bcrypt"
 	"net"
 	"sync"
 )
@@ -28,6 +25,7 @@ type Server struct {
 	msgStore        *msgstore.MessageStore
 	exchangeDeleter chan *exchange.Exchange
 	queueDeleter    chan *queue.Queue
+	users           map[string]User
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
@@ -44,7 +42,7 @@ func (server *Server) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewServer(dbPath string, msgStorePath string) *Server {
+func NewServer(dbPath string, msgStorePath string, userJson map[string]interface{}) *Server {
 	db, err := bolt.Open(dbPath, 0600, nil)
 	if err != nil {
 		panic(err.Error())
@@ -65,9 +63,11 @@ func NewServer(dbPath string, msgStorePath string) *Server {
 		msgStore:        msgStore,
 		exchangeDeleter: make(chan *exchange.Exchange),
 		queueDeleter:    make(chan *queue.Queue),
+		users:           make(map[string]User),
 	}
 
 	server.init()
+	server.addUsers(userJson)
 	return server
 }
 
@@ -396,27 +396,4 @@ func (server *Server) publish(exchange *exchange.Exchange, msg *amqp.Message) (*
 		}
 	}
 	return nil, nil
-}
-
-// guest/guest
-var allowedUserName = "guest"
-var allowedUserPasswordBase64 = "JDJhJDExJENobGk4dG5rY0RGemJhTjhsV21xR3VNNnFZZ1ZqTzUzQWxtbGtyMHRYN3RkUHMuYjF5SUt5"
-
-func (s *Server) authenticate(mechanism string, blob []byte) bool {
-	// Split. SASL PLAIN has three parts
-	parts := bytes.Split(blob, []byte{0})
-	if len(parts) != 3 {
-		return false
-	}
-	// Check Username
-	if string(parts[1]) != allowedUserName {
-		return false
-	}
-	// Check Password
-	allowed, err := base64.StdEncoding.DecodeString(allowedUserPasswordBase64)
-	if err != nil {
-		panic("Could not decode base64 password!")
-	}
-	err = bcrypt.CompareHashAndPassword(allowed, parts[2])
-	return err == nil
 }
