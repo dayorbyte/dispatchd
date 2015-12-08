@@ -22,9 +22,38 @@ Notably missing from the features in the amqp spec are:
 * support for multiple priority levels
 * handling of queue/memory limits being exceeded
 
+## Configuration
+
+There are command line flags for basic configuration:
+
+    -admin-port int
+        Port for admin server. Default: 8080
+    -amqp-port int
+        Port for amqp protocol messages. Default: 5672
+    -config-file string
+        Directory for the server and message database files. Default: do not read a config file
+    -debug-port int
+        Port for the golang debug handlers. Default: 6060
+    -persist-dir string
+        Directory for the server and message database files. Default: /data/dispatchd/
+
+These options can be overridden if `-config-file` is specified. The config file is JSON and will complain loudly if any types don't look right rather than ignoring or working around them.
+
+Right now the only config file exclusive options are for users and passwords. In the future the config file will have tuning parameters as well.
+
 ## Security/Auth
 
-No security or auth mechanisms exist at present. You must use PLAIN auth and the user and password are ignored.
+Dispatchd uses SASL PLAIN auth as required by the amqp spec. There is a default user (user: guest, pw: guest) which is available if there is no config file. If there is a config file the user entries look like this:
+
+    {
+      "users" : {
+        "guest" : {
+          "password_bcrypt_base64" : "JDJhJDExJENobGk4dG5rY0RGemJhTjhsV21xR3VNNnFZZ1ZqTzUzQWxtbGtyMHRYN3RkUHMuYjF5SUt5"
+        }
+      }
+    }
+
+Passwords are generated using bcrypt and then base64 encoded.
 
 ## Performance compared to RabbitMQ
 
