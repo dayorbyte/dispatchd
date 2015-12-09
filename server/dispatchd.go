@@ -3,10 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net"
-	"net/http"
-	_ "net/http/pprof"
+	// _ "net/http/pprof" // uncomment for debugging
 	"os"
 	"path/filepath"
 	"runtime"
@@ -29,10 +27,6 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Printf("Listening on port %d\n", amqpPort)
-	go func() {
-		fmt.Printf("Go perf handlers on port %d\n", debugPort)
-		log.Println(http.ListenAndServe(fmt.Sprintf("localhost:%d", debugPort), nil))
-	}()
 	go func() {
 		startAdminServer(server, adminPort)
 	}()

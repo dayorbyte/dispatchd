@@ -8,8 +8,6 @@ import (
 
 var amqpPort int
 var amqpPortDefault = 5672
-var debugPort int
-var debugPortDefault = 6060
 var adminPort int
 var adminPortDefault = 8080
 var persistDir string
@@ -19,7 +17,6 @@ var configFileDefault = ""
 
 func init() {
 	flag.IntVar(&amqpPort, "amqp-port", 0, "Port for amqp protocol messages. Default: 5672")
-	flag.IntVar(&debugPort, "debug-port", 0, "Port for the golang debug handlers. Default: 6060")
 	flag.IntVar(&adminPort, "admin-port", 0, "Port for admin server. Default: 8080")
 	flag.StringVar(&persistDir, "persist-dir", "", "Directory for the server and message database files. Default: /data/dispatchd/")
 	flag.StringVar(
@@ -38,7 +35,6 @@ func configure() map[string]interface{} {
 		config = parseConfigFile(configFile)
 	}
 	configureIntParam(&amqpPort, amqpPortDefault, "amqp-port", config)
-	configureIntParam(&debugPort, debugPortDefault, "debug-port", config)
 	configureIntParam(&adminPort, adminPortDefault, "admin-port", config)
 	configureStringParam(&persistDir, persistDirDefault, "persist-dir", config)
 	return config
