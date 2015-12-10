@@ -1,0 +1,8 @@
+{
+  "amqp-port" : 1111,
+  "users" : {
+    "guest" : {
+      "password_bcrypt_base64" : "JDJhJDExJENobGk4dG5rY0RGemJhTjhsV21xR3VNNnFZZ1ZqTzUzQWxtbGtyMHRYN3RkUHMuYjF5SUt5"
+    }
+  }
+}
