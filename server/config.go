@@ -37,6 +37,10 @@ func configure() map[string]interface{} {
 	configureIntParam(&amqpPort, amqpPortDefault, "amqp-port", config)
 	configureIntParam(&adminPort, adminPortDefault, "admin-port", config)
 	configureStringParam(&persistDir, persistDirDefault, "persist-dir", config)
+	_, ok := config["users"]
+	if !ok {
+		config["users"] = make(map[string]interface{})
+	}
 	return config
 }
 
