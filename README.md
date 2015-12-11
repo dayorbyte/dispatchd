@@ -41,6 +41,10 @@ These options can be overridden if `-config-file` is specified. The config file 
 
 Right now the only config file exclusive options are for users and passwords. In the future the config file will have tuning parameters as well.
 
+## Packages
+
+Dispatchd is currently only packaged as a docker image
+
 ## Security/Auth
 
 Dispatchd uses SASL PLAIN auth as required by the amqp spec. There is a default user (user: guest, pw: guest) which is available if there is no config file. If there is a config file the user entries look like this:
