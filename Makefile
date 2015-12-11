@@ -1,6 +1,6 @@
 
 .PHONY: all protoc_present deps gen_all gen_pb gen_amqp build test full_coverage \
-	real_line_count devserver benchmark_dev benchmark
+	real_line_count devserver benchmark_dev benchmark install
 
 PROTOC := protoc -I=${GOPATH}/src:${GOPATH}/src/github.com/gogo/protobuf/protobuf/:.
 
@@ -20,6 +20,7 @@ deps:
 	go get github.com/rcrowley/go-metrics
 	go get github.com/streadway/amqp
 	go get github.com/wadey/gocovmerge
+	go get golang.org/x/crypto/bcrypt
 
 gen_all: deps gen_pb gen_amqp
 
@@ -35,6 +36,9 @@ gen_amqp:
 
 build: deps gen_all
 	go build -o dispatchd github.com/jeffjenkins/dispatchd/server
+
+install: deps gen_all
+	go install github.com/jeffjenkins/dispatchd/server
 
 test: deps gen_all
 	go test -cover github.com/jeffjenkins/dispatchd/...
@@ -52,7 +56,7 @@ ${PERF_SCRIPT}:
 	tar -C scripts/external/ -zxf scripts/external/perf-client.tar.gz
 	mv scripts/external/rabbitmq-java-client-bin-3.5.6 scripts/external/perf-client/
 
-devserver: gen_all
+devserver: install
 	go install github.com/jeffjenkins/dispatchd/server
 	STATIC_PATH=${GOPATH}/src/github.com/jeffjenkins/dispatchd/static \
 		${GOPATH}/bin/server \
@@ -63,5 +67,4 @@ benchmark_dev: scripts/external/perf-client/runjava.sh
 
 benchmark: scripts/external/perf-client/runjava.sh
 	RUN_PORT=${RUN_PORT} scripts/benchmark_helper.sh
-
 
