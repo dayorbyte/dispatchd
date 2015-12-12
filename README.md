@@ -41,9 +41,19 @@ These options can be overridden if `-config-file` is specified. The config file 
 
 Right now the only config file exclusive options are for users and passwords. In the future the config file will have tuning parameters as well.
 
-## Packages
+## Running Dispatchd
 
-Dispatchd is currently only packaged as a docker image
+Dispatchd is currently only packaged as a docker image. You can run it with this command:
+
+    docker run \
+      -p=8080:8080 \
+      -p=5672:5672 \
+      --volume=YOUR_CONFIG_FILE:/etc/dispatchd.json \
+      --volume=YOUR_DATA_DIR:/data/dispatchd/ \
+      dispatchd/dispatchd
+
+Config file can be left out for the default behaviors. The data volume needs
+to be specified so that data is persisted outside of the container.
 
 ## Security/Auth
 

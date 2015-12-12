@@ -13,14 +13,14 @@ protoc_present:
 	which protoc
 
 deps:
-	go get github.com/boltdb/bolt
-	go get github.com/gogo/protobuf/gogoproto
-	go get github.com/gogo/protobuf/proto
-	go get github.com/gogo/protobuf/protoc-gen-gogo
-	go get github.com/rcrowley/go-metrics
-	go get github.com/streadway/amqp
-	go get github.com/wadey/gocovmerge
-	go get golang.org/x/crypto/bcrypt
+	go get github.com/boltdb/bolt \
+		github.com/gogo/protobuf/gogoproto \
+		github.com/gogo/protobuf/proto \
+		github.com/gogo/protobuf/protoc-gen-gogo \
+		github.com/rcrowley/go-metrics \
+		github.com/streadway/amqp \
+		github.com/wadey/gocovmerge \
+		golang.org/x/crypto/bcrypt
 
 gen_all: deps gen_pb gen_amqp
 
