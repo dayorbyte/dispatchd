@@ -22,13 +22,14 @@ def main(args):
   if not os.path.exists(output_dir):
     os.makedirs(output_dir)
   package_dir = os.path.join(gopath, 'src', PREFIX)
-
-  test_packages = []
-  for path in os.listdir(package_dir):
-    if path in ('.git','scripts', 'static', 'gen'):
-      continue
-    if os.path.isdir(path):
-      test_packages.append(path)
+  prefix = 'github.com/jeffjenkins/dispatchd/'
+  test_packages = subprocess.check_output([
+    'go',
+    'list',
+    '{}...'.format(prefix),
+  ]).split('\n')
+  test_packages = [t.strip().replace(prefix, '') for t in test_packages]
+  test_packages = [t for t in test_packages if t]
 
   cover_names = []
   for pkg in test_packages:
@@ -45,7 +46,7 @@ def main(args):
     subprocess.check_call(cmd)
 
   merge_call = [os.path.join(gopath, 'bin', 'gocovmerge')]
-  merge_call.extend([n for _, n in cover_names])
+  merge_call.extend([n for _, n in cover_names if os.path.exists(n)])
   output = subprocess.check_output(merge_call)
   all = os.path.join(output_dir, 'all.cover')
   with open(all, 'w') as f:
