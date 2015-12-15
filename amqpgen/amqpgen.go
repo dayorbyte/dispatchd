@@ -71,36 +71,26 @@ type Method struct {
 	Synchronous string   `xml:"synchronous,attr"`
 	Index       string   `xml:"index,attr"`
 	Fields      []*Field `xml:"field"`
+	BitsAtEnd   bool
 }
 
 type Field struct {
-	Name       string `xml:"name,attr"`
-	Domain     string `xml:"domain,attr"`
-	NormName   string
-	ProtoType  string
-	ProtoIndex int
-	ProtoName  string
-	Options    string
+	Name        string `xml:"name,attr"`
+	Domain      string `xml:"domain,attr"`
+	AmqpType    string `xml:"type,attr"`
+	NormName    string
+	ProtoType   string
+	ProtoIndex  int
+	ProtoName   string
+	Options     string
+	MaskIndex   string
+	Serializer  string
+	GoType      string
+	BitOffset   int
+	PreviousBit bool
 }
 
 var specFile string
-
-func main() {
-	fmt.Println(protoTemplate)
-	flag.StringVar(&specFile, "spec", "", "Spec XML file")
-	flag.Parse()
-	var bytes, err = ioutil.ReadFile(specFile)
-	if err != nil {
-		panic(err)
-	}
-	var root Root
-	err = xml.Unmarshal(bytes, &root.Amqp)
-	if err != nil {
-		panic(err.Error())
-	}
-	transform(&root)
-	protoTemplate.Execute(os.Stdout, &root)
-}
 
 func transform(r *Root) {
 	transformConstants(r.Amqp.Constants)
@@ -133,29 +123,59 @@ func transformDomains(ds []*Domain) map[string]string {
 func transformMethods(className string, ms []*Method, domainTypes map[string]string) {
 	for _, m := range ms {
 		m.NormName = className + normalizeName(m.Name)
-		transformFields(m.Fields, domainTypes, false, 1)
+		m.BitsAtEnd = transformFields(m.Fields, domainTypes, false, 1)
 	}
 }
 
-func transformFields(fs []*Field, domainTypes map[string]string, nullable bool, offset int) {
+func transformFields(fs []*Field, domainTypes map[string]string, nullable bool, offset int) bool {
+	var bits = 0
+	var bitsAtEnd = false
 	for index, f := range fs {
+		var ok bool
+		domain := f.Domain
+		if f.AmqpType != "" {
+			domain = f.AmqpType
+		} else {
+			f.AmqpType, ok = domainTypes[domain]
+			if !ok {
+				panic("")
+			}
+		}
+		f.ProtoType, ok = amqpToProto[f.AmqpType]
+		if !ok {
+			panic("")
+		}
+		f.GoType, ok = amqpToGo[f.AmqpType]
+		if !ok {
+			panic("")
+		}
+
 		f.NormName = normalizeName(f.Name)
 		f.ProtoName = protoName(f.Name)
-		f.Options = fieldOptions(f, domainTypes, nullable)
 		f.ProtoIndex = index + offset
+		f.MaskIndex = fmt.Sprintf("%04x", (0 | 1<<(uint(15)-uint(index))))
+		f.Serializer = normalizeName(domain)
+		if f.AmqpType == "bit" {
+			f.BitOffset = bits
+			bits += 1
+			bitsAtEnd = true
+		} else {
+			f.PreviousBit = bits > 0
+			f.BitOffset = -1
+			bits = 0
+			bitsAtEnd = false
+		}
+		f.Options = fieldOptions(f, domainTypes, nullable)
 	}
+	return bitsAtEnd
 }
 
 func fieldOptions(f *Field, domainTypes map[string]string, nullable bool) string {
 	var options = make([]string, 0)
-	domain := f.Domain
-	amqpType := domainTypes[domain]
-	goType := amqpToGo[amqpType]
-	protoType := amqpToProto[amqpType]
-	if goType != protoType && protoType != "bytes" {
-		options = append(options, fmt.Sprintf("(gogoproto.casttype) = \"%s\"", goType))
+	if f.GoType != f.ProtoType && f.ProtoType != "bytes" {
+		options = append(options, fmt.Sprintf("(gogoproto.casttype) = \"%s\"", f.GoType))
 	}
-	if protoType != "Table" && protoType != "bytes" && !nullable {
+	if f.ProtoType != "Table" && f.ProtoType != "bytes" && !nullable {
 		options = append(options, "(gogoproto.nullable) = false")
 	}
 	if len(options) > 0 {
@@ -174,6 +194,9 @@ func normalizeName(s string) string {
 	return ret
 }
 func protoName(s string) string {
+	if strings.Contains(s, "reserved") {
+		return strings.Join(strings.Split(s, "-"), "")
+	}
 	return strings.Join(strings.Split(s, "-"), "_")
 }
 
@@ -183,4 +206,33 @@ func upperFirst(s string) string {
 	}
 
 	return string(bytes.ToUpper([]byte(s[0:1]))) + s[1:]
+}
+
+func main() {
+	// fmt.Println(protoTemplate)
+	flag.StringVar(&specFile, "spec", "", "Spec XML file")
+	flag.Parse()
+	var bytes, err = ioutil.ReadFile(specFile)
+	if err != nil {
+		panic(err)
+	}
+	var root Root
+	err = xml.Unmarshal(bytes, &root.Amqp)
+	if err != nil {
+		panic(err.Error())
+	}
+	transform(&root)
+	// Proto
+	f, err := os.Create("amqp/protocol_generated.proto")
+	if err != nil {
+		panic(err.Error())
+	}
+	protoTemplate.Execute(f, &root)
+
+	// Readers/Writers
+	f, err = os.Create("amqp/protocol_protobuf_readwrite_generated.go")
+	if err != nil {
+		panic(err.Error())
+	}
+	readWriteTemplate.Execute(f, &root)
 }
