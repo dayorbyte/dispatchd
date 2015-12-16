@@ -70,13 +70,13 @@ func (channel *Channel) connectionStartOk(conn *AMQPConnection, method *amqp.Con
 
 	if !conn.server.authenticate(method.Mechanism, method.Response) {
 		var classId, methodId = method.MethodIdentifier()
-		channel.sendError(&amqp.AMQPError{
+		return &amqp.AMQPError{
 			Code:   530,
 			Class:  classId,
 			Method: methodId,
 			Msg:    "Authorization failed",
 			Soft:   false,
-		})
+		}
 	}
 
 	conn.clientProperties = method.ClientProperties
