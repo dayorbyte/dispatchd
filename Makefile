@@ -31,7 +31,7 @@ gen_pb: gen_amqp protoc_present
 gen_amqp:
 	# TODO: this requires a virtualenv to be set up with Mako. I should
 	# rewrite this in go to remove the dependency.
-	python scripts/amqp_gen.py
+	go run amqpgen/*.go --spec=amqp0-9-1.extended.xml && go fmt github.com/jeffjenkins/dispatchd/...
 	gofmt -w amqp/*generated*.go
 
 build: deps gen_all

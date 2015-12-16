@@ -6,20 +6,11 @@ import (
 	"io"
 )
 
-// **********************************************************************
-//
-//
-//                    Connection
-//
-//
-// **********************************************************************
-
 var ClassIdConnection uint16 = 10
 
-// **********************************************************************
-//                    Connection - Start
-// **********************************************************************
-
+// ************************
+// ConnectionStart
+// ************************
 var MethodIdConnectionStart uint16 = 10
 
 func (f *ConnectionStart) MethodIdentifier() (uint16, uint16) {
@@ -34,6 +25,7 @@ func (f *ConnectionStart) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionStart) Read(reader io.Reader) (err error) {
 
 	f.VersionMajor, err = ReadOctet(reader)
@@ -60,9 +52,11 @@ func (f *ConnectionStart) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field Locales: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ConnectionStart) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -75,29 +69,33 @@ func (f *ConnectionStart) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field VersionMajor")
 	}
+
 	err = WriteOctet(writer, f.VersionMinor)
 	if err != nil {
 		return errors.New("Error writing field VersionMinor")
 	}
+
 	err = WritePeerProperties(writer, f.ServerProperties)
 	if err != nil {
 		return errors.New("Error writing field ServerProperties")
 	}
+
 	err = WriteLongstr(writer, f.Mechanisms)
 	if err != nil {
 		return errors.New("Error writing field Mechanisms")
 	}
+
 	err = WriteLongstr(writer, f.Locales)
 	if err != nil {
 		return errors.New("Error writing field Locales")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Connection - StartOk
-// **********************************************************************
-
+// ************************
+// ConnectionStartOk
+// ************************
 var MethodIdConnectionStartOk uint16 = 11
 
 func (f *ConnectionStartOk) MethodIdentifier() (uint16, uint16) {
@@ -112,6 +110,7 @@ func (f *ConnectionStartOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionStartOk) Read(reader io.Reader) (err error) {
 
 	f.ClientProperties, err = ReadPeerProperties(reader)
@@ -133,9 +132,11 @@ func (f *ConnectionStartOk) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field Locale: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ConnectionStartOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -148,25 +149,28 @@ func (f *ConnectionStartOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ClientProperties")
 	}
+
 	err = WriteShortstr(writer, f.Mechanism)
 	if err != nil {
 		return errors.New("Error writing field Mechanism")
 	}
+
 	err = WriteLongstr(writer, f.Response)
 	if err != nil {
 		return errors.New("Error writing field Response")
 	}
+
 	err = WriteShortstr(writer, f.Locale)
 	if err != nil {
 		return errors.New("Error writing field Locale")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Connection - Secure
-// **********************************************************************
-
+// ************************
+// ConnectionSecure
+// ************************
 var MethodIdConnectionSecure uint16 = 20
 
 func (f *ConnectionSecure) MethodIdentifier() (uint16, uint16) {
@@ -181,15 +185,18 @@ func (f *ConnectionSecure) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionSecure) Read(reader io.Reader) (err error) {
 
 	f.Challenge, err = ReadLongstr(reader)
 	if err != nil {
 		return errors.New("Error reading field Challenge: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ConnectionSecure) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -202,13 +209,13 @@ func (f *ConnectionSecure) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Challenge")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Connection - SecureOk
-// **********************************************************************
-
+// ************************
+// ConnectionSecureOk
+// ************************
 var MethodIdConnectionSecureOk uint16 = 21
 
 func (f *ConnectionSecureOk) MethodIdentifier() (uint16, uint16) {
@@ -223,15 +230,18 @@ func (f *ConnectionSecureOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionSecureOk) Read(reader io.Reader) (err error) {
 
 	f.Response, err = ReadLongstr(reader)
 	if err != nil {
 		return errors.New("Error reading field Response: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ConnectionSecureOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -244,13 +254,13 @@ func (f *ConnectionSecureOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Response")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Connection - Tune
-// **********************************************************************
-
+// ************************
+// ConnectionTune
+// ************************
 var MethodIdConnectionTune uint16 = 30
 
 func (f *ConnectionTune) MethodIdentifier() (uint16, uint16) {
@@ -265,6 +275,7 @@ func (f *ConnectionTune) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionTune) Read(reader io.Reader) (err error) {
 
 	f.ChannelMax, err = ReadShort(reader)
@@ -281,9 +292,11 @@ func (f *ConnectionTune) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field Heartbeat: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ConnectionTune) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -296,21 +309,23 @@ func (f *ConnectionTune) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ChannelMax")
 	}
+
 	err = WriteLong(writer, f.FrameMax)
 	if err != nil {
 		return errors.New("Error writing field FrameMax")
 	}
+
 	err = WriteShort(writer, f.Heartbeat)
 	if err != nil {
 		return errors.New("Error writing field Heartbeat")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Connection - TuneOk
-// **********************************************************************
-
+// ************************
+// ConnectionTuneOk
+// ************************
 var MethodIdConnectionTuneOk uint16 = 31
 
 func (f *ConnectionTuneOk) MethodIdentifier() (uint16, uint16) {
@@ -325,6 +340,7 @@ func (f *ConnectionTuneOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionTuneOk) Read(reader io.Reader) (err error) {
 
 	f.ChannelMax, err = ReadShort(reader)
@@ -341,9 +357,11 @@ func (f *ConnectionTuneOk) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field Heartbeat: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ConnectionTuneOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -356,21 +374,23 @@ func (f *ConnectionTuneOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ChannelMax")
 	}
+
 	err = WriteLong(writer, f.FrameMax)
 	if err != nil {
 		return errors.New("Error writing field FrameMax")
 	}
+
 	err = WriteShort(writer, f.Heartbeat)
 	if err != nil {
 		return errors.New("Error writing field Heartbeat")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Connection - Open
-// **********************************************************************
-
+// ************************
+// ConnectionOpen
+// ************************
 var MethodIdConnectionOpen uint16 = 40
 
 func (f *ConnectionOpen) MethodIdentifier() (uint16, uint16) {
@@ -385,6 +405,7 @@ func (f *ConnectionOpen) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionOpen) Read(reader io.Reader) (err error) {
 
 	f.VirtualHost, err = ReadPath(reader)
@@ -392,23 +413,22 @@ func (f *ConnectionOpen) Read(reader io.Reader) (err error) {
 		return errors.New("Error reading field VirtualHost: " + err.Error())
 	}
 
-	f.Reserved_1, err = ReadShortstr(reader)
+	f.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_2" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
-	f.Reserved_2 = (bits&(1<<0) > 0)
+	f.Reserved2 = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Reserved_2: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *ConnectionOpen) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -421,12 +441,15 @@ func (f *ConnectionOpen) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field VirtualHost")
 	}
-	err = WriteShortstr(writer, f.Reserved_1)
+
+	err = WriteShortstr(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	var bits byte
-	if f.Reserved_2 {
+
+	if f.Reserved2 {
 		bits |= 1 << 0
 	}
 
@@ -438,10 +461,9 @@ func (f *ConnectionOpen) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Connection - OpenOk
-// **********************************************************************
-
+// ************************
+// ConnectionOpenOk
+// ************************
 var MethodIdConnectionOpenOk uint16 = 41
 
 func (f *ConnectionOpenOk) MethodIdentifier() (uint16, uint16) {
@@ -456,15 +478,18 @@ func (f *ConnectionOpenOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionOpenOk) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShortstr(reader)
+	f.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ConnectionOpenOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -473,17 +498,17 @@ func (f *ConnectionOpenOk) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShortstr(writer, f.Reserved_1)
+	err = WriteShortstr(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Connection - Close
-// **********************************************************************
-
+// ************************
+// ConnectionClose
+// ************************
 var MethodIdConnectionClose uint16 = 50
 
 func (f *ConnectionClose) MethodIdentifier() (uint16, uint16) {
@@ -498,6 +523,7 @@ func (f *ConnectionClose) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionClose) Read(reader io.Reader) (err error) {
 
 	f.ReplyCode, err = ReadReplyCode(reader)
@@ -519,9 +545,11 @@ func (f *ConnectionClose) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field MethodId: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ConnectionClose) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -534,25 +562,28 @@ func (f *ConnectionClose) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ReplyCode")
 	}
+
 	err = WriteReplyText(writer, f.ReplyText)
 	if err != nil {
 		return errors.New("Error writing field ReplyText")
 	}
+
 	err = WriteClassId(writer, f.ClassId)
 	if err != nil {
 		return errors.New("Error writing field ClassId")
 	}
+
 	err = WriteMethodId(writer, f.MethodId)
 	if err != nil {
 		return errors.New("Error writing field MethodId")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Connection - CloseOk
-// **********************************************************************
-
+// ************************
+// ConnectionCloseOk
+// ************************
 var MethodIdConnectionCloseOk uint16 = 51
 
 func (f *ConnectionCloseOk) MethodIdentifier() (uint16, uint16) {
@@ -567,10 +598,13 @@ func (f *ConnectionCloseOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionCloseOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *ConnectionCloseOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -582,10 +616,9 @@ func (f *ConnectionCloseOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Connection - Blocked
-// **********************************************************************
-
+// ************************
+// ConnectionBlocked
+// ************************
 var MethodIdConnectionBlocked uint16 = 60
 
 func (f *ConnectionBlocked) MethodIdentifier() (uint16, uint16) {
@@ -600,15 +633,18 @@ func (f *ConnectionBlocked) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionBlocked) Read(reader io.Reader) (err error) {
 
 	f.Reason, err = ReadShortstr(reader)
 	if err != nil {
 		return errors.New("Error reading field Reason: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ConnectionBlocked) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -621,13 +657,13 @@ func (f *ConnectionBlocked) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Reason")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Connection - Unblocked
-// **********************************************************************
-
+// ************************
+// ConnectionUnblocked
+// ************************
 var MethodIdConnectionUnblocked uint16 = 61
 
 func (f *ConnectionUnblocked) MethodIdentifier() (uint16, uint16) {
@@ -642,10 +678,13 @@ func (f *ConnectionUnblocked) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConnectionUnblocked) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *ConnectionUnblocked) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 10); err != nil {
 		return err
@@ -657,20 +696,11 @@ func (f *ConnectionUnblocked) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//
-//
-//                    Channel
-//
-//
-// **********************************************************************
-
 var ClassIdChannel uint16 = 20
 
-// **********************************************************************
-//                    Channel - Open
-// **********************************************************************
-
+// ************************
+// ChannelOpen
+// ************************
 var MethodIdChannelOpen uint16 = 10
 
 func (f *ChannelOpen) MethodIdentifier() (uint16, uint16) {
@@ -685,15 +715,18 @@ func (f *ChannelOpen) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ChannelOpen) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShortstr(reader)
+	f.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ChannelOpen) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 20); err != nil {
 		return err
@@ -702,17 +735,17 @@ func (f *ChannelOpen) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShortstr(writer, f.Reserved_1)
+	err = WriteShortstr(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Channel - OpenOk
-// **********************************************************************
-
+// ************************
+// ChannelOpenOk
+// ************************
 var MethodIdChannelOpenOk uint16 = 11
 
 func (f *ChannelOpenOk) MethodIdentifier() (uint16, uint16) {
@@ -727,15 +760,18 @@ func (f *ChannelOpenOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ChannelOpenOk) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadLongstr(reader)
+	f.Reserved1, err = ReadLongstr(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ChannelOpenOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 20); err != nil {
 		return err
@@ -744,17 +780,17 @@ func (f *ChannelOpenOk) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteLongstr(writer, f.Reserved_1)
+	err = WriteLongstr(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Channel - Flow
-// **********************************************************************
-
+// ************************
+// ChannelFlow
+// ************************
 var MethodIdChannelFlow uint16 = 20
 
 func (f *ChannelFlow) MethodIdentifier() (uint16, uint16) {
@@ -769,20 +805,20 @@ func (f *ChannelFlow) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ChannelFlow) Read(reader io.Reader) (err error) {
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Active" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Active = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Active: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *ChannelFlow) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 20); err != nil {
 		return err
@@ -792,6 +828,7 @@ func (f *ChannelFlow) Write(writer io.Writer) (err error) {
 	}
 
 	var bits byte
+
 	if f.Active {
 		bits |= 1 << 0
 	}
@@ -804,10 +841,9 @@ func (f *ChannelFlow) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Channel - FlowOk
-// **********************************************************************
-
+// ************************
+// ChannelFlowOk
+// ************************
 var MethodIdChannelFlowOk uint16 = 21
 
 func (f *ChannelFlowOk) MethodIdentifier() (uint16, uint16) {
@@ -822,20 +858,20 @@ func (f *ChannelFlowOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ChannelFlowOk) Read(reader io.Reader) (err error) {
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Active" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Active = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Active: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *ChannelFlowOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 20); err != nil {
 		return err
@@ -845,6 +881,7 @@ func (f *ChannelFlowOk) Write(writer io.Writer) (err error) {
 	}
 
 	var bits byte
+
 	if f.Active {
 		bits |= 1 << 0
 	}
@@ -857,10 +894,9 @@ func (f *ChannelFlowOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Channel - Close
-// **********************************************************************
-
+// ************************
+// ChannelClose
+// ************************
 var MethodIdChannelClose uint16 = 40
 
 func (f *ChannelClose) MethodIdentifier() (uint16, uint16) {
@@ -875,6 +911,7 @@ func (f *ChannelClose) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ChannelClose) Read(reader io.Reader) (err error) {
 
 	f.ReplyCode, err = ReadReplyCode(reader)
@@ -896,9 +933,11 @@ func (f *ChannelClose) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field MethodId: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ChannelClose) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 20); err != nil {
 		return err
@@ -911,25 +950,28 @@ func (f *ChannelClose) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ReplyCode")
 	}
+
 	err = WriteReplyText(writer, f.ReplyText)
 	if err != nil {
 		return errors.New("Error writing field ReplyText")
 	}
+
 	err = WriteClassId(writer, f.ClassId)
 	if err != nil {
 		return errors.New("Error writing field ClassId")
 	}
+
 	err = WriteMethodId(writer, f.MethodId)
 	if err != nil {
 		return errors.New("Error writing field MethodId")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Channel - CloseOk
-// **********************************************************************
-
+// ************************
+// ChannelCloseOk
+// ************************
 var MethodIdChannelCloseOk uint16 = 41
 
 func (f *ChannelCloseOk) MethodIdentifier() (uint16, uint16) {
@@ -944,10 +986,13 @@ func (f *ChannelCloseOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ChannelCloseOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *ChannelCloseOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 20); err != nil {
 		return err
@@ -959,20 +1004,11 @@ func (f *ChannelCloseOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//
-//
-//                    Exchange
-//
-//
-// **********************************************************************
-
 var ClassIdExchange uint16 = 40
 
-// **********************************************************************
-//                    Exchange - Declare
-// **********************************************************************
-
+// ************************
+// ExchangeDeclare
+// ************************
 var MethodIdExchangeDeclare uint16 = 10
 
 func (f *ExchangeDeclare) MethodIdentifier() (uint16, uint16) {
@@ -987,11 +1023,12 @@ func (f *ExchangeDeclare) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Exchange, err = ReadExchangeName(reader)
@@ -1003,48 +1040,31 @@ func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field Type: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Passive" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Passive = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Passive: " + err.Error())
-	}
-
 	f.Durable = (bits&(1<<1) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field Durable: " + err.Error())
-	}
 
 	f.AutoDelete = (bits&(1<<2) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field AutoDelete: " + err.Error())
-	}
-
 	f.Internal = (bits&(1<<3) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Internal: " + err.Error())
-	}
-
 	f.NoWait = (bits&(1<<4) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 
 	f.Arguments, err = ReadTable(reader)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ExchangeDeclare) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 40); err != nil {
 		return err
@@ -1053,19 +1073,23 @@ func (f *ExchangeDeclare) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteExchangeName(writer, f.Exchange)
 	if err != nil {
 		return errors.New("Error writing field Exchange")
 	}
+
 	err = WriteShortstr(writer, f.Type)
 	if err != nil {
 		return errors.New("Error writing field Type")
 	}
+
 	var bits byte
+
 	if f.Passive {
 		bits |= 1 << 0
 	}
@@ -1095,13 +1119,13 @@ func (f *ExchangeDeclare) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Arguments")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Exchange - DeclareOk
-// **********************************************************************
-
+// ************************
+// ExchangeDeclareOk
+// ************************
 var MethodIdExchangeDeclareOk uint16 = 11
 
 func (f *ExchangeDeclareOk) MethodIdentifier() (uint16, uint16) {
@@ -1116,10 +1140,13 @@ func (f *ExchangeDeclareOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ExchangeDeclareOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *ExchangeDeclareOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 40); err != nil {
 		return err
@@ -1131,10 +1158,9 @@ func (f *ExchangeDeclareOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Exchange - Delete
-// **********************************************************************
-
+// ************************
+// ExchangeDelete
+// ************************
 var MethodIdExchangeDelete uint16 = 20
 
 func (f *ExchangeDelete) MethodIdentifier() (uint16, uint16) {
@@ -1149,36 +1175,32 @@ func (f *ExchangeDelete) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ExchangeDelete) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Exchange, err = ReadExchangeName(reader)
 	if err != nil {
 		return errors.New("Error reading field Exchange: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field IfUnused" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.IfUnused = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field IfUnused: " + err.Error())
-	}
-
 	f.NoWait = (bits&(1<<1) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *ExchangeDelete) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 40); err != nil {
 		return err
@@ -1187,15 +1209,18 @@ func (f *ExchangeDelete) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteExchangeName(writer, f.Exchange)
 	if err != nil {
 		return errors.New("Error writing field Exchange")
 	}
+
 	var bits byte
+
 	if f.IfUnused {
 		bits |= 1 << 0
 	}
@@ -1212,10 +1237,9 @@ func (f *ExchangeDelete) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Exchange - DeleteOk
-// **********************************************************************
-
+// ************************
+// ExchangeDeleteOk
+// ************************
 var MethodIdExchangeDeleteOk uint16 = 21
 
 func (f *ExchangeDeleteOk) MethodIdentifier() (uint16, uint16) {
@@ -1230,10 +1254,13 @@ func (f *ExchangeDeleteOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ExchangeDeleteOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *ExchangeDeleteOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 40); err != nil {
 		return err
@@ -1245,10 +1272,9 @@ func (f *ExchangeDeleteOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Exchange - Bind
-// **********************************************************************
-
+// ************************
+// ExchangeBind
+// ************************
 var MethodIdExchangeBind uint16 = 30
 
 func (f *ExchangeBind) MethodIdentifier() (uint16, uint16) {
@@ -1263,11 +1289,12 @@ func (f *ExchangeBind) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ExchangeBind) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Destination, err = ReadExchangeName(reader)
@@ -1284,24 +1311,23 @@ func (f *ExchangeBind) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field RoutingKey: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field NoWait" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.NoWait = (bits&(1<<0) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 
 	f.Arguments, err = ReadTable(reader)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ExchangeBind) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 40); err != nil {
 		return err
@@ -1310,23 +1336,28 @@ func (f *ExchangeBind) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteExchangeName(writer, f.Destination)
 	if err != nil {
 		return errors.New("Error writing field Destination")
 	}
+
 	err = WriteExchangeName(writer, f.Source)
 	if err != nil {
 		return errors.New("Error writing field Source")
 	}
+
 	err = WriteShortstr(writer, f.RoutingKey)
 	if err != nil {
 		return errors.New("Error writing field RoutingKey")
 	}
+
 	var bits byte
+
 	if f.NoWait {
 		bits |= 1 << 0
 	}
@@ -1340,13 +1371,13 @@ func (f *ExchangeBind) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Arguments")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Exchange - BindOk
-// **********************************************************************
-
+// ************************
+// ExchangeBindOk
+// ************************
 var MethodIdExchangeBindOk uint16 = 31
 
 func (f *ExchangeBindOk) MethodIdentifier() (uint16, uint16) {
@@ -1361,10 +1392,13 @@ func (f *ExchangeBindOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ExchangeBindOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *ExchangeBindOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 40); err != nil {
 		return err
@@ -1376,10 +1410,9 @@ func (f *ExchangeBindOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Exchange - Unbind
-// **********************************************************************
-
+// ************************
+// ExchangeUnbind
+// ************************
 var MethodIdExchangeUnbind uint16 = 40
 
 func (f *ExchangeUnbind) MethodIdentifier() (uint16, uint16) {
@@ -1394,11 +1427,12 @@ func (f *ExchangeUnbind) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ExchangeUnbind) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Destination, err = ReadExchangeName(reader)
@@ -1415,24 +1449,23 @@ func (f *ExchangeUnbind) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field RoutingKey: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field NoWait" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.NoWait = (bits&(1<<0) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 
 	f.Arguments, err = ReadTable(reader)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *ExchangeUnbind) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 40); err != nil {
 		return err
@@ -1441,23 +1474,28 @@ func (f *ExchangeUnbind) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteExchangeName(writer, f.Destination)
 	if err != nil {
 		return errors.New("Error writing field Destination")
 	}
+
 	err = WriteExchangeName(writer, f.Source)
 	if err != nil {
 		return errors.New("Error writing field Source")
 	}
+
 	err = WriteShortstr(writer, f.RoutingKey)
 	if err != nil {
 		return errors.New("Error writing field RoutingKey")
 	}
+
 	var bits byte
+
 	if f.NoWait {
 		bits |= 1 << 0
 	}
@@ -1471,13 +1509,13 @@ func (f *ExchangeUnbind) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Arguments")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Exchange - UnbindOk
-// **********************************************************************
-
+// ************************
+// ExchangeUnbindOk
+// ************************
 var MethodIdExchangeUnbindOk uint16 = 51
 
 func (f *ExchangeUnbindOk) MethodIdentifier() (uint16, uint16) {
@@ -1492,10 +1530,13 @@ func (f *ExchangeUnbindOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ExchangeUnbindOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *ExchangeUnbindOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 40); err != nil {
 		return err
@@ -1507,20 +1548,11 @@ func (f *ExchangeUnbindOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//
-//
-//                    Queue
-//
-//
-// **********************************************************************
-
 var ClassIdQueue uint16 = 50
 
-// **********************************************************************
-//                    Queue - Declare
-// **********************************************************************
-
+// ************************
+// QueueDeclare
+// ************************
 var MethodIdQueueDeclare uint16 = 10
 
 func (f *QueueDeclare) MethodIdentifier() (uint16, uint16) {
@@ -1535,59 +1567,43 @@ func (f *QueueDeclare) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueueDeclare) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Queue, err = ReadQueueName(reader)
 	if err != nil {
 		return errors.New("Error reading field Queue: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Passive" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Passive = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Passive: " + err.Error())
-	}
-
 	f.Durable = (bits&(1<<1) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field Durable: " + err.Error())
-	}
 
 	f.Exclusive = (bits&(1<<2) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Exclusive: " + err.Error())
-	}
-
 	f.AutoDelete = (bits&(1<<3) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field AutoDelete: " + err.Error())
-	}
-
 	f.NoWait = (bits&(1<<4) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 
 	f.Arguments, err = ReadTable(reader)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *QueueDeclare) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -1596,15 +1612,18 @@ func (f *QueueDeclare) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteQueueName(writer, f.Queue)
 	if err != nil {
 		return errors.New("Error writing field Queue")
 	}
+
 	var bits byte
+
 	if f.Passive {
 		bits |= 1 << 0
 	}
@@ -1634,13 +1653,13 @@ func (f *QueueDeclare) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Arguments")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Queue - DeclareOk
-// **********************************************************************
-
+// ************************
+// QueueDeclareOk
+// ************************
 var MethodIdQueueDeclareOk uint16 = 11
 
 func (f *QueueDeclareOk) MethodIdentifier() (uint16, uint16) {
@@ -1655,6 +1674,7 @@ func (f *QueueDeclareOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueueDeclareOk) Read(reader io.Reader) (err error) {
 
 	f.Queue, err = ReadQueueName(reader)
@@ -1671,9 +1691,11 @@ func (f *QueueDeclareOk) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field ConsumerCount: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *QueueDeclareOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -1686,21 +1708,23 @@ func (f *QueueDeclareOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Queue")
 	}
+
 	err = WriteMessageCount(writer, f.MessageCount)
 	if err != nil {
 		return errors.New("Error writing field MessageCount")
 	}
+
 	err = WriteLong(writer, f.ConsumerCount)
 	if err != nil {
 		return errors.New("Error writing field ConsumerCount")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Queue - Bind
-// **********************************************************************
-
+// ************************
+// QueueBind
+// ************************
 var MethodIdQueueBind uint16 = 20
 
 func (f *QueueBind) MethodIdentifier() (uint16, uint16) {
@@ -1715,11 +1739,12 @@ func (f *QueueBind) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueueBind) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Queue, err = ReadQueueName(reader)
@@ -1736,24 +1761,23 @@ func (f *QueueBind) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field RoutingKey: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field NoWait" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.NoWait = (bits&(1<<0) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 
 	f.Arguments, err = ReadTable(reader)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *QueueBind) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -1762,23 +1786,28 @@ func (f *QueueBind) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteQueueName(writer, f.Queue)
 	if err != nil {
 		return errors.New("Error writing field Queue")
 	}
+
 	err = WriteExchangeName(writer, f.Exchange)
 	if err != nil {
 		return errors.New("Error writing field Exchange")
 	}
+
 	err = WriteShortstr(writer, f.RoutingKey)
 	if err != nil {
 		return errors.New("Error writing field RoutingKey")
 	}
+
 	var bits byte
+
 	if f.NoWait {
 		bits |= 1 << 0
 	}
@@ -1792,13 +1821,13 @@ func (f *QueueBind) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Arguments")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Queue - BindOk
-// **********************************************************************
-
+// ************************
+// QueueBindOk
+// ************************
 var MethodIdQueueBindOk uint16 = 21
 
 func (f *QueueBindOk) MethodIdentifier() (uint16, uint16) {
@@ -1813,10 +1842,13 @@ func (f *QueueBindOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueueBindOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *QueueBindOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -1828,10 +1860,9 @@ func (f *QueueBindOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Queue - Unbind
-// **********************************************************************
-
+// ************************
+// QueueUnbind
+// ************************
 var MethodIdQueueUnbind uint16 = 50
 
 func (f *QueueUnbind) MethodIdentifier() (uint16, uint16) {
@@ -1846,11 +1877,12 @@ func (f *QueueUnbind) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueueUnbind) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Queue, err = ReadQueueName(reader)
@@ -1872,9 +1904,11 @@ func (f *QueueUnbind) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *QueueUnbind) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -1883,33 +1917,37 @@ func (f *QueueUnbind) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteQueueName(writer, f.Queue)
 	if err != nil {
 		return errors.New("Error writing field Queue")
 	}
+
 	err = WriteExchangeName(writer, f.Exchange)
 	if err != nil {
 		return errors.New("Error writing field Exchange")
 	}
+
 	err = WriteShortstr(writer, f.RoutingKey)
 	if err != nil {
 		return errors.New("Error writing field RoutingKey")
 	}
+
 	err = WriteTable(writer, f.Arguments)
 	if err != nil {
 		return errors.New("Error writing field Arguments")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Queue - UnbindOk
-// **********************************************************************
-
+// ************************
+// QueueUnbindOk
+// ************************
 var MethodIdQueueUnbindOk uint16 = 51
 
 func (f *QueueUnbindOk) MethodIdentifier() (uint16, uint16) {
@@ -1924,10 +1962,13 @@ func (f *QueueUnbindOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueueUnbindOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *QueueUnbindOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -1939,10 +1980,9 @@ func (f *QueueUnbindOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Queue - Purge
-// **********************************************************************
-
+// ************************
+// QueuePurge
+// ************************
 var MethodIdQueuePurge uint16 = 30
 
 func (f *QueuePurge) MethodIdentifier() (uint16, uint16) {
@@ -1957,30 +1997,30 @@ func (f *QueuePurge) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueuePurge) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Queue, err = ReadQueueName(reader)
 	if err != nil {
 		return errors.New("Error reading field Queue: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field NoWait" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.NoWait = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *QueuePurge) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -1989,15 +2029,18 @@ func (f *QueuePurge) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteQueueName(writer, f.Queue)
 	if err != nil {
 		return errors.New("Error writing field Queue")
 	}
+
 	var bits byte
+
 	if f.NoWait {
 		bits |= 1 << 0
 	}
@@ -2010,10 +2053,9 @@ func (f *QueuePurge) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Queue - PurgeOk
-// **********************************************************************
-
+// ************************
+// QueuePurgeOk
+// ************************
 var MethodIdQueuePurgeOk uint16 = 31
 
 func (f *QueuePurgeOk) MethodIdentifier() (uint16, uint16) {
@@ -2028,15 +2070,18 @@ func (f *QueuePurgeOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueuePurgeOk) Read(reader io.Reader) (err error) {
 
 	f.MessageCount, err = ReadMessageCount(reader)
 	if err != nil {
 		return errors.New("Error reading field MessageCount: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *QueuePurgeOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -2049,13 +2094,13 @@ func (f *QueuePurgeOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field MessageCount")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Queue - Delete
-// **********************************************************************
-
+// ************************
+// QueueDelete
+// ************************
 var MethodIdQueueDelete uint16 = 40
 
 func (f *QueueDelete) MethodIdentifier() (uint16, uint16) {
@@ -2070,42 +2115,34 @@ func (f *QueueDelete) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueueDelete) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Queue, err = ReadQueueName(reader)
 	if err != nil {
 		return errors.New("Error reading field Queue: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field IfUnused" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.IfUnused = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field IfUnused: " + err.Error())
-	}
-
 	f.IfEmpty = (bits&(1<<1) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field IfEmpty: " + err.Error())
-	}
 
 	f.NoWait = (bits&(1<<2) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *QueueDelete) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -2114,15 +2151,18 @@ func (f *QueueDelete) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteQueueName(writer, f.Queue)
 	if err != nil {
 		return errors.New("Error writing field Queue")
 	}
+
 	var bits byte
+
 	if f.IfUnused {
 		bits |= 1 << 0
 	}
@@ -2143,10 +2183,9 @@ func (f *QueueDelete) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Queue - DeleteOk
-// **********************************************************************
-
+// ************************
+// QueueDeleteOk
+// ************************
 var MethodIdQueueDeleteOk uint16 = 41
 
 func (f *QueueDeleteOk) MethodIdentifier() (uint16, uint16) {
@@ -2161,15 +2200,18 @@ func (f *QueueDeleteOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *QueueDeleteOk) Read(reader io.Reader) (err error) {
 
 	f.MessageCount, err = ReadMessageCount(reader)
 	if err != nil {
 		return errors.New("Error reading field MessageCount: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *QueueDeleteOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 50); err != nil {
 		return err
@@ -2182,51 +2224,30 @@ func (f *QueueDeleteOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field MessageCount")
 	}
+
 	return
 }
-
-// **********************************************************************
-//
-//
-//                    Basic
-//
-//
-// **********************************************************************
 
 var ClassIdBasic uint16 = 60
 
 var MaskContentType uint16 = 0x8000
-
 var MaskContentEncoding uint16 = 0x4000
-
 var MaskHeaders uint16 = 0x2000
-
 var MaskDeliveryMode uint16 = 0x1000
-
 var MaskPriority uint16 = 0x0800
-
 var MaskCorrelationId uint16 = 0x0400
-
 var MaskReplyTo uint16 = 0x0200
-
 var MaskExpiration uint16 = 0x0100
-
 var MaskMessageId uint16 = 0x0080
-
 var MaskTimestamp uint16 = 0x0040
-
 var MaskType uint16 = 0x0020
-
 var MaskUserId uint16 = 0x0010
-
 var MaskAppId uint16 = 0x0008
-
 var MaskReserved uint16 = 0x0004
 
-// **********************************************************************
-//                    Basic - Qos
-// **********************************************************************
-
+// ************************
+// BasicQos
+// ************************
 var MethodIdBasicQos uint16 = 10
 
 func (f *BasicQos) MethodIdentifier() (uint16, uint16) {
@@ -2241,6 +2262,7 @@ func (f *BasicQos) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicQos) Read(reader io.Reader) (err error) {
 
 	f.PrefetchSize, err = ReadLong(reader)
@@ -2252,19 +2274,18 @@ func (f *BasicQos) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field PrefetchCount: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Global" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Global = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Global: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *BasicQos) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2277,11 +2298,14 @@ func (f *BasicQos) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field PrefetchSize")
 	}
+
 	err = WriteShort(writer, f.PrefetchCount)
 	if err != nil {
 		return errors.New("Error writing field PrefetchCount")
 	}
+
 	var bits byte
+
 	if f.Global {
 		bits |= 1 << 0
 	}
@@ -2294,10 +2318,9 @@ func (f *BasicQos) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - QosOk
-// **********************************************************************
-
+// ************************
+// BasicQosOk
+// ************************
 var MethodIdBasicQosOk uint16 = 11
 
 func (f *BasicQosOk) MethodIdentifier() (uint16, uint16) {
@@ -2312,10 +2335,13 @@ func (f *BasicQosOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicQosOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *BasicQosOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2327,10 +2353,9 @@ func (f *BasicQosOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - Consume
-// **********************************************************************
-
+// ************************
+// BasicConsume
+// ************************
 var MethodIdBasicConsume uint16 = 20
 
 func (f *BasicConsume) MethodIdentifier() (uint16, uint16) {
@@ -2345,11 +2370,12 @@ func (f *BasicConsume) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicConsume) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Queue, err = ReadQueueName(reader)
@@ -2361,42 +2387,29 @@ func (f *BasicConsume) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field ConsumerTag: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field NoLocal" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.NoLocal = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field NoLocal: " + err.Error())
-	}
-
 	f.NoAck = (bits&(1<<1) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field NoAck: " + err.Error())
-	}
 
 	f.Exclusive = (bits&(1<<2) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Exclusive: " + err.Error())
-	}
-
 	f.NoWait = (bits&(1<<3) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 
 	f.Arguments, err = ReadTable(reader)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *BasicConsume) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2405,19 +2418,23 @@ func (f *BasicConsume) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteQueueName(writer, f.Queue)
 	if err != nil {
 		return errors.New("Error writing field Queue")
 	}
+
 	err = WriteConsumerTag(writer, f.ConsumerTag)
 	if err != nil {
 		return errors.New("Error writing field ConsumerTag")
 	}
+
 	var bits byte
+
 	if f.NoLocal {
 		bits |= 1 << 0
 	}
@@ -2443,13 +2460,13 @@ func (f *BasicConsume) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Arguments")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Basic - ConsumeOk
-// **********************************************************************
-
+// ************************
+// BasicConsumeOk
+// ************************
 var MethodIdBasicConsumeOk uint16 = 21
 
 func (f *BasicConsumeOk) MethodIdentifier() (uint16, uint16) {
@@ -2464,15 +2481,18 @@ func (f *BasicConsumeOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicConsumeOk) Read(reader io.Reader) (err error) {
 
 	f.ConsumerTag, err = ReadConsumerTag(reader)
 	if err != nil {
 		return errors.New("Error reading field ConsumerTag: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *BasicConsumeOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2485,13 +2505,13 @@ func (f *BasicConsumeOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ConsumerTag")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Basic - Cancel
-// **********************************************************************
-
+// ************************
+// BasicCancel
+// ************************
 var MethodIdBasicCancel uint16 = 30
 
 func (f *BasicCancel) MethodIdentifier() (uint16, uint16) {
@@ -2506,25 +2526,25 @@ func (f *BasicCancel) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicCancel) Read(reader io.Reader) (err error) {
 
 	f.ConsumerTag, err = ReadConsumerTag(reader)
 	if err != nil {
 		return errors.New("Error reading field ConsumerTag: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field NoWait" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.NoWait = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field NoWait: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *BasicCancel) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2537,7 +2557,9 @@ func (f *BasicCancel) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ConsumerTag")
 	}
+
 	var bits byte
+
 	if f.NoWait {
 		bits |= 1 << 0
 	}
@@ -2550,10 +2572,9 @@ func (f *BasicCancel) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - CancelOk
-// **********************************************************************
-
+// ************************
+// BasicCancelOk
+// ************************
 var MethodIdBasicCancelOk uint16 = 31
 
 func (f *BasicCancelOk) MethodIdentifier() (uint16, uint16) {
@@ -2568,15 +2589,18 @@ func (f *BasicCancelOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicCancelOk) Read(reader io.Reader) (err error) {
 
 	f.ConsumerTag, err = ReadConsumerTag(reader)
 	if err != nil {
 		return errors.New("Error reading field ConsumerTag: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *BasicCancelOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2589,13 +2613,13 @@ func (f *BasicCancelOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ConsumerTag")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Basic - Publish
-// **********************************************************************
-
+// ************************
+// BasicPublish
+// ************************
 var MethodIdBasicPublish uint16 = 40
 
 func (f *BasicPublish) MethodIdentifier() (uint16, uint16) {
@@ -2610,11 +2634,12 @@ func (f *BasicPublish) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicPublish) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Exchange, err = ReadExchangeName(reader)
@@ -2626,25 +2651,20 @@ func (f *BasicPublish) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field RoutingKey: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Mandatory" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Mandatory = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Mandatory: " + err.Error())
-	}
-
 	f.Immediate = (bits&(1<<1) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Immediate: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *BasicPublish) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2653,19 +2673,23 @@ func (f *BasicPublish) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteExchangeName(writer, f.Exchange)
 	if err != nil {
 		return errors.New("Error writing field Exchange")
 	}
+
 	err = WriteShortstr(writer, f.RoutingKey)
 	if err != nil {
 		return errors.New("Error writing field RoutingKey")
 	}
+
 	var bits byte
+
 	if f.Mandatory {
 		bits |= 1 << 0
 	}
@@ -2682,10 +2706,9 @@ func (f *BasicPublish) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - Return
-// **********************************************************************
-
+// ************************
+// BasicReturn
+// ************************
 var MethodIdBasicReturn uint16 = 50
 
 func (f *BasicReturn) MethodIdentifier() (uint16, uint16) {
@@ -2700,6 +2723,7 @@ func (f *BasicReturn) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicReturn) Read(reader io.Reader) (err error) {
 
 	f.ReplyCode, err = ReadReplyCode(reader)
@@ -2721,9 +2745,11 @@ func (f *BasicReturn) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field RoutingKey: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *BasicReturn) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2736,25 +2762,28 @@ func (f *BasicReturn) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ReplyCode")
 	}
+
 	err = WriteReplyText(writer, f.ReplyText)
 	if err != nil {
 		return errors.New("Error writing field ReplyText")
 	}
+
 	err = WriteExchangeName(writer, f.Exchange)
 	if err != nil {
 		return errors.New("Error writing field Exchange")
 	}
+
 	err = WriteShortstr(writer, f.RoutingKey)
 	if err != nil {
 		return errors.New("Error writing field RoutingKey")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Basic - Deliver
-// **********************************************************************
-
+// ************************
+// BasicDeliver
+// ************************
 var MethodIdBasicDeliver uint16 = 60
 
 func (f *BasicDeliver) MethodIdentifier() (uint16, uint16) {
@@ -2769,6 +2798,7 @@ func (f *BasicDeliver) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicDeliver) Read(reader io.Reader) (err error) {
 
 	f.ConsumerTag, err = ReadConsumerTag(reader)
@@ -2780,16 +2810,13 @@ func (f *BasicDeliver) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field DeliveryTag: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Redelivered" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Redelivered = (bits&(1<<0) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field Redelivered: " + err.Error())
-	}
 
 	f.Exchange, err = ReadExchangeName(reader)
 	if err != nil {
@@ -2800,9 +2827,11 @@ func (f *BasicDeliver) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field RoutingKey: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *BasicDeliver) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2815,11 +2844,14 @@ func (f *BasicDeliver) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field ConsumerTag")
 	}
+
 	err = WriteDeliveryTag(writer, f.DeliveryTag)
 	if err != nil {
 		return errors.New("Error writing field DeliveryTag")
 	}
+
 	var bits byte
+
 	if f.Redelivered {
 		bits |= 1 << 0
 	}
@@ -2833,17 +2865,18 @@ func (f *BasicDeliver) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Exchange")
 	}
+
 	err = WriteShortstr(writer, f.RoutingKey)
 	if err != nil {
 		return errors.New("Error writing field RoutingKey")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Basic - Get
-// **********************************************************************
-
+// ************************
+// BasicGet
+// ************************
 var MethodIdBasicGet uint16 = 70
 
 func (f *BasicGet) MethodIdentifier() (uint16, uint16) {
@@ -2858,30 +2891,30 @@ func (f *BasicGet) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicGet) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShort(reader)
+	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
 
 	f.Queue, err = ReadQueueName(reader)
 	if err != nil {
 		return errors.New("Error reading field Queue: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field NoAck" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.NoAck = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field NoAck: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *BasicGet) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2890,15 +2923,18 @@ func (f *BasicGet) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShort(writer, f.Reserved_1)
+	err = WriteShort(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	err = WriteQueueName(writer, f.Queue)
 	if err != nil {
 		return errors.New("Error writing field Queue")
 	}
+
 	var bits byte
+
 	if f.NoAck {
 		bits |= 1 << 0
 	}
@@ -2911,10 +2947,9 @@ func (f *BasicGet) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - GetOk
-// **********************************************************************
-
+// ************************
+// BasicGetOk
+// ************************
 var MethodIdBasicGetOk uint16 = 71
 
 func (f *BasicGetOk) MethodIdentifier() (uint16, uint16) {
@@ -2929,22 +2964,20 @@ func (f *BasicGetOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicGetOk) Read(reader io.Reader) (err error) {
 
 	f.DeliveryTag, err = ReadDeliveryTag(reader)
 	if err != nil {
 		return errors.New("Error reading field DeliveryTag: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Redelivered" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Redelivered = (bits&(1<<0) > 0)
-
-	if err != nil {
-		return errors.New("Error reading field Redelivered: " + err.Error())
-	}
 
 	f.Exchange, err = ReadExchangeName(reader)
 	if err != nil {
@@ -2960,9 +2993,11 @@ func (f *BasicGetOk) Read(reader io.Reader) (err error) {
 	if err != nil {
 		return errors.New("Error reading field MessageCount: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *BasicGetOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -2975,7 +3010,9 @@ func (f *BasicGetOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field DeliveryTag")
 	}
+
 	var bits byte
+
 	if f.Redelivered {
 		bits |= 1 << 0
 	}
@@ -2989,21 +3026,23 @@ func (f *BasicGetOk) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field Exchange")
 	}
+
 	err = WriteShortstr(writer, f.RoutingKey)
 	if err != nil {
 		return errors.New("Error writing field RoutingKey")
 	}
+
 	err = WriteMessageCount(writer, f.MessageCount)
 	if err != nil {
 		return errors.New("Error writing field MessageCount")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Basic - GetEmpty
-// **********************************************************************
-
+// ************************
+// BasicGetEmpty
+// ************************
 var MethodIdBasicGetEmpty uint16 = 72
 
 func (f *BasicGetEmpty) MethodIdentifier() (uint16, uint16) {
@@ -3018,15 +3057,18 @@ func (f *BasicGetEmpty) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicGetEmpty) Read(reader io.Reader) (err error) {
 
-	f.Reserved_1, err = ReadShortstr(reader)
+	f.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
-		return errors.New("Error reading field Reserved_1: " + err.Error())
+		return errors.New("Error reading field Reserved1: " + err.Error())
 	}
+
 	return
 }
 
+// Writer
 func (f *BasicGetEmpty) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -3035,17 +3077,17 @@ func (f *BasicGetEmpty) Write(writer io.Writer) (err error) {
 		return err
 	}
 
-	err = WriteShortstr(writer, f.Reserved_1)
+	err = WriteShortstr(writer, f.Reserved1)
 	if err != nil {
-		return errors.New("Error writing field Reserved_1")
+		return errors.New("Error writing field Reserved1")
 	}
+
 	return
 }
 
-// **********************************************************************
-//                    Basic - Ack
-// **********************************************************************
-
+// ************************
+// BasicAck
+// ************************
 var MethodIdBasicAck uint16 = 80
 
 func (f *BasicAck) MethodIdentifier() (uint16, uint16) {
@@ -3060,25 +3102,25 @@ func (f *BasicAck) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicAck) Read(reader io.Reader) (err error) {
 
 	f.DeliveryTag, err = ReadDeliveryTag(reader)
 	if err != nil {
 		return errors.New("Error reading field DeliveryTag: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Multiple" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Multiple = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Multiple: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *BasicAck) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -3091,7 +3133,9 @@ func (f *BasicAck) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field DeliveryTag")
 	}
+
 	var bits byte
+
 	if f.Multiple {
 		bits |= 1 << 0
 	}
@@ -3104,10 +3148,9 @@ func (f *BasicAck) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - Reject
-// **********************************************************************
-
+// ************************
+// BasicReject
+// ************************
 var MethodIdBasicReject uint16 = 90
 
 func (f *BasicReject) MethodIdentifier() (uint16, uint16) {
@@ -3122,25 +3165,25 @@ func (f *BasicReject) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicReject) Read(reader io.Reader) (err error) {
 
 	f.DeliveryTag, err = ReadDeliveryTag(reader)
 	if err != nil {
 		return errors.New("Error reading field DeliveryTag: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Requeue" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Requeue = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Requeue: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *BasicReject) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -3153,7 +3196,9 @@ func (f *BasicReject) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field DeliveryTag")
 	}
+
 	var bits byte
+
 	if f.Requeue {
 		bits |= 1 << 0
 	}
@@ -3166,10 +3211,9 @@ func (f *BasicReject) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - RecoverAsync
-// **********************************************************************
-
+// ************************
+// BasicRecoverAsync
+// ************************
 var MethodIdBasicRecoverAsync uint16 = 100
 
 func (f *BasicRecoverAsync) MethodIdentifier() (uint16, uint16) {
@@ -3184,20 +3228,20 @@ func (f *BasicRecoverAsync) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicRecoverAsync) Read(reader io.Reader) (err error) {
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Requeue" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Requeue = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Requeue: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *BasicRecoverAsync) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -3207,6 +3251,7 @@ func (f *BasicRecoverAsync) Write(writer io.Writer) (err error) {
 	}
 
 	var bits byte
+
 	if f.Requeue {
 		bits |= 1 << 0
 	}
@@ -3219,10 +3264,9 @@ func (f *BasicRecoverAsync) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - Recover
-// **********************************************************************
-
+// ************************
+// BasicRecover
+// ************************
 var MethodIdBasicRecover uint16 = 110
 
 func (f *BasicRecover) MethodIdentifier() (uint16, uint16) {
@@ -3237,20 +3281,20 @@ func (f *BasicRecover) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicRecover) Read(reader io.Reader) (err error) {
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Requeue" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Requeue = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Requeue: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *BasicRecover) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -3260,6 +3304,7 @@ func (f *BasicRecover) Write(writer io.Writer) (err error) {
 	}
 
 	var bits byte
+
 	if f.Requeue {
 		bits |= 1 << 0
 	}
@@ -3272,10 +3317,9 @@ func (f *BasicRecover) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - RecoverOk
-// **********************************************************************
-
+// ************************
+// BasicRecoverOk
+// ************************
 var MethodIdBasicRecoverOk uint16 = 111
 
 func (f *BasicRecoverOk) MethodIdentifier() (uint16, uint16) {
@@ -3290,10 +3334,13 @@ func (f *BasicRecoverOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicRecoverOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *BasicRecoverOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -3305,10 +3352,9 @@ func (f *BasicRecoverOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Basic - Nack
-// **********************************************************************
-
+// ************************
+// BasicNack
+// ************************
 var MethodIdBasicNack uint16 = 120
 
 func (f *BasicNack) MethodIdentifier() (uint16, uint16) {
@@ -3323,31 +3369,27 @@ func (f *BasicNack) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *BasicNack) Read(reader io.Reader) (err error) {
 
 	f.DeliveryTag, err = ReadDeliveryTag(reader)
 	if err != nil {
 		return errors.New("Error reading field DeliveryTag: " + err.Error())
 	}
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Multiple" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Multiple = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Multiple: " + err.Error())
-	}
-
 	f.Requeue = (bits&(1<<1) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Requeue: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *BasicNack) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 60); err != nil {
 		return err
@@ -3360,7 +3402,9 @@ func (f *BasicNack) Write(writer io.Writer) (err error) {
 	if err != nil {
 		return errors.New("Error writing field DeliveryTag")
 	}
+
 	var bits byte
+
 	if f.Multiple {
 		bits |= 1 << 0
 	}
@@ -3377,20 +3421,11 @@ func (f *BasicNack) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//
-//
-//                    Tx
-//
-//
-// **********************************************************************
-
 var ClassIdTx uint16 = 90
 
-// **********************************************************************
-//                    Tx - Select
-// **********************************************************************
-
+// ************************
+// TxSelect
+// ************************
 var MethodIdTxSelect uint16 = 10
 
 func (f *TxSelect) MethodIdentifier() (uint16, uint16) {
@@ -3405,10 +3440,13 @@ func (f *TxSelect) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *TxSelect) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *TxSelect) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 90); err != nil {
 		return err
@@ -3420,10 +3458,9 @@ func (f *TxSelect) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Tx - SelectOk
-// **********************************************************************
-
+// ************************
+// TxSelectOk
+// ************************
 var MethodIdTxSelectOk uint16 = 11
 
 func (f *TxSelectOk) MethodIdentifier() (uint16, uint16) {
@@ -3438,10 +3475,13 @@ func (f *TxSelectOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *TxSelectOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *TxSelectOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 90); err != nil {
 		return err
@@ -3453,10 +3493,9 @@ func (f *TxSelectOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Tx - Commit
-// **********************************************************************
-
+// ************************
+// TxCommit
+// ************************
 var MethodIdTxCommit uint16 = 20
 
 func (f *TxCommit) MethodIdentifier() (uint16, uint16) {
@@ -3471,10 +3510,13 @@ func (f *TxCommit) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *TxCommit) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *TxCommit) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 90); err != nil {
 		return err
@@ -3486,10 +3528,9 @@ func (f *TxCommit) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Tx - CommitOk
-// **********************************************************************
-
+// ************************
+// TxCommitOk
+// ************************
 var MethodIdTxCommitOk uint16 = 21
 
 func (f *TxCommitOk) MethodIdentifier() (uint16, uint16) {
@@ -3504,10 +3545,13 @@ func (f *TxCommitOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *TxCommitOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *TxCommitOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 90); err != nil {
 		return err
@@ -3519,10 +3563,9 @@ func (f *TxCommitOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Tx - Rollback
-// **********************************************************************
-
+// ************************
+// TxRollback
+// ************************
 var MethodIdTxRollback uint16 = 30
 
 func (f *TxRollback) MethodIdentifier() (uint16, uint16) {
@@ -3537,10 +3580,13 @@ func (f *TxRollback) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *TxRollback) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *TxRollback) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 90); err != nil {
 		return err
@@ -3552,10 +3598,9 @@ func (f *TxRollback) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Tx - RollbackOk
-// **********************************************************************
-
+// ************************
+// TxRollbackOk
+// ************************
 var MethodIdTxRollbackOk uint16 = 31
 
 func (f *TxRollbackOk) MethodIdentifier() (uint16, uint16) {
@@ -3570,10 +3615,13 @@ func (f *TxRollbackOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *TxRollbackOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *TxRollbackOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 90); err != nil {
 		return err
@@ -3585,20 +3633,11 @@ func (f *TxRollbackOk) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//
-//
-//                    Confirm
-//
-//
-// **********************************************************************
-
 var ClassIdConfirm uint16 = 85
 
-// **********************************************************************
-//                    Confirm - Select
-// **********************************************************************
-
+// ************************
+// ConfirmSelect
+// ************************
 var MethodIdConfirmSelect uint16 = 10
 
 func (f *ConfirmSelect) MethodIdentifier() (uint16, uint16) {
@@ -3613,20 +3652,20 @@ func (f *ConfirmSelect) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConfirmSelect) Read(reader io.Reader) (err error) {
+
 	bits, err := ReadOctet(reader)
 	if err != nil {
-		return errors.New("Error reading field Nowait" + err.Error())
+		return errors.New("Error reading bit fields" + err.Error())
 	}
 
 	f.Nowait = (bits&(1<<0) > 0)
 
-	if err != nil {
-		return errors.New("Error reading field Nowait: " + err.Error())
-	}
 	return
 }
 
+// Writer
 func (f *ConfirmSelect) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 85); err != nil {
 		return err
@@ -3636,6 +3675,7 @@ func (f *ConfirmSelect) Write(writer io.Writer) (err error) {
 	}
 
 	var bits byte
+
 	if f.Nowait {
 		bits |= 1 << 0
 	}
@@ -3648,10 +3688,9 @@ func (f *ConfirmSelect) Write(writer io.Writer) (err error) {
 	return
 }
 
-// **********************************************************************
-//                    Confirm - SelectOk
-// **********************************************************************
-
+// ************************
+// ConfirmSelectOk
+// ************************
 var MethodIdConfirmSelectOk uint16 = 11
 
 func (f *ConfirmSelectOk) MethodIdentifier() (uint16, uint16) {
@@ -3666,10 +3705,13 @@ func (f *ConfirmSelectOk) FrameType() byte {
 	return 1
 }
 
+// Reader
 func (f *ConfirmSelectOk) Read(reader io.Reader) (err error) {
+
 	return
 }
 
+// Writer
 func (f *ConfirmSelectOk) Write(writer io.Writer) (err error) {
 	if err = WriteShort(writer, 85); err != nil {
 		return err
@@ -3681,6 +3723,10 @@ func (f *ConfirmSelectOk) Write(writer io.Writer) (err error) {
 	return
 }
 
+// ********************************
+// METHOD READER
+// ********************************
+
 func ReadMethod(reader io.Reader) (MethodFrame, error) {
 	classIndex, err := ReadShort(reader)
 	if err != nil {
@@ -3691,10 +3737,11 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 		return nil, err
 	}
 	switch {
-	// Connection
+
 	case classIndex == 10:
 		switch {
-		case methodIndex == 10: // ConnectionStart
+
+		case methodIndex == 10:
 			var method = &ConnectionStart{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3702,7 +3749,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 11: // ConnectionStartOk
+		case methodIndex == 11:
 			var method = &ConnectionStartOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3710,7 +3757,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 20: // ConnectionSecure
+		case methodIndex == 20:
 			var method = &ConnectionSecure{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3718,7 +3765,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 21: // ConnectionSecureOk
+		case methodIndex == 21:
 			var method = &ConnectionSecureOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3726,7 +3773,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 30: // ConnectionTune
+		case methodIndex == 30:
 			var method = &ConnectionTune{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3734,7 +3781,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 31: // ConnectionTuneOk
+		case methodIndex == 31:
 			var method = &ConnectionTuneOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3742,7 +3789,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 40: // ConnectionOpen
+		case methodIndex == 40:
 			var method = &ConnectionOpen{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3750,7 +3797,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 41: // ConnectionOpenOk
+		case methodIndex == 41:
 			var method = &ConnectionOpenOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3758,7 +3805,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 50: // ConnectionClose
+		case methodIndex == 50:
 			var method = &ConnectionClose{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3766,7 +3813,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 51: // ConnectionCloseOk
+		case methodIndex == 51:
 			var method = &ConnectionCloseOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3774,7 +3821,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 60: // ConnectionBlocked
+		case methodIndex == 60:
 			var method = &ConnectionBlocked{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3782,7 +3829,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 61: // ConnectionUnblocked
+		case methodIndex == 61:
 			var method = &ConnectionUnblocked{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3791,10 +3838,11 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			return method, nil
 
 		}
-	// Channel
+
 	case classIndex == 20:
 		switch {
-		case methodIndex == 10: // ChannelOpen
+
+		case methodIndex == 10:
 			var method = &ChannelOpen{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3802,7 +3850,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 11: // ChannelOpenOk
+		case methodIndex == 11:
 			var method = &ChannelOpenOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3810,7 +3858,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 20: // ChannelFlow
+		case methodIndex == 20:
 			var method = &ChannelFlow{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3818,7 +3866,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 21: // ChannelFlowOk
+		case methodIndex == 21:
 			var method = &ChannelFlowOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3826,7 +3874,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 40: // ChannelClose
+		case methodIndex == 40:
 			var method = &ChannelClose{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3834,7 +3882,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 41: // ChannelCloseOk
+		case methodIndex == 41:
 			var method = &ChannelCloseOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3843,10 +3891,11 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			return method, nil
 
 		}
-	// Exchange
+
 	case classIndex == 40:
 		switch {
-		case methodIndex == 10: // ExchangeDeclare
+
+		case methodIndex == 10:
 			var method = &ExchangeDeclare{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3854,7 +3903,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 11: // ExchangeDeclareOk
+		case methodIndex == 11:
 			var method = &ExchangeDeclareOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3862,7 +3911,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 20: // ExchangeDelete
+		case methodIndex == 20:
 			var method = &ExchangeDelete{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3870,7 +3919,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 21: // ExchangeDeleteOk
+		case methodIndex == 21:
 			var method = &ExchangeDeleteOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3878,7 +3927,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 30: // ExchangeBind
+		case methodIndex == 30:
 			var method = &ExchangeBind{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3886,7 +3935,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 31: // ExchangeBindOk
+		case methodIndex == 31:
 			var method = &ExchangeBindOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3894,7 +3943,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 40: // ExchangeUnbind
+		case methodIndex == 40:
 			var method = &ExchangeUnbind{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3902,7 +3951,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 51: // ExchangeUnbindOk
+		case methodIndex == 51:
 			var method = &ExchangeUnbindOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3911,10 +3960,11 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			return method, nil
 
 		}
-	// Queue
+
 	case classIndex == 50:
 		switch {
-		case methodIndex == 10: // QueueDeclare
+
+		case methodIndex == 10:
 			var method = &QueueDeclare{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3922,7 +3972,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 11: // QueueDeclareOk
+		case methodIndex == 11:
 			var method = &QueueDeclareOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3930,7 +3980,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 20: // QueueBind
+		case methodIndex == 20:
 			var method = &QueueBind{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3938,7 +3988,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 21: // QueueBindOk
+		case methodIndex == 21:
 			var method = &QueueBindOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3946,39 +3996,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 30: // QueuePurge
-			var method = &QueuePurge{}
-			err = method.Read(reader)
-			if err != nil {
-				return nil, err
-			}
-			return method, nil
-
-		case methodIndex == 31: // QueuePurgeOk
-			var method = &QueuePurgeOk{}
-			err = method.Read(reader)
-			if err != nil {
-				return nil, err
-			}
-			return method, nil
-
-		case methodIndex == 40: // QueueDelete
-			var method = &QueueDelete{}
-			err = method.Read(reader)
-			if err != nil {
-				return nil, err
-			}
-			return method, nil
-
-		case methodIndex == 41: // QueueDeleteOk
-			var method = &QueueDeleteOk{}
-			err = method.Read(reader)
-			if err != nil {
-				return nil, err
-			}
-			return method, nil
-
-		case methodIndex == 50: // QueueUnbind
+		case methodIndex == 50:
 			var method = &QueueUnbind{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3986,7 +4004,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 51: // QueueUnbindOk
+		case methodIndex == 51:
 			var method = &QueueUnbindOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -3994,11 +4012,44 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
+		case methodIndex == 30:
+			var method = &QueuePurge{}
+			err = method.Read(reader)
+			if err != nil {
+				return nil, err
+			}
+			return method, nil
+
+		case methodIndex == 31:
+			var method = &QueuePurgeOk{}
+			err = method.Read(reader)
+			if err != nil {
+				return nil, err
+			}
+			return method, nil
+
+		case methodIndex == 40:
+			var method = &QueueDelete{}
+			err = method.Read(reader)
+			if err != nil {
+				return nil, err
+			}
+			return method, nil
+
+		case methodIndex == 41:
+			var method = &QueueDeleteOk{}
+			err = method.Read(reader)
+			if err != nil {
+				return nil, err
+			}
+			return method, nil
+
 		}
-	// Basic
+
 	case classIndex == 60:
 		switch {
-		case methodIndex == 10: // BasicQos
+
+		case methodIndex == 10:
 			var method = &BasicQos{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4006,15 +4057,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 100: // BasicRecoverAsync
-			var method = &BasicRecoverAsync{}
-			err = method.Read(reader)
-			if err != nil {
-				return nil, err
-			}
-			return method, nil
-
-		case methodIndex == 11: // BasicQosOk
+		case methodIndex == 11:
 			var method = &BasicQosOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4022,31 +4065,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 110: // BasicRecover
-			var method = &BasicRecover{}
-			err = method.Read(reader)
-			if err != nil {
-				return nil, err
-			}
-			return method, nil
-
-		case methodIndex == 111: // BasicRecoverOk
-			var method = &BasicRecoverOk{}
-			err = method.Read(reader)
-			if err != nil {
-				return nil, err
-			}
-			return method, nil
-
-		case methodIndex == 120: // BasicNack
-			var method = &BasicNack{}
-			err = method.Read(reader)
-			if err != nil {
-				return nil, err
-			}
-			return method, nil
-
-		case methodIndex == 20: // BasicConsume
+		case methodIndex == 20:
 			var method = &BasicConsume{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4054,7 +4073,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 21: // BasicConsumeOk
+		case methodIndex == 21:
 			var method = &BasicConsumeOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4062,7 +4081,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 30: // BasicCancel
+		case methodIndex == 30:
 			var method = &BasicCancel{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4070,7 +4089,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 31: // BasicCancelOk
+		case methodIndex == 31:
 			var method = &BasicCancelOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4078,7 +4097,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 40: // BasicPublish
+		case methodIndex == 40:
 			var method = &BasicPublish{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4086,7 +4105,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 50: // BasicReturn
+		case methodIndex == 50:
 			var method = &BasicReturn{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4094,7 +4113,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 60: // BasicDeliver
+		case methodIndex == 60:
 			var method = &BasicDeliver{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4102,7 +4121,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 70: // BasicGet
+		case methodIndex == 70:
 			var method = &BasicGet{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4110,7 +4129,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 71: // BasicGetOk
+		case methodIndex == 71:
 			var method = &BasicGetOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4118,7 +4137,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 72: // BasicGetEmpty
+		case methodIndex == 72:
 			var method = &BasicGetEmpty{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4126,7 +4145,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 80: // BasicAck
+		case methodIndex == 80:
 			var method = &BasicAck{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4134,7 +4153,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 90: // BasicReject
+		case methodIndex == 90:
 			var method = &BasicReject{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4142,20 +4161,32 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		}
-	// Confirm
-	case classIndex == 85:
-		switch {
-		case methodIndex == 10: // ConfirmSelect
-			var method = &ConfirmSelect{}
+		case methodIndex == 100:
+			var method = &BasicRecoverAsync{}
 			err = method.Read(reader)
 			if err != nil {
 				return nil, err
 			}
 			return method, nil
 
-		case methodIndex == 11: // ConfirmSelectOk
-			var method = &ConfirmSelectOk{}
+		case methodIndex == 110:
+			var method = &BasicRecover{}
+			err = method.Read(reader)
+			if err != nil {
+				return nil, err
+			}
+			return method, nil
+
+		case methodIndex == 111:
+			var method = &BasicRecoverOk{}
+			err = method.Read(reader)
+			if err != nil {
+				return nil, err
+			}
+			return method, nil
+
+		case methodIndex == 120:
+			var method = &BasicNack{}
 			err = method.Read(reader)
 			if err != nil {
 				return nil, err
@@ -4163,10 +4194,11 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			return method, nil
 
 		}
-	// Tx
+
 	case classIndex == 90:
 		switch {
-		case methodIndex == 10: // TxSelect
+
+		case methodIndex == 10:
 			var method = &TxSelect{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4174,7 +4206,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 11: // TxSelectOk
+		case methodIndex == 11:
 			var method = &TxSelectOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4182,7 +4214,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 20: // TxCommit
+		case methodIndex == 20:
 			var method = &TxCommit{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4190,7 +4222,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 21: // TxCommitOk
+		case methodIndex == 21:
 			var method = &TxCommitOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4198,7 +4230,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 30: // TxRollback
+		case methodIndex == 30:
 			var method = &TxRollback{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4206,7 +4238,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			}
 			return method, nil
 
-		case methodIndex == 31: // TxRollbackOk
+		case methodIndex == 31:
 			var method = &TxRollbackOk{}
 			err = method.Read(reader)
 			if err != nil {
@@ -4215,7 +4247,29 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 			return method, nil
 
 		}
-	}
-	return nil, errors.New(fmt.Sprintf("Bad method or class Id! classId: %d, methodIndex: %d", classIndex, methodIndex))
 
+	case classIndex == 85:
+		switch {
+
+		case methodIndex == 10:
+			var method = &ConfirmSelect{}
+			err = method.Read(reader)
+			if err != nil {
+				return nil, err
+			}
+			return method, nil
+
+		case methodIndex == 11:
+			var method = &ConfirmSelectOk{}
+			err = method.Read(reader)
+			if err != nil {
+				return nil, err
+			}
+			return method, nil
+
+		}
+
+	}
+
+	return nil, errors.New(fmt.Sprintf("Bad method or class Id! classId: %d, methodIndex: %d", classIndex, methodIndex))
 }

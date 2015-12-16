@@ -97,6 +97,7 @@ func (f *{{.NormName}}) Read(reader io.Reader) (err error) {
   f.{{.NormName}} = (bits & (1 << {{.BitOffset}}) > 0)
   {{end}}
 {{end}}{{/* end fields */}}
+  return
 }
 
 // Writer
@@ -135,6 +136,7 @@ func (f *{{.NormName}}) Write(writer io.Writer) (err error) {
     return errors.New("Error writing bit fields")
   }
   {{end}}
+  return
 }
 
 {{end}}{{/* end methods */}}
