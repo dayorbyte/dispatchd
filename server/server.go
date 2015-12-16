@@ -100,7 +100,6 @@ func (server *Server) queueDeleteMonitor() {
 	}
 }
 
-// TODO: move most of this into the bindings file
 func (server *Server) initBindings() {
 	// Load bindings
 	bindings, err := binding.LoadAllBindings(server.db)

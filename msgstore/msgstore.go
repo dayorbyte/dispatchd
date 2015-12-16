@@ -439,12 +439,8 @@ func decrIndexMessage(tx *bolt.Tx, id int64, ms *MessageStore) (int32, error) {
 	// decr then save or delete
 	if im.Refs < 1 {
 		panic("Index message would have gone negative!")
-		// TODO: isn't this a data integrity error?
-		index_bucket.Delete(bId)
-		return 0, nil
 	}
 	im.Refs -= 1
-	// TODO: panic on <0
 	if im.Refs == 0 {
 		ms.msgLock.Lock()
 		delete(ms.index, id)

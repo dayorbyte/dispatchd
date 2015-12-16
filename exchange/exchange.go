@@ -96,8 +96,6 @@ func NewFromMethod(method *amqp.ExchangeDeclare, system bool, exchangeDeleter ch
 	var classId, methodId = method.MethodIdentifier()
 	var tp, err = ExchangeNameToType(method.Type)
 	if err != nil || tp == EX_TYPE_HEADERS {
-		// TODO: I should really make ChannelException and ConnectionException
-		// types
 		return nil, amqp.NewHardError(503, "Bad exchange type", classId, methodId)
 	}
 	var ex = NewExchange(

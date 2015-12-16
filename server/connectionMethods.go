@@ -61,7 +61,6 @@ func (channel *Channel) connectionTuneOk(conn *AMQPConnection, method *amqp.Conn
 func (channel *Channel) connectionStartOk(conn *AMQPConnection, method *amqp.ConnectionStartOk) *amqp.AMQPError {
 	// TODO(SHOULD): record product/version/platform/copyright/information
 	// TODO(MUST): assert mechanism, response, locale are not null
-	// TODO(MUST): if the auth is wrong, send 403 access-refused
 	conn.connectStatus.startOk = true
 
 	if method.Mechanism != "PLAIN" {
