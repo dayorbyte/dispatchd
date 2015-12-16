@@ -1,6 +1,6 @@
 
 .PHONY: all protoc_present deps gen_all gen_pb gen_amqp build test full_coverage \
-	real_line_count devserver benchmark_dev benchmark install
+	real_line_count devserver benchmark_dev benchmark install clean
 
 PROTOC := protoc -I=${GOPATH}/src:${GOPATH}/src/github.com/gogo/protobuf/protobuf/:.
 
@@ -8,6 +8,11 @@ RUN_PORT=5672
 PERF_SCRIPT=scripts/external/perf-client/runjava.sh
 
 all: build
+
+clean:
+	rm -Rf scripts/external/
+	rm -f */*.pb.go
+	rm $GOPATH/bin/server
 
 protoc_present:
 	which protoc
