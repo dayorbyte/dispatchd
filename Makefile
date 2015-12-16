@@ -2,7 +2,8 @@
 .PHONY: all protoc_present deps gen_all gen_pb gen_amqp build test full_coverage \
 	real_line_count devserver benchmark_dev benchmark install clean
 
-PROTOC := protoc -I=${GOPATH}/src:${GOPATH}/src/github.com/gogo/protobuf/protobuf/:.
+PROTOC := protoc -I=${GOPATH}/src:${GOPATH}/src/github.com/gogo/protobuf/protobuf/
+PROJECT_PATH := ${GOPATH}/src/github.com/jeffjenkins/dispatchd
 
 RUN_PORT=5672
 PERF_SCRIPT=scripts/external/perf-client/runjava.sh
@@ -12,7 +13,7 @@ all: build
 clean:
 	rm -Rf scripts/external/
 	rm -f */*.pb.go
-	rm $GOPATH/bin/server
+	rm -f ${GOPATH}/bin/server
 
 protoc_present:
 	which protoc
@@ -30,8 +31,8 @@ deps:
 gen_all: deps gen_pb gen_amqp
 
 gen_pb: gen_amqp protoc_present
-	$(PROTOC) --gogo_out=. amqp/*.proto
-	$(PROTOC) --gogo_out=. gen/*.proto
+	$(PROTOC) --gogo_out=${GOPATH}/src ${PROJECT_PATH}/amqp/*.proto
+	$(PROTOC) --gogo_out=${GOPATH}/src ${PROJECT_PATH}/gen/*.proto
 
 gen_amqp:
 	# TODO: this requires a virtualenv to be set up with Mako. I should
@@ -40,7 +41,7 @@ gen_amqp:
 	gofmt -w amqp/*generated*.go
 
 build: deps gen_all
-	go build -o dispatchd github.com/jeffjenkins/dispatchd/server
+	go build -o ${GOPATH}/dispatchd github.com/jeffjenkins/dispatchd/server
 
 install: deps gen_all
 	go install github.com/jeffjenkins/dispatchd/server

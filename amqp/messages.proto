@@ -2,8 +2,7 @@
 package amqp;
 
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-// import "amqp/amqp.proto";
-import "amqp/protocol_generated.proto";
+import "github.com/jeffjenkins/dispatchd/amqp/protocol_generated.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.unmarshaler_all) = true;
