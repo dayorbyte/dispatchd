@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"encoding/json"
@@ -299,7 +299,7 @@ func (server *Server) deregisterConnection(id int64) {
 	delete(server.conns, id)
 }
 
-func (server *Server) openConnection(network net.Conn) {
+func (server *Server) OpenConnection(network net.Conn) {
 	c := NewAMQPConnection(server, network)
 	server.conns[c.id] = c
 	c.openConnection()

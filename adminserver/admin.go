@@ -1,14 +1,15 @@
-package main
+package adminserver
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jeffjenkins/dispatchd/server"
 	"github.com/rcrowley/go-metrics"
 	"net/http"
 	"os"
 )
 
-func homeJSON(w http.ResponseWriter, r *http.Request, server *Server) {
+func homeJSON(w http.ResponseWriter, r *http.Request, server *server.Server) {
 	var b, err = json.MarshalIndent(server, "", "    ")
 	if err != nil {
 		w.Write([]byte(err.Error()))
@@ -16,7 +17,7 @@ func homeJSON(w http.ResponseWriter, r *http.Request, server *Server) {
 	w.Write(b)
 }
 
-func statsJSON(w http.ResponseWriter, r *http.Request, server *Server) {
+func statsJSON(w http.ResponseWriter, r *http.Request, server *server.Server) {
 	// fmt.Println(metrics.DefaultRegistry)
 	var b, err = json.MarshalIndent(metrics.DefaultRegistry, "", "    ")
 	if err != nil {
@@ -25,7 +26,7 @@ func statsJSON(w http.ResponseWriter, r *http.Request, server *Server) {
 	w.Write(b)
 }
 
-func startAdminServer(server *Server, port int) {
+func StartAdminServer(server *server.Server, port int) {
 	// Static files
 	var path = os.Getenv("STATIC_PATH")
 	if len(path) == 0 {

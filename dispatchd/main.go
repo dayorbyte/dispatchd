@@ -5,13 +5,15 @@ import (
 	"fmt"
 	"net"
 	// _ "net/http/pprof" // uncomment for debugging
+	"github.com/jeffjenkins/dispatchd/adminserver"
+	"github.com/jeffjenkins/dispatchd/server"
 	"os"
 	"path/filepath"
 	"runtime"
 )
 
-func handleConnection(server *Server, conn net.Conn) {
-	server.openConnection(conn)
+func handleConnection(server *server.Server, conn net.Conn) {
+	server.OpenConnection(conn)
 }
 
 func main() {
@@ -20,7 +22,7 @@ func main() {
 	runtime.SetBlockProfileRate(1)
 	serverDbPath := filepath.Join(persistDir, "dispatchd-server.db")
 	msgDbPath := filepath.Join(persistDir, "messages.db")
-	var server = NewServer(serverDbPath, msgDbPath, config["users"].(map[string]interface{}))
+	var server = server.NewServer(serverDbPath, msgDbPath, config["users"].(map[string]interface{}))
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", amqpPort))
 	if err != nil {
 		fmt.Printf("Error!\n")
@@ -28,7 +30,7 @@ func main() {
 	}
 	fmt.Printf("Listening on port %d\n", amqpPort)
 	go func() {
-		startAdminServer(server, adminPort)
+		adminserver.StartAdminServer(server, adminPort)
 	}()
 	for {
 		conn, err := ln.Accept()
