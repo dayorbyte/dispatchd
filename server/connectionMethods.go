@@ -2,6 +2,8 @@ package server
 
 import (
 	"github.com/jeffjenkins/dispatchd/amqp"
+	"os"
+	"runtime"
 	"time"
 )
 
@@ -105,9 +107,15 @@ func (channel *Channel) startConnection() *amqp.AMQPError {
 	serverProps.SetKey("version", []byte("0.1"))
 	serverProps.SetKey("copyright", []byte("Jeffrey Jenkins, 2015"))
 	serverProps.SetKey("capabilities", capabilities)
-	serverProps.SetKey("platform", []byte("TODO"))
-	serverProps.SetKey("host", []byte("TODO"))
-	serverProps.SetKey("information", []byte("https://github.com/jeffjenkins/dispatchd"))
+	serverProps.SetKey("platform", runtime.GOARCH)
+	host, err := os.Hostname()
+	if err != nil {
+		serverProps.SetKey("host", []byte("UnknownHostError"))
+	} else {
+		serverProps.SetKey("host", []byte(host))
+	}
+
+	serverProps.SetKey("information", []byte("http://dispatchd.org"))
 
 	channel.SendMethod(&amqp.ConnectionStart{0, 9, serverProps, []byte("PLAIN"), []byte("en_US")})
 	return nil
