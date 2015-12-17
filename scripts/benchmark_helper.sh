@@ -10,4 +10,4 @@ cd scripts/external/perf-client/
   --consumers 4 \
   --producers 2 \
   --qos 20 \
-  --time 20
+  --time 20 "$@"
