@@ -26,7 +26,6 @@ type Channel struct {
 	outgoing       chan *amqp.WireFrame
 	conn           *AMQPConnection
 	state          uint8
-	confirmMode    bool
 	currentMessage *amqp.Message
 	consumers      map[string]*consumer.Consumer
 	consumerLock   sync.Mutex
@@ -491,18 +490,9 @@ func (channel *Channel) setStateOpen() {
 	channel.state = CH_STATE_OPEN
 }
 
-func (channel *Channel) activateConfirmMode() {
-	channel.confirmMode = true
-}
-
 func (channel *Channel) startPublish(method *amqp.BasicPublish) error {
 	channel.currentMessage = amqp.NewMessage(method, channel.conn.id)
 	return nil
-}
-
-func (channel *Channel) nextConfirmId() uint64 {
-	channel.msgIndex++
-	return channel.msgIndex
 }
 
 func (channel *Channel) nextDeliveryTag() uint64 {
@@ -717,10 +707,6 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) *amqp.AMQPError
 	}
 
 	channel.currentMessage = nil
-	if channel.confirmMode {
-		channel.msgIndex += 1
-		channel.SendMethod(&amqp.BasicAck{channel.msgIndex, false})
-	}
 	return nil
 }
 
@@ -763,8 +749,6 @@ func (channel *Channel) routeMethod(frame *amqp.WireFrame) *amqp.AMQPError {
 		return channel.basicRoute(methodFrame)
 	case classId == 90:
 		return channel.txRoute(methodFrame)
-	case classId == 85:
-		return channel.confirmRoute(methodFrame)
 	default:
 		return amqp.NewHardError(540, "Not implemented", classId, methodId)
 	}
