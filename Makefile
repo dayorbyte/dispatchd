@@ -35,8 +35,6 @@ gen_pb: gen_amqp protoc_present
 	$(PROTOC) --gogo_out=${GOPATH}/src ${PROJECT_PATH}/gen/*.proto
 
 gen_amqp:
-	# TODO: this requires a virtualenv to be set up with Mako. I should
-	# rewrite this in go to remove the dependency.
 	go run amqpgen/*.go --spec=amqp0-9-1.extended.xml && go fmt github.com/jeffjenkins/dispatchd/...
 	gofmt -w amqp/*generated*.go
 
