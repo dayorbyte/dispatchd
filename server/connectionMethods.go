@@ -107,7 +107,7 @@ func (channel *Channel) startConnection() *amqp.AMQPError {
 	serverProps.SetKey("version", []byte("0.1"))
 	serverProps.SetKey("copyright", []byte("Jeffrey Jenkins, 2015"))
 	serverProps.SetKey("capabilities", capabilities)
-	serverProps.SetKey("platform", runtime.GOARCH)
+	serverProps.SetKey("platform", []byte(runtime.GOARCH))
 	host, err := os.Hostname()
 	if err != nil {
 		serverProps.SetKey("host", []byte("UnknownHostError"))
