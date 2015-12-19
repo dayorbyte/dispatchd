@@ -514,7 +514,7 @@ func TestBadExchangeBytesBucket(t *testing.T) {
 
 func TestNewFromMethod(t *testing.T) {
 	var method = &amqp.ExchangeDeclare{
-		Reserved_1: 0,
+		Reserved1:  0,
 		Exchange:   "ex-method",
 		Type:       "topic",
 		Passive:    true,

@@ -56,7 +56,7 @@ func channelHelper(
 
 func (tc *testClient) connect() *amqpclient.Connection {
 	internal, external := net.Pipe()
-	go tc.s.openConnection(internal)
+	go tc.s.OpenConnection(internal)
 	// Set up connection
 	clientconfig := amqpclient.Config{
 		SASL:            nil,
