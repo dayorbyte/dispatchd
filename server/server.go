@@ -26,6 +26,7 @@ type Server struct {
 	exchangeDeleter chan *exchange.Exchange
 	queueDeleter    chan *queue.Queue
 	users           map[string]User
+	strictMode      bool
 }
 
 func (server *Server) MarshalJSON() ([]byte, error) {
@@ -42,7 +43,7 @@ func (server *Server) MarshalJSON() ([]byte, error) {
 	})
 }
 
-func NewServer(dbPath string, msgStorePath string, userJson map[string]interface{}) *Server {
+func NewServer(dbPath string, msgStorePath string, userJson map[string]interface{}, strictMode bool) *Server {
 	db, err := bolt.Open(dbPath, 0600, nil)
 	if err != nil {
 		panic(err.Error())
@@ -64,6 +65,7 @@ func NewServer(dbPath string, msgStorePath string, userJson map[string]interface
 		exchangeDeleter: make(chan *exchange.Exchange),
 		queueDeleter:    make(chan *queue.Queue),
 		users:           make(map[string]User),
+		strictMode:      strictMode,
 	}
 
 	server.init()

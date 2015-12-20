@@ -54,5 +54,6 @@ message FieldValue {
     FieldArray v_array               = 15 ;
     uint64 v_timestamp               = 16 ;
     Table v_table                    = 17 ;
+    bytes v_bytes                    = 18 ;
   }
 }

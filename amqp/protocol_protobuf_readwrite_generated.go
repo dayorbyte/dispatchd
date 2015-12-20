@@ -26,7 +26,7 @@ func (f *ConnectionStart) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionStart) Read(reader io.Reader) (err error) {
+func (f *ConnectionStart) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.VersionMajor, err = ReadOctet(reader)
 	if err != nil {
@@ -38,7 +38,7 @@ func (f *ConnectionStart) Read(reader io.Reader) (err error) {
 		return errors.New("Error reading field VersionMinor: " + err.Error())
 	}
 
-	f.ServerProperties, err = ReadPeerProperties(reader)
+	f.ServerProperties, err = ReadPeerProperties(reader, strictMode)
 	if err != nil {
 		return errors.New("Error reading field ServerProperties: " + err.Error())
 	}
@@ -111,9 +111,9 @@ func (f *ConnectionStartOk) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionStartOk) Read(reader io.Reader) (err error) {
+func (f *ConnectionStartOk) Read(reader io.Reader, strictMode bool) (err error) {
 
-	f.ClientProperties, err = ReadPeerProperties(reader)
+	f.ClientProperties, err = ReadPeerProperties(reader, strictMode)
 	if err != nil {
 		return errors.New("Error reading field ClientProperties: " + err.Error())
 	}
@@ -186,7 +186,7 @@ func (f *ConnectionSecure) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionSecure) Read(reader io.Reader) (err error) {
+func (f *ConnectionSecure) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Challenge, err = ReadLongstr(reader)
 	if err != nil {
@@ -231,7 +231,7 @@ func (f *ConnectionSecureOk) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionSecureOk) Read(reader io.Reader) (err error) {
+func (f *ConnectionSecureOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Response, err = ReadLongstr(reader)
 	if err != nil {
@@ -276,7 +276,7 @@ func (f *ConnectionTune) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionTune) Read(reader io.Reader) (err error) {
+func (f *ConnectionTune) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.ChannelMax, err = ReadShort(reader)
 	if err != nil {
@@ -341,7 +341,7 @@ func (f *ConnectionTuneOk) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionTuneOk) Read(reader io.Reader) (err error) {
+func (f *ConnectionTuneOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.ChannelMax, err = ReadShort(reader)
 	if err != nil {
@@ -406,7 +406,7 @@ func (f *ConnectionOpen) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionOpen) Read(reader io.Reader) (err error) {
+func (f *ConnectionOpen) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.VirtualHost, err = ReadPath(reader)
 	if err != nil {
@@ -479,7 +479,7 @@ func (f *ConnectionOpenOk) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionOpenOk) Read(reader io.Reader) (err error) {
+func (f *ConnectionOpenOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
@@ -524,7 +524,7 @@ func (f *ConnectionClose) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionClose) Read(reader io.Reader) (err error) {
+func (f *ConnectionClose) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.ReplyCode, err = ReadReplyCode(reader)
 	if err != nil {
@@ -599,7 +599,7 @@ func (f *ConnectionCloseOk) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionCloseOk) Read(reader io.Reader) (err error) {
+func (f *ConnectionCloseOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -634,7 +634,7 @@ func (f *ConnectionBlocked) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionBlocked) Read(reader io.Reader) (err error) {
+func (f *ConnectionBlocked) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reason, err = ReadShortstr(reader)
 	if err != nil {
@@ -679,7 +679,7 @@ func (f *ConnectionUnblocked) FrameType() byte {
 }
 
 // Reader
-func (f *ConnectionUnblocked) Read(reader io.Reader) (err error) {
+func (f *ConnectionUnblocked) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -716,7 +716,7 @@ func (f *ChannelOpen) FrameType() byte {
 }
 
 // Reader
-func (f *ChannelOpen) Read(reader io.Reader) (err error) {
+func (f *ChannelOpen) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
@@ -761,7 +761,7 @@ func (f *ChannelOpenOk) FrameType() byte {
 }
 
 // Reader
-func (f *ChannelOpenOk) Read(reader io.Reader) (err error) {
+func (f *ChannelOpenOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadLongstr(reader)
 	if err != nil {
@@ -806,7 +806,7 @@ func (f *ChannelFlow) FrameType() byte {
 }
 
 // Reader
-func (f *ChannelFlow) Read(reader io.Reader) (err error) {
+func (f *ChannelFlow) Read(reader io.Reader, strictMode bool) (err error) {
 
 	bits, err := ReadOctet(reader)
 	if err != nil {
@@ -859,7 +859,7 @@ func (f *ChannelFlowOk) FrameType() byte {
 }
 
 // Reader
-func (f *ChannelFlowOk) Read(reader io.Reader) (err error) {
+func (f *ChannelFlowOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	bits, err := ReadOctet(reader)
 	if err != nil {
@@ -912,7 +912,7 @@ func (f *ChannelClose) FrameType() byte {
 }
 
 // Reader
-func (f *ChannelClose) Read(reader io.Reader) (err error) {
+func (f *ChannelClose) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.ReplyCode, err = ReadReplyCode(reader)
 	if err != nil {
@@ -987,7 +987,7 @@ func (f *ChannelCloseOk) FrameType() byte {
 }
 
 // Reader
-func (f *ChannelCloseOk) Read(reader io.Reader) (err error) {
+func (f *ChannelCloseOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -1024,7 +1024,7 @@ func (f *ExchangeDeclare) FrameType() byte {
 }
 
 // Reader
-func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
+func (f *ExchangeDeclare) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1056,7 +1056,7 @@ func (f *ExchangeDeclare) Read(reader io.Reader) (err error) {
 
 	f.NoWait = (bits&(1<<4) > 0)
 
-	f.Arguments, err = ReadTable(reader)
+	f.Arguments, err = ReadTable(reader, strictMode)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
@@ -1141,7 +1141,7 @@ func (f *ExchangeDeclareOk) FrameType() byte {
 }
 
 // Reader
-func (f *ExchangeDeclareOk) Read(reader io.Reader) (err error) {
+func (f *ExchangeDeclareOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -1176,7 +1176,7 @@ func (f *ExchangeDelete) FrameType() byte {
 }
 
 // Reader
-func (f *ExchangeDelete) Read(reader io.Reader) (err error) {
+func (f *ExchangeDelete) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1255,7 +1255,7 @@ func (f *ExchangeDeleteOk) FrameType() byte {
 }
 
 // Reader
-func (f *ExchangeDeleteOk) Read(reader io.Reader) (err error) {
+func (f *ExchangeDeleteOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -1290,7 +1290,7 @@ func (f *ExchangeBind) FrameType() byte {
 }
 
 // Reader
-func (f *ExchangeBind) Read(reader io.Reader) (err error) {
+func (f *ExchangeBind) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1319,7 +1319,7 @@ func (f *ExchangeBind) Read(reader io.Reader) (err error) {
 
 	f.NoWait = (bits&(1<<0) > 0)
 
-	f.Arguments, err = ReadTable(reader)
+	f.Arguments, err = ReadTable(reader, strictMode)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
@@ -1393,7 +1393,7 @@ func (f *ExchangeBindOk) FrameType() byte {
 }
 
 // Reader
-func (f *ExchangeBindOk) Read(reader io.Reader) (err error) {
+func (f *ExchangeBindOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -1428,7 +1428,7 @@ func (f *ExchangeUnbind) FrameType() byte {
 }
 
 // Reader
-func (f *ExchangeUnbind) Read(reader io.Reader) (err error) {
+func (f *ExchangeUnbind) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1457,7 +1457,7 @@ func (f *ExchangeUnbind) Read(reader io.Reader) (err error) {
 
 	f.NoWait = (bits&(1<<0) > 0)
 
-	f.Arguments, err = ReadTable(reader)
+	f.Arguments, err = ReadTable(reader, strictMode)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
@@ -1531,7 +1531,7 @@ func (f *ExchangeUnbindOk) FrameType() byte {
 }
 
 // Reader
-func (f *ExchangeUnbindOk) Read(reader io.Reader) (err error) {
+func (f *ExchangeUnbindOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -1568,7 +1568,7 @@ func (f *QueueDeclare) FrameType() byte {
 }
 
 // Reader
-func (f *QueueDeclare) Read(reader io.Reader) (err error) {
+func (f *QueueDeclare) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1595,7 +1595,7 @@ func (f *QueueDeclare) Read(reader io.Reader) (err error) {
 
 	f.NoWait = (bits&(1<<4) > 0)
 
-	f.Arguments, err = ReadTable(reader)
+	f.Arguments, err = ReadTable(reader, strictMode)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
@@ -1675,7 +1675,7 @@ func (f *QueueDeclareOk) FrameType() byte {
 }
 
 // Reader
-func (f *QueueDeclareOk) Read(reader io.Reader) (err error) {
+func (f *QueueDeclareOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Queue, err = ReadQueueName(reader)
 	if err != nil {
@@ -1740,7 +1740,7 @@ func (f *QueueBind) FrameType() byte {
 }
 
 // Reader
-func (f *QueueBind) Read(reader io.Reader) (err error) {
+func (f *QueueBind) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1769,7 +1769,7 @@ func (f *QueueBind) Read(reader io.Reader) (err error) {
 
 	f.NoWait = (bits&(1<<0) > 0)
 
-	f.Arguments, err = ReadTable(reader)
+	f.Arguments, err = ReadTable(reader, strictMode)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
@@ -1843,7 +1843,7 @@ func (f *QueueBindOk) FrameType() byte {
 }
 
 // Reader
-func (f *QueueBindOk) Read(reader io.Reader) (err error) {
+func (f *QueueBindOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -1878,7 +1878,7 @@ func (f *QueueUnbind) FrameType() byte {
 }
 
 // Reader
-func (f *QueueUnbind) Read(reader io.Reader) (err error) {
+func (f *QueueUnbind) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -1900,7 +1900,7 @@ func (f *QueueUnbind) Read(reader io.Reader) (err error) {
 		return errors.New("Error reading field RoutingKey: " + err.Error())
 	}
 
-	f.Arguments, err = ReadTable(reader)
+	f.Arguments, err = ReadTable(reader, strictMode)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
@@ -1963,7 +1963,7 @@ func (f *QueueUnbindOk) FrameType() byte {
 }
 
 // Reader
-func (f *QueueUnbindOk) Read(reader io.Reader) (err error) {
+func (f *QueueUnbindOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -1998,7 +1998,7 @@ func (f *QueuePurge) FrameType() byte {
 }
 
 // Reader
-func (f *QueuePurge) Read(reader io.Reader) (err error) {
+func (f *QueuePurge) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -2071,7 +2071,7 @@ func (f *QueuePurgeOk) FrameType() byte {
 }
 
 // Reader
-func (f *QueuePurgeOk) Read(reader io.Reader) (err error) {
+func (f *QueuePurgeOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.MessageCount, err = ReadMessageCount(reader)
 	if err != nil {
@@ -2116,7 +2116,7 @@ func (f *QueueDelete) FrameType() byte {
 }
 
 // Reader
-func (f *QueueDelete) Read(reader io.Reader) (err error) {
+func (f *QueueDelete) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -2201,7 +2201,7 @@ func (f *QueueDeleteOk) FrameType() byte {
 }
 
 // Reader
-func (f *QueueDeleteOk) Read(reader io.Reader) (err error) {
+func (f *QueueDeleteOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.MessageCount, err = ReadMessageCount(reader)
 	if err != nil {
@@ -2263,7 +2263,7 @@ func (f *BasicQos) FrameType() byte {
 }
 
 // Reader
-func (f *BasicQos) Read(reader io.Reader) (err error) {
+func (f *BasicQos) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.PrefetchSize, err = ReadLong(reader)
 	if err != nil {
@@ -2336,7 +2336,7 @@ func (f *BasicQosOk) FrameType() byte {
 }
 
 // Reader
-func (f *BasicQosOk) Read(reader io.Reader) (err error) {
+func (f *BasicQosOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -2371,7 +2371,7 @@ func (f *BasicConsume) FrameType() byte {
 }
 
 // Reader
-func (f *BasicConsume) Read(reader io.Reader) (err error) {
+func (f *BasicConsume) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -2401,7 +2401,7 @@ func (f *BasicConsume) Read(reader io.Reader) (err error) {
 
 	f.NoWait = (bits&(1<<3) > 0)
 
-	f.Arguments, err = ReadTable(reader)
+	f.Arguments, err = ReadTable(reader, strictMode)
 	if err != nil {
 		return errors.New("Error reading field Arguments: " + err.Error())
 	}
@@ -2482,7 +2482,7 @@ func (f *BasicConsumeOk) FrameType() byte {
 }
 
 // Reader
-func (f *BasicConsumeOk) Read(reader io.Reader) (err error) {
+func (f *BasicConsumeOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.ConsumerTag, err = ReadConsumerTag(reader)
 	if err != nil {
@@ -2527,7 +2527,7 @@ func (f *BasicCancel) FrameType() byte {
 }
 
 // Reader
-func (f *BasicCancel) Read(reader io.Reader) (err error) {
+func (f *BasicCancel) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.ConsumerTag, err = ReadConsumerTag(reader)
 	if err != nil {
@@ -2590,7 +2590,7 @@ func (f *BasicCancelOk) FrameType() byte {
 }
 
 // Reader
-func (f *BasicCancelOk) Read(reader io.Reader) (err error) {
+func (f *BasicCancelOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.ConsumerTag, err = ReadConsumerTag(reader)
 	if err != nil {
@@ -2635,7 +2635,7 @@ func (f *BasicPublish) FrameType() byte {
 }
 
 // Reader
-func (f *BasicPublish) Read(reader io.Reader) (err error) {
+func (f *BasicPublish) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -2724,7 +2724,7 @@ func (f *BasicReturn) FrameType() byte {
 }
 
 // Reader
-func (f *BasicReturn) Read(reader io.Reader) (err error) {
+func (f *BasicReturn) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.ReplyCode, err = ReadReplyCode(reader)
 	if err != nil {
@@ -2799,7 +2799,7 @@ func (f *BasicDeliver) FrameType() byte {
 }
 
 // Reader
-func (f *BasicDeliver) Read(reader io.Reader) (err error) {
+func (f *BasicDeliver) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.ConsumerTag, err = ReadConsumerTag(reader)
 	if err != nil {
@@ -2892,7 +2892,7 @@ func (f *BasicGet) FrameType() byte {
 }
 
 // Reader
-func (f *BasicGet) Read(reader io.Reader) (err error) {
+func (f *BasicGet) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShort(reader)
 	if err != nil {
@@ -2965,7 +2965,7 @@ func (f *BasicGetOk) FrameType() byte {
 }
 
 // Reader
-func (f *BasicGetOk) Read(reader io.Reader) (err error) {
+func (f *BasicGetOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.DeliveryTag, err = ReadDeliveryTag(reader)
 	if err != nil {
@@ -3058,7 +3058,7 @@ func (f *BasicGetEmpty) FrameType() byte {
 }
 
 // Reader
-func (f *BasicGetEmpty) Read(reader io.Reader) (err error) {
+func (f *BasicGetEmpty) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.Reserved1, err = ReadShortstr(reader)
 	if err != nil {
@@ -3103,7 +3103,7 @@ func (f *BasicAck) FrameType() byte {
 }
 
 // Reader
-func (f *BasicAck) Read(reader io.Reader) (err error) {
+func (f *BasicAck) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.DeliveryTag, err = ReadDeliveryTag(reader)
 	if err != nil {
@@ -3166,7 +3166,7 @@ func (f *BasicReject) FrameType() byte {
 }
 
 // Reader
-func (f *BasicReject) Read(reader io.Reader) (err error) {
+func (f *BasicReject) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.DeliveryTag, err = ReadDeliveryTag(reader)
 	if err != nil {
@@ -3229,7 +3229,7 @@ func (f *BasicRecoverAsync) FrameType() byte {
 }
 
 // Reader
-func (f *BasicRecoverAsync) Read(reader io.Reader) (err error) {
+func (f *BasicRecoverAsync) Read(reader io.Reader, strictMode bool) (err error) {
 
 	bits, err := ReadOctet(reader)
 	if err != nil {
@@ -3282,7 +3282,7 @@ func (f *BasicRecover) FrameType() byte {
 }
 
 // Reader
-func (f *BasicRecover) Read(reader io.Reader) (err error) {
+func (f *BasicRecover) Read(reader io.Reader, strictMode bool) (err error) {
 
 	bits, err := ReadOctet(reader)
 	if err != nil {
@@ -3335,7 +3335,7 @@ func (f *BasicRecoverOk) FrameType() byte {
 }
 
 // Reader
-func (f *BasicRecoverOk) Read(reader io.Reader) (err error) {
+func (f *BasicRecoverOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -3370,7 +3370,7 @@ func (f *BasicNack) FrameType() byte {
 }
 
 // Reader
-func (f *BasicNack) Read(reader io.Reader) (err error) {
+func (f *BasicNack) Read(reader io.Reader, strictMode bool) (err error) {
 
 	f.DeliveryTag, err = ReadDeliveryTag(reader)
 	if err != nil {
@@ -3441,7 +3441,7 @@ func (f *TxSelect) FrameType() byte {
 }
 
 // Reader
-func (f *TxSelect) Read(reader io.Reader) (err error) {
+func (f *TxSelect) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -3476,7 +3476,7 @@ func (f *TxSelectOk) FrameType() byte {
 }
 
 // Reader
-func (f *TxSelectOk) Read(reader io.Reader) (err error) {
+func (f *TxSelectOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -3511,7 +3511,7 @@ func (f *TxCommit) FrameType() byte {
 }
 
 // Reader
-func (f *TxCommit) Read(reader io.Reader) (err error) {
+func (f *TxCommit) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -3546,7 +3546,7 @@ func (f *TxCommitOk) FrameType() byte {
 }
 
 // Reader
-func (f *TxCommitOk) Read(reader io.Reader) (err error) {
+func (f *TxCommitOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -3581,7 +3581,7 @@ func (f *TxRollback) FrameType() byte {
 }
 
 // Reader
-func (f *TxRollback) Read(reader io.Reader) (err error) {
+func (f *TxRollback) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -3616,7 +3616,7 @@ func (f *TxRollbackOk) FrameType() byte {
 }
 
 // Reader
-func (f *TxRollbackOk) Read(reader io.Reader) (err error) {
+func (f *TxRollbackOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -3653,7 +3653,7 @@ func (f *ConfirmSelect) FrameType() byte {
 }
 
 // Reader
-func (f *ConfirmSelect) Read(reader io.Reader) (err error) {
+func (f *ConfirmSelect) Read(reader io.Reader, strictMode bool) (err error) {
 
 	bits, err := ReadOctet(reader)
 	if err != nil {
@@ -3706,7 +3706,7 @@ func (f *ConfirmSelectOk) FrameType() byte {
 }
 
 // Reader
-func (f *ConfirmSelectOk) Read(reader io.Reader) (err error) {
+func (f *ConfirmSelectOk) Read(reader io.Reader, strictMode bool) (err error) {
 
 	return
 }
@@ -3727,7 +3727,7 @@ func (f *ConfirmSelectOk) Write(writer io.Writer) (err error) {
 // METHOD READER
 // ********************************
 
-func ReadMethod(reader io.Reader) (MethodFrame, error) {
+func ReadMethod(reader io.Reader, strictMode bool) (MethodFrame, error) {
 	classIndex, err := ReadShort(reader)
 	if err != nil {
 		return nil, err
@@ -3743,7 +3743,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 10:
 			var method = &ConnectionStart{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3751,7 +3751,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 11:
 			var method = &ConnectionStartOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3759,7 +3759,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 20:
 			var method = &ConnectionSecure{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3767,7 +3767,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 21:
 			var method = &ConnectionSecureOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3775,7 +3775,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 30:
 			var method = &ConnectionTune{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3783,7 +3783,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 31:
 			var method = &ConnectionTuneOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3791,7 +3791,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 40:
 			var method = &ConnectionOpen{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3799,7 +3799,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 41:
 			var method = &ConnectionOpenOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3807,7 +3807,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 50:
 			var method = &ConnectionClose{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3815,7 +3815,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 51:
 			var method = &ConnectionCloseOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3823,7 +3823,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 60:
 			var method = &ConnectionBlocked{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3831,7 +3831,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 61:
 			var method = &ConnectionUnblocked{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3844,7 +3844,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 10:
 			var method = &ChannelOpen{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3852,7 +3852,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 11:
 			var method = &ChannelOpenOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3860,7 +3860,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 20:
 			var method = &ChannelFlow{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3868,7 +3868,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 21:
 			var method = &ChannelFlowOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3876,7 +3876,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 40:
 			var method = &ChannelClose{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3884,7 +3884,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 41:
 			var method = &ChannelCloseOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3897,7 +3897,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 10:
 			var method = &ExchangeDeclare{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3905,7 +3905,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 11:
 			var method = &ExchangeDeclareOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3913,7 +3913,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 20:
 			var method = &ExchangeDelete{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3921,7 +3921,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 21:
 			var method = &ExchangeDeleteOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3929,7 +3929,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 30:
 			var method = &ExchangeBind{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3937,7 +3937,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 31:
 			var method = &ExchangeBindOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3945,7 +3945,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 40:
 			var method = &ExchangeUnbind{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3953,7 +3953,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 51:
 			var method = &ExchangeUnbindOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3966,7 +3966,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 10:
 			var method = &QueueDeclare{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3974,7 +3974,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 11:
 			var method = &QueueDeclareOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3982,7 +3982,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 20:
 			var method = &QueueBind{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3990,7 +3990,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 21:
 			var method = &QueueBindOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -3998,7 +3998,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 50:
 			var method = &QueueUnbind{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4006,7 +4006,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 51:
 			var method = &QueueUnbindOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4014,7 +4014,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 30:
 			var method = &QueuePurge{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4022,7 +4022,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 31:
 			var method = &QueuePurgeOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4030,7 +4030,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 40:
 			var method = &QueueDelete{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4038,7 +4038,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 41:
 			var method = &QueueDeleteOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4051,7 +4051,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 10:
 			var method = &BasicQos{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4059,7 +4059,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 11:
 			var method = &BasicQosOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4067,7 +4067,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 20:
 			var method = &BasicConsume{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4075,7 +4075,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 21:
 			var method = &BasicConsumeOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4083,7 +4083,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 30:
 			var method = &BasicCancel{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4091,7 +4091,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 31:
 			var method = &BasicCancelOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4099,7 +4099,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 40:
 			var method = &BasicPublish{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4107,7 +4107,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 50:
 			var method = &BasicReturn{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4115,7 +4115,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 60:
 			var method = &BasicDeliver{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4123,7 +4123,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 70:
 			var method = &BasicGet{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4131,7 +4131,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 71:
 			var method = &BasicGetOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4139,7 +4139,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 72:
 			var method = &BasicGetEmpty{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4147,7 +4147,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 80:
 			var method = &BasicAck{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4155,7 +4155,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 90:
 			var method = &BasicReject{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4163,7 +4163,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 100:
 			var method = &BasicRecoverAsync{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4171,7 +4171,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 110:
 			var method = &BasicRecover{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4179,7 +4179,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 111:
 			var method = &BasicRecoverOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4187,7 +4187,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 120:
 			var method = &BasicNack{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4200,7 +4200,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 10:
 			var method = &TxSelect{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4208,7 +4208,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 11:
 			var method = &TxSelectOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4216,7 +4216,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 20:
 			var method = &TxCommit{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4224,7 +4224,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 21:
 			var method = &TxCommitOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4232,7 +4232,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 30:
 			var method = &TxRollback{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4240,7 +4240,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 31:
 			var method = &TxRollbackOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4253,7 +4253,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 10:
 			var method = &ConfirmSelect{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}
@@ -4261,7 +4261,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 
 		case methodIndex == 11:
 			var method = &ConfirmSelectOk{}
-			err = method.Read(reader)
+			err = method.Read(reader, strictMode)
 			if err != nil {
 				return nil, err
 			}

@@ -119,7 +119,7 @@ func ReadTimestamp(buf io.Reader) (uint64, error) { // pragma: nocover
 	return t, nil // pragma: nocover
 }
 
-func ReadTable(reader io.Reader) (*Table, error) {
+func ReadTable(reader io.Reader, strictMode bool) (*Table, error) {
 	var seen = make(map[string]bool)
 	var table = &Table{Table: make([]*FieldValuePair, 0)}
 	var byteData, err = ReadLongstr(reader)
@@ -135,7 +135,7 @@ func ReadTable(reader io.Reader) (*Table, error) {
 		if _, found := seen[key]; found {
 			return nil, fmt.Errorf("Duplicate key in table: %s", key)
 		}
-		value, err := readValue(data)
+		value, err := readValue(data, strictMode)
 		if err != nil {
 			return nil, errors.New("Error reading value for '" + key + "': " + err.Error())
 		}
@@ -145,7 +145,7 @@ func ReadTable(reader io.Reader) (*Table, error) {
 	return table, nil
 }
 
-func readValue(reader io.Reader) (*FieldValue, error) {
+func readValue(reader io.Reader, strictMode bool) (*FieldValue, error) {
 	var t, err = ReadOctet(reader)
 	if err != nil {
 		return nil, err
@@ -165,19 +165,19 @@ func readValue(reader io.Reader) (*FieldValue, error) {
 			return nil, err
 		}
 		return &FieldValue{Value: &FieldValue_VInt8{VInt8: v}}, nil
-	case t == 'B':
+	case t == 'B' && strictMode:
 		var v uint8
 		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
 			return nil, err
 		}
 		return &FieldValue{Value: &FieldValue_VUint8{VUint8: v}}, nil
-	case t == 'U':
+	case t == 'U' && strictMode || t == 's' && !strictMode:
 		var v int16
 		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
 			return nil, err
 		}
 		return &FieldValue{Value: &FieldValue_VInt16{VInt16: v}}, nil
-	case t == 'u':
+	case t == 'u' && strictMode:
 		var v uint16
 		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
 			return nil, err
@@ -189,19 +189,19 @@ func readValue(reader io.Reader) (*FieldValue, error) {
 			return nil, err
 		}
 		return &FieldValue{Value: &FieldValue_VInt32{VInt32: v}}, nil
-	case t == 'i':
+	case t == 'i' && strictMode:
 		var v uint32
 		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
 			return nil, err
 		}
 		return &FieldValue{Value: &FieldValue_VUint32{VUint32: v}}, nil
-	case t == 'L':
+	case t == 'L' && strictMode || t == 'l' && !strictMode:
 		var v int64
 		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
 			return nil, err
 		}
 		return &FieldValue{Value: &FieldValue_VInt64{VInt64: v}}, nil
-	case t == 'l':
+	case t == 'l' && strictMode:
 		var v uint64
 		if err = binary.Read(reader, binary.BigEndian, &v); err != nil {
 			return nil, err
@@ -230,7 +230,7 @@ func readValue(reader io.Reader) (*FieldValue, error) {
 			return nil, err
 		}
 		return &FieldValue{Value: &FieldValue_VDecimal{VDecimal: &v}}, nil
-	case t == 's':
+	case t == 's' && strictMode:
 		v, err := ReadShortstr(reader)
 		if err != nil {
 			return nil, err
@@ -243,7 +243,7 @@ func readValue(reader io.Reader) (*FieldValue, error) {
 		}
 		return &FieldValue{Value: &FieldValue_VLongstr{VLongstr: v}}, nil
 	case t == 'A':
-		v, err := readArray(reader)
+		v, err := readArray(reader, strictMode)
 		if err != nil {
 			return nil, err
 		}
@@ -255,18 +255,24 @@ func readValue(reader io.Reader) (*FieldValue, error) {
 		}
 		return &FieldValue{Value: &FieldValue_VTimestamp{VTimestamp: v}}, nil
 	case t == 'F':
-		v, err := ReadTable(reader)
+		v, err := ReadTable(reader, strictMode)
 		if err != nil {
 			return nil, err
 		}
 		return &FieldValue{Value: &FieldValue_VTable{VTable: v}}, nil
 	case t == 'V':
 		return nil, nil
+	case t == 'x':
+		v, err := ReadLongstr(reader)
+		if err != nil {
+			return nil, err
+		}
+		return &FieldValue{Value: &FieldValue_VBytes{VBytes: v}}, nil
 	}
 	return nil, fmt.Errorf("Unknown table value type '%c' (%d)", t, t)
 }
 
-func readArray(reader io.Reader) ([]*FieldValue, error) {
+func readArray(reader io.Reader, strictMode bool) ([]*FieldValue, error) {
 	var ret = make([]*FieldValue, 0, 0)
 	var longstr, errs = ReadLongstr(reader)
 	if errs != nil {
@@ -274,7 +280,7 @@ func readArray(reader io.Reader) ([]*FieldValue, error) {
 	}
 	var data = bytes.NewBuffer(longstr)
 	for data.Len() > 0 {
-		var value, err = readValue(data)
+		var value, err = readValue(data, strictMode)
 		if err != nil {
 			return nil, err
 		}
@@ -283,7 +289,7 @@ func readArray(reader io.Reader) ([]*FieldValue, error) {
 	return ret, nil
 }
 
-func (props *BasicContentHeaderProperties) ReadProps(flags uint16, reader io.Reader) (err error) {
+func (props *BasicContentHeaderProperties) ReadProps(flags uint16, reader io.Reader, strictMode bool) (err error) {
 	if MaskContentType&flags != 0 {
 		v, err := ReadShortstr(reader)
 		props.ContentType = &v
@@ -299,7 +305,7 @@ func (props *BasicContentHeaderProperties) ReadProps(flags uint16, reader io.Rea
 		}
 	}
 	if MaskHeaders&flags != 0 {
-		v, err := ReadTable(reader)
+		v, err := ReadTable(reader, strictMode)
 		props.Headers = v
 		if err != nil {
 			return err

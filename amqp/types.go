@@ -15,7 +15,7 @@ type Frame interface {
 type MethodFrame interface {
 	MethodName() string
 	MethodIdentifier() (uint16, uint16)
-	Read(reader io.Reader) (err error)
+	Read(reader io.Reader, strictMode bool) (err error)
 	Write(writer io.Writer) (err error)
 	FrameType() byte
 }
@@ -94,7 +94,7 @@ func CheckExchangeOrQueueName(s string) error {
 	return nil
 }
 
-func (frame *ContentHeaderFrame) Read(reader io.Reader) (err error) {
+func (frame *ContentHeaderFrame) Read(reader io.Reader, strictMode bool) (err error) {
 	frame.ContentClass, err = ReadShort(reader)
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func (frame *ContentHeaderFrame) Read(reader io.Reader) (err error) {
 	}
 
 	frame.Properties = &BasicContentHeaderProperties{}
-	err = frame.Properties.ReadProps(frame.PropertyFlags, reader)
+	err = frame.Properties.ReadProps(frame.PropertyFlags, reader, strictMode)
 	if err != nil {
 		return err
 	}

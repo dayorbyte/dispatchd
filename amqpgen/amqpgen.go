@@ -85,6 +85,7 @@ type Field struct {
 	Options     string
 	MaskIndex   string
 	Serializer  string
+	ReadArgs    string
 	GoType      string
 	BitOffset   int
 	PreviousBit bool
@@ -155,6 +156,9 @@ func transformFields(fs []*Field, domainTypes map[string]string, nullable bool, 
 		f.ProtoIndex = index + offset
 		f.MaskIndex = fmt.Sprintf("%04x", (0 | 1<<(uint(15)-uint(index))))
 		f.Serializer = normalizeName(domain)
+		if strings.Contains(f.Serializer, "Properties") || strings.Contains(f.Serializer, "Table") {
+			f.ReadArgs = ", strictMode"
+		}
 		if f.AmqpType == "bit" {
 			f.BitOffset = bits
 			bits += 1

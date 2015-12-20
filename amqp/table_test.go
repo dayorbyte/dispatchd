@@ -77,7 +77,7 @@ func TestTableTypes(t *testing.T) {
 
 	// decode
 	var reader = bytes.NewReader(writer.Bytes())
-	outTable, err := ReadTable(reader)
+	outTable, err := ReadTable(reader, true)
 	if err != nil {
 		t.Errorf(err.Error())
 	}

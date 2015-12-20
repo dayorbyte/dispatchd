@@ -80,10 +80,10 @@ func (f *{{.NormName}}) FrameType() byte {
 }
 
 // Reader
-func (f *{{.NormName}}) Read(reader io.Reader) (err error) {
+func (f *{{.NormName}}) Read(reader io.Reader, strictMode bool) (err error) {
 {{range $index, $field := .Fields}}
   {{if eq .BitOffset -1}}
-  f.{{.NormName}}, err = Read{{.Serializer}}(reader)
+  f.{{.NormName}}, err = Read{{.Serializer}}(reader{{.ReadArgs}})
   if err != nil {
     return errors.New("Error reading field {{.NormName}}: " + err.Error())
   }
@@ -146,7 +146,7 @@ func (f *{{.NormName}}) Write(writer io.Writer) (err error) {
 // METHOD READER
 // ********************************
 
-func ReadMethod(reader io.Reader) (MethodFrame, error) {
+func ReadMethod(reader io.Reader, strictMode bool) (MethodFrame, error) {
   classIndex, err := ReadShort(reader)
   if err != nil {
     return nil, err
@@ -162,7 +162,7 @@ func ReadMethod(reader io.Reader) (MethodFrame, error) {
 {{range .Methods}}
       case methodIndex == {{.Index}}:
         var method = &{{.NormName}}{}
-        err = method.Read(reader)
+        err = method.Read(reader, strictMode)
         if err != nil {
           return nil, err
         }

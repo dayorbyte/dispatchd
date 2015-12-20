@@ -649,7 +649,7 @@ func (channel *Channel) handleContentHeader(frame *amqp.WireFrame) *amqp.AMQPErr
 		return amqp.NewSoftError(500, "Unexpected content header frame! Already saw header", 0, 0)
 	}
 	var headerFrame = &amqp.ContentHeaderFrame{}
-	var err = headerFrame.Read(bytes.NewReader(frame.Payload))
+	var err = headerFrame.Read(bytes.NewReader(frame.Payload), channel.server.strictMode)
 	if err != nil {
 		return amqp.NewHardError(500, "Error parsing header frame: "+err.Error(), 0, 0)
 	}
@@ -712,7 +712,7 @@ func (channel *Channel) handleContentBody(frame *amqp.WireFrame) *amqp.AMQPError
 
 func (channel *Channel) routeMethod(frame *amqp.WireFrame) *amqp.AMQPError {
 	var methodReader = bytes.NewReader(frame.Payload)
-	var methodFrame, err = amqp.ReadMethod(methodReader)
+	var methodFrame, err = amqp.ReadMethod(methodReader, channel.server.strictMode)
 	if err != nil {
 		return amqp.NewHardError(500, err.Error(), 0, 0)
 	}

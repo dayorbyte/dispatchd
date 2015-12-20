@@ -22,7 +22,7 @@ func main() {
 	runtime.SetBlockProfileRate(1)
 	serverDbPath := filepath.Join(persistDir, "dispatchd-server.db")
 	msgDbPath := filepath.Join(persistDir, "messages.db")
-	var server = server.NewServer(serverDbPath, msgDbPath, config["users"].(map[string]interface{}))
+	var server = server.NewServer(serverDbPath, msgDbPath, config["users"].(map[string]interface{}), strictMode)
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", amqpPort))
 	if err != nil {
 		fmt.Printf("Error!\n")

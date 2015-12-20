@@ -38,7 +38,7 @@ func TestMalformedTable(t *testing.T) {
 	// make key too long
 	outBytes[19] = 250
 	var inMethod = &ExchangeBind{}
-	err = inMethod.Read(bytes.NewBuffer(outBytes))
+	err = inMethod.Read(bytes.NewBuffer(outBytes), true)
 	if err == nil {
 		t.Errorf("Successfully read malformed bytes!")
 	}
@@ -47,7 +47,7 @@ func TestMalformedTable(t *testing.T) {
 	// make value the wrong type
 	outBytes[22] = 'S'
 	inMethod = &ExchangeBind{}
-	err = inMethod.Read(bytes.NewBuffer(outBytes))
+	err = inMethod.Read(bytes.NewBuffer(outBytes), true)
 	if err == nil {
 		t.Errorf("Successfully read malformed bytes!")
 	}
@@ -56,7 +56,7 @@ func TestMalformedTable(t *testing.T) {
 	// duplicate keys
 	outBytes[28] = 'h'
 	inMethod = &ExchangeBind{}
-	err = inMethod.Read(bytes.NewBuffer(outBytes))
+	err = inMethod.Read(bytes.NewBuffer(outBytes), true)
 	if err == nil {
 		t.Errorf("Successfully read malformed bytes!")
 	}
@@ -65,7 +65,7 @@ func TestMalformedTable(t *testing.T) {
 	// can't read value type
 	inMethod = &ExchangeBind{}
 	outBytes[27] = 7
-	err = inMethod.Read(bytes.NewBuffer(outBytes))
+	err = inMethod.Read(bytes.NewBuffer(outBytes), true)
 	if err == nil {
 		t.Errorf("Successfully read malformed bytes!")
 	}
@@ -76,7 +76,7 @@ func TestMalformedTable(t *testing.T) {
 
 func TestReadValue(t *testing.T) {
 	tryRead := func(bts []byte, msg string) {
-		_, err := readValue(bytes.NewBuffer(bts))
+		_, err := readValue(bytes.NewBuffer(bts), true)
 		if err == nil {
 			t.Errorf(msg)
 		}
@@ -92,7 +92,7 @@ func TestReadValue(t *testing.T) {
 	tryRead([]byte{'~', 1}, "read bad value type")
 
 	// successful timestamp read since the server doesn't really support them
-	val, err := readValue(bytes.NewBuffer([]byte{'T', 0, 0, 0, 0, 0, 0, 0, 2}))
+	val, err := readValue(bytes.NewBuffer([]byte{'T', 0, 0, 0, 0, 0, 0, 0, 2}), true)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -100,7 +100,7 @@ func TestReadValue(t *testing.T) {
 		t.Errorf("Failed to deserialize uint64")
 	}
 	// successful 'V' (no value) read, mainly for coverage
-	val, err = readValue(bytes.NewBuffer([]byte{'V'}))
+	val, err = readValue(bytes.NewBuffer([]byte{'V'}), true)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -154,7 +154,7 @@ func TestReadingContentHeaderProps(t *testing.T) {
 	for i := 0; i < len(outBytes); i++ {
 		var partialBuffer = bytes.NewBuffer(outBytes[:i])
 		var inProps = &BasicContentHeaderProperties{}
-		err = inProps.ReadProps(flags, partialBuffer)
+		err = inProps.ReadProps(flags, partialBuffer, true)
 		if err == nil {
 			t.Errorf("Successfully read malformed props. %d/%d bytes read", i, len(outBytes))
 		}
@@ -162,7 +162,7 @@ func TestReadingContentHeaderProps(t *testing.T) {
 	// Succeed in reading all bytes
 	var partialBuffer = bytes.NewBuffer(outBytes)
 	var inProps = &BasicContentHeaderProperties{}
-	err = inProps.ReadProps(flags, partialBuffer)
+	err = inProps.ReadProps(flags, partialBuffer, true)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -176,7 +176,7 @@ func TestReadingContentHeaderProps(t *testing.T) {
 }
 
 func TestReadArrayFailures(t *testing.T) {
-	_, err := readArray(bytes.NewBuffer([]byte{0, 0, 0, 1, 'L'}))
+	_, err := readArray(bytes.NewBuffer([]byte{0, 0, 0, 1, 'L'}), true)
 	if err == nil {
 		t.Errorf("Read a malformed array value")
 	}
@@ -223,7 +223,7 @@ func TestMethodTypes(t *testing.T) {
 		// Try all lengths of bytes below the ones needed
 		for index, _ := range outBytes {
 			var inBind = reflect.New(reflect.TypeOf(method).Elem()).Interface().(MethodFrame)
-			err = inBind.Read(bytes.NewBuffer(outBytes[:index]))
+			err = inBind.Read(bytes.NewBuffer(outBytes[:index]), true)
 			if err == nil {
 				printWireBytes(outBytes[:index], t)
 				t.Errorf("Parsed malformed request bytes")
@@ -233,7 +233,7 @@ func TestMethodTypes(t *testing.T) {
 		// printWireBytes(outBytes, t)
 		// Try the right set of bytes
 		var inBind = reflect.New(reflect.TypeOf(method).Elem()).Interface().(MethodFrame)
-		err = inBind.Read(bytes.NewBuffer(outBytes))
+		err = inBind.Read(bytes.NewBuffer(outBytes), true)
 		if err != nil {
 			t.Logf("Method is %s", method.MethodName())
 			printWireBytes(outBytes, t)
