@@ -25,7 +25,7 @@ func init() {
 		&configFile,
 		"config-file",
 		"",
-		"Directory for the server and message database files. Default: do not read a config file",
+		"Location of the configuration file. Default: do not read a config file",
 	)
 }
 
