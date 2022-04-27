@@ -3,7 +3,7 @@ import sys
 import subprocess
 import os
 
-PREFIX = 'github.com/jeffjenkins/dispatchd/'
+PREFIX = 'github.com/dayorbyte/dispatchd/'
 
 class Colors(object):
   PURPLE = '\033[95m'
@@ -22,7 +22,7 @@ def main(args):
   if not os.path.exists(output_dir):
     os.makedirs(output_dir)
   package_dir = os.path.join(gopath, 'src', PREFIX)
-  prefix = 'github.com/jeffjenkins/dispatchd/'
+  prefix = 'github.com/dayorbyte/dispatchd/'
   test_packages = subprocess.check_output([
     'go',
     'list',
@@ -39,7 +39,7 @@ def main(args):
     cmd = [
       'go',
       'test',
-      '-coverpkg=github.com/jeffjenkins/dispatchd/...',
+      '-coverpkg=github.com/dayorbyte/dispatchd/...',
       '-coverprofile={}'.format(cover_name),
       test_target,
     ]
@@ -105,8 +105,6 @@ def cover_summary(cover_names):
     else:
       print Colors.RED, file+':', Colors.ENDC, 'No coverage'
   print Colors.RED, 'Remaining lines on files without full coverage:', total_missing, '/', total_lines, Colors.ENDC
-
-
 
 
 if __name__ == '__main__':
